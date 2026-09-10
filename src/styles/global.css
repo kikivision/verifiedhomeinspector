@@ -126,8 +126,14 @@ select, .search-bar input { font-family: 'IBM Plex Sans', sans-serif; padding: 1
 /* Until an inspector claims their listing there is no phone number to show —
    the DBPR extract carries none — so this button is the only way a homeowner
    can reach anyone in this table. */
-.request-btn-row { font-family: 'IBM Plex Sans', sans-serif; background: transparent; color: var(--navy); border: 1px solid var(--navy); padding: 6px 14px; border-radius: 3px; font-size: 0.85rem; font-weight: 500; cursor: pointer; white-space: nowrap; }
+.request-btn-row { font-family: 'IBM Plex Sans', sans-serif; background: transparent; color: var(--navy); border: 1px solid var(--navy); padding: 7px 14px; border-radius: 3px; font-size: 0.85rem; font-weight: 500; cursor: pointer; white-space: nowrap; }
 .request-btn-row:hover { background: var(--navy); color: var(--paper-raised); }
+
+/* Solid only on a claimed row. Filling all 317 would hand out for free the
+   prominence claiming is supposed to buy, and a page of identical dark buttons
+   has no hierarchy left to sell. */
+.is-claimed .request-btn-row { background: var(--navy); color: var(--paper-raised); }
+.is-claimed .request-btn-row:hover { background: var(--navy-soft); border-color: var(--navy-soft); }
 
 .request-dialog { border: none; border-radius: 6px; padding: 0; max-width: 460px; width: calc(100% - 32px); background: var(--paper-raised); color: var(--ink); }
 .request-dialog::backdrop { background: rgba(29, 43, 58, 0.55); }

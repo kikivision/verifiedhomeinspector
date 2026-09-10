@@ -25,7 +25,6 @@ export interface Listing {
   business_name: string | null;
   phone: string | null;
   tier: Tier;
-  bio: string | null;
   specialties: string[];
   cert_badges: string[];
   photo_urls: string[];
