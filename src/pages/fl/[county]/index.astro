@@ -24,6 +24,9 @@ const listings: Listing[] = county.status === 'live' ? await getListingsForCount
 
 const featured = listings.filter((l) => l.tier === 'featured');
 const nonFeatured = listings.filter((l) => l.tier !== 'featured');
+// Cities actually present in the data, so the filter can never offer a city
+// with nothing behind it.
+const cities = [...new Set(nonFeatured.map((l) => l.city))].sort((a, b) => a.localeCompare(b));
 const FEATURED_CAP = 6;
 const openFeaturedSlots = FEATURED_CAP - featured.length;
 ---
@@ -141,11 +144,34 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
             <h2>All {county.name} inspectors</h2>
             <div class="note">{nonFeatured.length} more listings — free to claim, straight from DBPR license records</div>
           </div>
+
+          <!-- Serves both readers of this table. A homeowner narrows to their own
+               city; an inspector types their own name or licence number and finds
+               their row without scrolling past three hundred others to reach it. -->
+          <div class="search-bar">
+            <label class="visually-hidden" for="citySelect">Filter by city</label>
+            <select id="citySelect">
+              <option value="">All cities</option>
+              {cities.map((c) => <option value={c}>{c}</option>)}
+            </select>
+            <label class="visually-hidden" for="listingSearch">Search listings</label>
+            <input
+              id="listingSearch"
+              type="search"
+              autocomplete="off"
+              placeholder="Search by name, city, or license number"
+            />
+          </div>
+          <div class="search-count" id="searchCount" aria-live="polite"></div>
           <div class="list-row head">
             <div>Licensee</div><div>City</div><div>License</div><div>Specialties</div><div>Listing status</div>
           </div>
           {nonFeatured.map((l) => (
-            <div class="list-row">
+            <div
+              class="list-row"
+              data-city={l.city}
+              data-search={`${l.licensee_name} ${l.business_name ?? ''} ${l.city} ${l.license_number}`.toLowerCase()}
+            >
               <div class="name">{l.business_name || l.licensee_name}</div>
               <div>{l.city}</div>
               <div class="lic-num">{l.license_number}</div>
@@ -161,7 +187,16 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
                   <span class="phone">{l.phone}</span>
                 </div>
               ) : (
-                <div style="color:var(--mustard-deep);font-weight:600;">Unclaimed</div>
+                <div>
+                  <!-- An inspector arrives looking for their own name, and finds it
+                       here, ~20,000px above the claim form. Offering the claim on
+                       the row itself means they never have to go hunting for it,
+                       and the licence number they just recognised is carried into
+                       the form for them. Without JS this still jumps to #claim. -->
+                  <a href="#claim" class="claim-link" data-license={l.license_number}>
+                    Unclaimed <span>— claim it</span>
+                  </a>
+                </div>
               )}
             </div>
           ))}
@@ -246,6 +281,61 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
 
   <script>
     import { logListingEvent } from '../../../lib/analytics';
+
+    // Client-side filtering: all 317 rows are already in the HTML, so narrowing
+    // them is a matter of hiding rows rather than fetching anything. Matching
+    // runs against a data-search string built at render time, so a keystroke
+    // never has to read text back out of the DOM.
+    const search = document.querySelector<HTMLInputElement>('#listingSearch');
+    const citySelect = document.querySelector<HTMLSelectElement>('#citySelect');
+    const countEl = document.querySelector<HTMLElement>('#searchCount');
+    const rows = Array.from(document.querySelectorAll<HTMLElement>('.list-row:not(.head)'));
+
+    function applyFilters() {
+      if (!search || !citySelect || !countEl) return;
+      const term = search.value.trim().toLowerCase();
+      const city = citySelect.value;
+      let shown = 0;
+
+      rows.forEach((row) => {
+        const matchesCity = !city || row.dataset.city === city;
+        const matchesTerm = !term || (row.dataset.search ?? '').includes(term);
+        const visible = matchesCity && matchesTerm;
+        row.hidden = !visible;
+        if (visible) shown += 1;
+      });
+
+      if (!term && !city) {
+        countEl.textContent = '';
+      } else if (shown === 0) {
+        countEl.textContent =
+          'No inspectors match that search. Every licensed inspector on this page comes from the DBPR record, so try a license number or a surname.';
+      } else {
+        countEl.textContent = `Showing ${shown} of ${rows.length} listings.`;
+      }
+    }
+
+    search?.addEventListener('input', applyFilters);
+    citySelect?.addEventListener('change', applyFilters);
+
+    // Carry the licence number from the row an inspector recognised into the
+    // claim form, so they are not asked to re-type what they just clicked.
+    document.querySelectorAll<HTMLAnchorElement>('.claim-link').forEach((link) => {
+      link.addEventListener('click', () => {
+        const license = link.dataset.license;
+        const field = document.querySelector<HTMLInputElement>('input[name="license-number"]');
+        if (!license || !field) return;
+        field.value = license;
+        // Focus has to wait out the current task: the browser is still resolving
+        // the #claim jump as this handler runs, and focusing inside it gets reset
+        // to body. A timer rather than requestAnimationFrame, because rAF is
+        // suspended while a tab is in the background and would never fire.
+        setTimeout(() => {
+          const name = document.querySelector<HTMLInputElement>('input[name="licensee-name"]');
+          name?.focus({ preventScroll: true });
+        }, 0);
+      });
+    });
 
     document.querySelectorAll<HTMLButtonElement>('.request-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
