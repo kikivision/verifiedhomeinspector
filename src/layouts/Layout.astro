@@ -85,18 +85,33 @@ const { title, currentCountySlug } = Astro.props;
 
     const navToggle = document.getElementById('navToggle');
     const primaryNav = document.getElementById('primaryNav');
-    navToggle?.addEventListener('click', () => {
-      const open = navToggle.getAttribute('aria-expanded') === 'true';
-      navToggle.setAttribute('aria-expanded', String(!open));
-      primaryNav?.classList.toggle('is-open', !open);
+
+    function setNavOpen(open: boolean) {
+      navToggle?.setAttribute('aria-expanded', String(open));
+      primaryNav?.classList.toggle('is-open', open);
+    }
+
+    navToggle?.addEventListener('click', (event) => {
+      event.stopPropagation();
+      setNavOpen(navToggle.getAttribute('aria-expanded') !== 'true');
+    });
+
+    // Tapping away and pressing Escape are both what people try first when a
+    // menu is open. Without them the toggle is the only way out, and it looked
+    // like the button that had opened the menu rather than one that would
+    // close it.
+    document.addEventListener('click', (event) => {
+      if (navToggle?.getAttribute('aria-expanded') !== 'true') return;
+      if (primaryNav?.contains(event.target as Node)) return;
+      setNavOpen(false);
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') setNavOpen(false);
     });
     // Every link here is an in-page jump, so the menu has to close itself —
     // nothing navigates away to close it.
     primaryNav?.querySelectorAll('a').forEach((link) => {
-      link.addEventListener('click', () => {
-        navToggle?.setAttribute('aria-expanded', 'false');
-        primaryNav.classList.remove('is-open');
-      });
+      link.addEventListener('click', () => setNavOpen(false));
     });
 
     const select = document.getElementById('countySelect') as HTMLSelectElement;
