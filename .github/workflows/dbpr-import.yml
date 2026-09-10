@@ -1,0 +1,68 @@
+# Monthly refresh of the directory from the Florida DBPR public-records extract.
+#
+# Runs in Actions rather than on a laptop so it does not depend on which machine
+# is switched on, and so a failure is emailed by GitHub rather than going unseen
+# in a terminal nobody is watching.
+name: Monthly DBPR import
+
+on:
+  schedule:
+    # 09:00 America/New_York, on the 1st. Cron here is UTC and has no concept of
+    # daylight saving, so this drifts to 08:00 in winter, which does not matter
+    # for a monthly job.
+    - cron: '0 13 1 * *'
+  workflow_dispatch:
+    inputs:
+      county:
+        description: County slug to import
+        required: false
+        default: pinellas
+      force:
+        description: Allow an unusually large shrink in the extract
+        type: boolean
+        required: false
+        default: false
+
+concurrency:
+  # Two imports writing the same rows at once has no upside.
+  group: dbpr-import
+  cancel-in-progress: false
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - run: npm ci
+
+      # Always report before writing. The dry run is the audit trail: if a later
+      # month delists someone unexpectedly, this step's log says what the state
+      # was and what the import intended to do about it.
+      - name: Report what would change
+        env:
+          PUBLIC_SUPABASE_URL: ${{ secrets.PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          node scripts/import-dbpr.mjs \
+            --county "${{ inputs.county || 'pinellas' }}" \
+            --dry-run
+
+      # Rebuilds only when something actually changed, so a no-op month costs no
+      # deploy. The shrink guard runs here and fails the job rather than
+      # delisting hundreds of listings off a truncated download; GitHub emails
+      # on a failed scheduled run.
+      - name: Import
+        env:
+          PUBLIC_SUPABASE_URL: ${{ secrets.PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          NETLIFY_BUILD_HOOK: ${{ secrets.NETLIFY_BUILD_HOOK }}
+        run: |
+          node scripts/import-dbpr.mjs \
+            --county "${{ inputs.county || 'pinellas' }}" \
+            --deploy \
+            ${{ inputs.force && '--force' || '' }}
