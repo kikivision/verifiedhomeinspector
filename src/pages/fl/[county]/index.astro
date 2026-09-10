@@ -197,7 +197,7 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
                 </div>
               ) : (
                 <div>
-                  <a href="#claim" class="claim-link" data-license={l.license_number}>
+                  <a href="#claim" class="claim-link" data-license={l.license_number} data-county={county.slug}>
                     Unclaimed <span>— claim it</span>
                   </a>
                 </div>
@@ -209,6 +209,7 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
                   data-license={l.license_number}
                   data-name={l.business_name || l.licensee_name}
                   data-page-context={`county_${county.slug}_table`}
+                  data-county={county.slug}
                 >
                   Request
                 </button>
@@ -365,6 +366,9 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
 
   <script>
     import { logListingEvent } from '../../../lib/analytics';
+    import { initAnalytics, trackEvent } from '../../../lib/gtag';
+
+    initAnalytics();
 
     // Client-side filtering: all 317 rows are already in the HTML, so narrowing
     // them is a matter of hiding rows rather than fetching anything. Matching
@@ -414,7 +418,7 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
 
     document.querySelectorAll<HTMLButtonElement>('.request-btn-row').forEach((btn) => {
       btn.addEventListener('click', () => {
-        const { listingId, license, name, pageContext } = btn.dataset;
+        const { listingId, license, name, pageContext, county } = btn.dataset;
         if (!dialog || !requestLicense || !requestName || !requestWho) return;
 
         requestLicense.value = license ?? '';
@@ -424,6 +428,13 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
         if (listingId) {
           logListingEvent(listingId, 'click_request', pageContext ?? 'unknown');
         }
+        // Sent alongside the Supabase event rather than instead of it: Supabase
+        // is the billing record tied to a listing id, GA4 is the traffic story.
+        trackEvent('request_inspector', {
+          license_number: license,
+          inspector_name: name,
+          county,
+        });
         dialog.showModal();
       });
     });
@@ -443,6 +454,7 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
         const field = document.querySelector<HTMLInputElement>('input[name="license-number"]');
         if (!license || !field) return;
         field.value = license;
+        trackEvent('claim_listing', { license_number: license, county: link.dataset.county });
         // Focus has to wait out the current task: the browser is still resolving
         // the #claim jump as this handler runs, and focusing inside it gets reset
         // to body. A timer rather than requestAnimationFrame, because rAF is
