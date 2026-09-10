@@ -183,7 +183,57 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
                 call you directly, with no shared leads and no per-lead charges.
               </p>
             </div>
-            <a href="mailto:hello@verifiedhomeinspector.com" class="btn-primary">Claim your listing</a>
+            <!-- Netlify picks this form up from the built HTML at deploy time and
+                 emails each submission on, so claiming needs no mailbox on this
+                 domain and no mail plan. A mailto would also have failed for any
+                 inspector reading on a phone without a configured mail client,
+                 which is most of them. -->
+            <form
+              name="claim-listing"
+              method="POST"
+              data-netlify="true"
+              netlify-honeypot="company-website"
+              action="/claim-received/"
+              class="claim-form"
+            >
+              <input type="hidden" name="form-name" value="claim-listing" />
+              <input type="hidden" name="county" value={county.name} />
+              <!-- Named to look like a field a bot should fill and a person never
+                   sees, so submissions that fill it can be discarded as spam. -->
+              <p class="visually-hidden">
+                <label>Leave this field empty: <input name="company-website" /></label>
+              </p>
+
+              <label>
+                License number
+                <input type="text" name="license-number" required placeholder="HI12345" />
+              </label>
+              <label>
+                Your name
+                <input type="text" name="licensee-name" required />
+              </label>
+              <label>
+                Business name
+                <input type="text" name="business-name" />
+              </label>
+              <label>
+                Phone
+                <input type="tel" name="phone" />
+              </label>
+              <label>
+                Email
+                <input type="email" name="email" required />
+              </label>
+              <label>
+                What you want
+                <select name="plan">
+                  <option value="claim">Claim my listing — $10/mo</option>
+                  <option value="featured">Featured spot — $50/mo</option>
+                  <option value="unsure">Not sure yet, send me details</option>
+                </select>
+              </label>
+              <button type="submit" class="btn-primary">Send</button>
+            </form>
           </div>
         </div>
       </section>

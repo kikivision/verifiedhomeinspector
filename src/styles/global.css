@@ -112,6 +112,23 @@ select, .search-bar input { font-family: 'IBM Plex Sans', sans-serif; padding: 1
 .claim p { color: #B9C4CC; margin-top: 8px; max-width: 38ch; font-size: 0.95rem; }
 .claim .btn-primary { white-space: nowrap; }
 
+/* The claim panel is a two-column row on desktop: the pitch on the left, the
+   form on the right. Below the panel's stacking breakpoint the form becomes
+   full width, so the inputs stay comfortably tappable rather than squeezing
+   into half a phone screen. */
+.claim-form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; min-width: 320px; flex: 1; max-width: 460px; }
+.claim-form label { display: flex; flex-direction: column; gap: 5px; font-size: 0.78rem; color: #B9C4CC; font-weight: 500; }
+.claim-form label:first-of-type, .claim-form label:last-of-type { grid-column: 1 / -1; }
+.claim-form input, .claim-form select { font-family: 'IBM Plex Sans', sans-serif; padding: 9px 10px; border: 1px solid rgba(255,255,255,0.22); border-radius: 3px; background: rgba(255,255,255,0.06); color: var(--paper-raised); font-size: 0.92rem; width: 100%; }
+.claim-form input::placeholder { color: #7E8E99; }
+.claim-form input:focus, .claim-form select:focus { outline: 2px solid var(--mustard); outline-offset: 1px; }
+.claim-form select option { background: var(--navy); color: var(--paper-raised); }
+.claim-form button { grid-column: 1 / -1; justify-self: start; margin-top: 4px; }
+
+/* Off-screen but still reachable by screen readers and by bots reading the
+   DOM, which is the point: the honeypot must look real to a script. */
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
 /* FAQ */
 .faq { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 8px 0; }
 .faq-item { border-bottom: 1px solid var(--line); padding: 0; }
@@ -134,4 +151,5 @@ footer p { font-size: 0.8rem; color: var(--slate); margin: 4px 0; max-width: 70c
   .list-row { grid-template-columns: 1fr; gap: 4px; }
   .list-row.head { display: none; }
   .claim { flex-direction: column; align-items: flex-start; }
+  .claim-form { grid-template-columns: 1fr; min-width: 0; max-width: none; width: 100%; }
 }
