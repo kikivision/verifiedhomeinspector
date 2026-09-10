@@ -48,7 +48,6 @@ nav a:hover { color: var(--navy); }
 /* Hero */
 .hero { padding: 64px 0 48px; position: relative; overflow: hidden; }
 .hero-grid { position: relative; z-index: 1; }
-.hero-cta { display: inline-block; margin-top: 22px; text-decoration: none; }
 .hex-motif { position: absolute; top: -30px; right: -10px; z-index: 0; pointer-events: none; }
 .hero h1 { font-size: 2.7rem; font-weight: 500; line-height: 1.18; max-width: 14ch; }
 .hero p { color: var(--slate); font-size: 1.08rem; max-width: 42ch; margin-top: 16px; }
@@ -70,6 +69,10 @@ select, .search-bar input { font-family: 'IBM Plex Sans', sans-serif; padding: 1
 .section-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 22px; border-bottom: 1px solid var(--line); padding-bottom: 14px; }
 .section-head h2 { font-size: 1.5rem; font-weight: 500; }
 .section-head .note { color: var(--slate); font-size: 0.88rem; }
+/* Below the cards rather than above them: a disclosure still has to be present,
+   but putting it between the heading and the first card pushed the paid tier
+   off a phone screen entirely. */
+.disclosure { color: var(--slate); font-size: 0.82rem; margin-top: 16px; max-width: 68ch; }
 
 /* Cards */
 .featured-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
@@ -241,7 +244,11 @@ footer p { font-size: 0.8rem; color: var(--slate); margin: 4px 0; max-width: 70c
 
   /* Side by side, the heading wraps into its own note and the two collide.
      There is no room for two columns of text on a phone. */
-  .section-head { flex-direction: column; align-items: flex-start; gap: 6px; }
+  .section-head { flex-direction: column; align-items: flex-start; gap: 6px; margin-bottom: 14px; padding-bottom: 10px; }
+
+  /* 44px above and below each section stacks into 88px of nothing between the
+     last featured card and the list, on a screen with 852px to spend. */
+  .section { padding: 24px 0; }
   .featured-grid { grid-template-columns: 1fr; }
   .list-row { grid-template-columns: 1fr; gap: 4px; }
   /* Rows stack on a phone, so the request button gets its own line and a tap

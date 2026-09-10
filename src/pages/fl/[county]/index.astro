@@ -71,9 +71,6 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
               and gives you room to renegotiate. Insurers want their own: a 4-point before they
               will write a policy, and a wind mitigation to apply the storm-resistance discounts.
             </p>
-            <a href="#all-inspectors" class="btn-primary hero-cta">
-              Contact a home inspector
-            </a>
           </div>
         </div>
       </section>
@@ -82,10 +79,6 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
         <div class="wrap">
           <div class="section-head">
             <h2>Featured inspectors</h2>
-            <div class="note">
-              {featured.length} of {FEATURED_CAP} featured spots claimed — paid placements,
-              license status independently verified for every inspector on this site
-            </div>
           </div>
           <div class="featured-grid">
             {featured.map((l) => (
@@ -132,20 +125,23 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
               <div class="card ad-slot">
                 <h3 style="font-size:1rem;">This spot could be yours</h3>
                 <p style="color:var(--slate);font-size:0.88rem;margin:0;">
-                  {featured.length} of {FEATURED_CAP} featured spots claimed in {county.name}.
+                  Above every free listing in {county.name}, on the page homeowners land on.
                 </p>
                 <a href="#claim" class="btn-primary" style="font-size:0.85rem;padding:8px 16px;">Get featured — $50/mo</a>
               </div>
             ))}
           </div>
+          <p class="disclosure">
+            Featured spots are paid placements. Every listing here is verified against the
+            Florida DBPR record, paid or not.
+          </p>
         </div>
       </section>
 
       <section class="section" id="all-inspectors">
         <div class="wrap">
           <div class="section-head">
-            <h2>All {county.name} inspectors</h2>
-            <div class="note">{nonFeatured.length} more listings — free to claim, straight from DBPR license records</div>
+            <h2>All {nonFeatured.length} inspectors</h2>
           </div>
 
           <!-- The two controls do different jobs, and the placeholder says only
