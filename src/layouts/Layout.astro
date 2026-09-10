@@ -4,10 +4,11 @@ import '../styles/global.css';
 
 interface Props {
   title: string;
-  currentCountySlug: string;
+  description?: string;
+  currentCountySlug?: string;
 }
 
-const { title, currentCountySlug } = Astro.props;
+const { title, description, currentCountySlug } = Astro.props;
 ---
 
 <!DOCTYPE html>
@@ -16,6 +17,10 @@ const { title, currentCountySlug } = Astro.props;
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>{title}</title>
+  <!-- Pages passed a description before this existed and Astro discarded it
+       silently, so every page shipped without one and Google wrote its own
+       from whatever text it found first. -->
+  {description && <meta name="description" content={description} />}
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link
     href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500&family=IBM+Plex+Sans:wght@400;500;600&display=swap"

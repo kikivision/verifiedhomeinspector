@@ -36,7 +36,11 @@ const FEATURED_CAP = 3;
 const openFeaturedSlots = FEATURED_CAP - featured.length;
 ---
 
-<Layout title={`${county.name} Home Inspectors | Verified Home Inspector`} currentCountySlug={county.slug}>
+<Layout
+  title={`${county.name} Home Inspectors | Verified Home Inspector`}
+  description={`Every licensed home inspector in ${county.name}, Florida, from state DBPR records. Find one for a pre-purchase inspection, a 4-point, or a wind mitigation.`}
+  currentCountySlug={county.slug}
+>
   {county.status === 'coming_soon' ? (
     <section class="section">
       <div class="wrap">
@@ -61,10 +65,11 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
         <div class="wrap hero-grid">
           <div>
             <div class="county-tag">{county.name}, FL</div>
-            <h1>Find a licensed home inspector before your closing date</h1>
+            <h1>Every licensed home inspector in {county.name}</h1>
             <p style="color:var(--navy-soft);font-weight:500;margin-top:10px;">
-              Needed at closing for a new purchase, and just as often when an insurer requests a
-              new wind mitigation or 4-point inspection at renewal.
+              Before you close on a house, an inspection tells you what condition it is really in
+              and gives you room to renegotiate. Insurers want their own: a 4-point before they
+              will write a policy, and a wind mitigation to apply the storm-resistance discounts.
             </p>
           </div>
         </div>
