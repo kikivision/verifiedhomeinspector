@@ -226,10 +226,14 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
               </label>
               <label>
                 What you want
+                <!-- The value, not the label, is what lands in the notification
+                     email and the CSV export, so each carries its price rather
+                     than a bare slug like "featured". Plain hyphens and no em
+                     dashes, since these are read in an inbox, not on the page. -->
                 <select name="plan">
-                  <option value="claim">Claim my listing — $10/mo</option>
-                  <option value="featured">Featured spot — $50/mo</option>
-                  <option value="unsure">Not sure yet, send me details</option>
+                  <option value="Claim - $10">Claim my listing — $10/mo</option>
+                  <option value="Featured - $50">Featured spot — $50/mo</option>
+                  <option value="Not sure yet">Not sure yet, send me details</option>
                 </select>
               </label>
               <button type="submit" class="btn-primary">Send</button>
