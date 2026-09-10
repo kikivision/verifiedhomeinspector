@@ -181,6 +181,66 @@ if (gtagChunk) {
   }
 }
 
+// The sitemap is the one file nobody looks at after it is generated. Its
+// failure mode is silent and slow: Google crawls what it lists, so a wrong
+// host, a missing trailing slash, or a URL that 404s costs crawl budget on a
+// site that has almost no pages to spend it on.
+const SITE_ORIGIN = 'https://verifiedhomeinspector.com';
+
+const sitemapIndex = await readFile(join(DIST, 'sitemap-index.xml'), 'utf8').catch(() => null);
+check(sitemapIndex !== null, 'No sitemap-index.xml was built.');
+
+const robots = await readFile(join(DIST, 'robots.txt'), 'utf8').catch(() => null);
+check(robots !== null, 'No robots.txt was built.');
+
+if (sitemapIndex && robots) {
+  // robots.txt is hand-written and the sitemap filename comes from the
+  // integration, so nothing but this connects the two. If they drift, the
+  // only symptom is a "couldn't fetch" line in Search Console weeks later.
+  const declared = robots.match(/^Sitemap:\s*(\S+)/m)?.[1];
+  check(declared === `${SITE_ORIGIN}/sitemap-index.xml`,
+    `robots.txt points at ${declared ?? 'no sitemap'}, which is not the file the build wrote.`);
+
+  const parts = [...sitemapIndex.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
+  const built = new Set(pages.map((p) => '/' + relative(DIST, p).replace(/index\.html$/, '')));
+  const listed = [];
+
+  for (const part of parts) {
+    const name = part.replace(`${SITE_ORIGIN}/`, '');
+    const xml = await readFile(join(DIST, name), 'utf8').catch(() => null);
+    check(xml !== null, `sitemap-index.xml lists ${name}, which was not built.`);
+    if (xml) listed.push(...[...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]));
+  }
+
+  check(listed.length > 0, 'The sitemap lists no pages at all.');
+
+  for (const url of listed) {
+    // www 301s to the apex. Listing the redirecting host makes every entry a
+    // wasted round trip, and Netlify serves the un-slashed path as a 301 too.
+    check(url.startsWith(`${SITE_ORIGIN}/`),
+      `Sitemap lists ${url}, which is not on the canonical host ${SITE_ORIGIN}.`);
+    check(url.endsWith('/'),
+      `Sitemap lists ${url} without a trailing slash; the host 301s that form.`);
+    const path = url.replace(SITE_ORIGIN, '');
+    check(built.has(path), `Sitemap lists ${path}, which is not a page in dist.`);
+  }
+
+  // Confirmation pages and counties with no data are built but must not be
+  // offered to a crawler. Excluding them is a filter in astro.config.mjs that
+  // is easy to drop while refactoring, and nothing else would notice.
+  for (const path of ['/claim-received/', '/request-received/']) {
+    check(!listed.includes(`${SITE_ORIGIN}${path}`),
+      `Sitemap lists ${path}, a form confirmation page.`);
+    check(robots.includes(`Disallow: ${path}`),
+      `robots.txt no longer disallows ${path}.`);
+  }
+  const countiesSrc = await readFile('src/lib/counties.ts', 'utf8');
+  for (const [, slug] of countiesSrc.matchAll(/slug: '([^']+)'[^}]*status: 'coming_soon'/g)) {
+    check(!listed.includes(`${SITE_ORIGIN}/fl/${slug}/`),
+      `Sitemap lists /fl/${slug}/, a county whose page is a "coming soon" stub.`);
+  }
+}
+
 for (const note of notes) console.log(`  note: ${note}`);
 
 if (failures.length > 0) {
