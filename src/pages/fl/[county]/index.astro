@@ -65,12 +65,15 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
         <div class="wrap hero-grid">
           <div>
             <div class="county-tag">{county.name}, FL</div>
-            <h1>Every licensed home inspector in {county.name}</h1>
+            <h1>Find a licensed home inspector in {county.name}</h1>
             <p style="color:var(--navy-soft);font-weight:500;margin-top:10px;">
               Before you close on a house, an inspection tells you what condition it is really in
               and gives you room to renegotiate. Insurers want their own: a 4-point before they
               will write a policy, and a wind mitigation to apply the storm-resistance discounts.
             </p>
+            <a href="#all-inspectors" class="btn-primary hero-cta">
+              Contact a home inspector
+            </a>
           </div>
         </div>
       </section>
@@ -139,7 +142,7 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
         </div>
       </section>
 
-      <section class="section">
+      <section class="section" id="all-inspectors">
         <div class="wrap">
           <div class="section-head">
             <h2>All {county.name} inspectors</h2>
@@ -171,7 +174,7 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
           </div>
           <div class="search-count" id="searchCount" aria-live="polite"></div>
           <div class="list-row head">
-            <div>Licensee</div><div>City</div><div>License</div><div>Specialties</div><div>Listing status</div><div>Hire</div>
+            <div>Inspector</div><div>City</div><div>License</div><div>Specialties</div><div>Listing status</div><div>Hire</div>
           </div>
           <!-- Each unclaimed row's status cell links to the claim form. An
                inspector arrives looking for their own name and finds it here,
@@ -188,14 +191,19 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
               data-city={l.city}
               data-search={`${l.licensee_name} ${l.business_name ?? ''} ${l.city} ${l.license_number}`.toLowerCase()}
             >
-              <div class="name">{l.business_name || l.licensee_name}</div>
+              <div>
+                <div class="name">{l.business_name || l.licensee_name}</div>
+                <div class="role">
+                  {l.business_name ? `${l.licensee_name} · ` : ''}Licensed home inspector
+                </div>
+              </div>
               <div>{l.city}</div>
               <div class="lic-num">{l.license_number}</div>
               <div class="tags">
                 {l.specialties.length > 0 ? (
                   l.specialties.map((s) => <span class="tag">{s}</span>)
                 ) : (
-                  <span class="tag">Not yet sourced</span>
+                  <span class="tag tag-empty">—</span>
                 )}
               </div>
               {l.tier === 'claimed' ? (
