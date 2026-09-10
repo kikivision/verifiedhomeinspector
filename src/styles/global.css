@@ -70,6 +70,10 @@ select, .search-bar input { font-family: 'IBM Plex Sans', sans-serif; padding: 1
 .section-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 22px; border-bottom: 1px solid var(--line); padding-bottom: 14px; }
 .section-head h2 { font-size: 1.5rem; font-weight: 500; }
 .section-head .note { color: var(--slate); font-size: 0.88rem; }
+/* Below the cards rather than above them: a disclosure still has to be present,
+   but putting it between the heading and the first card pushed the paid tier
+   off a phone screen entirely. */
+.disclosure { color: var(--slate); font-size: 0.82rem; margin-top: 16px; max-width: 68ch; }
 
 /* Cards */
 .featured-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
