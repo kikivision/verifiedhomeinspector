@@ -140,7 +140,7 @@ select, .search-bar input { font-family: 'IBM Plex Sans', sans-serif; padding: 1
    .county-tag, the same pill the hero uses to orient a reader, recolored for
    the navy ground. */
 .claim-eyebrow { display: inline-block; border: 1px solid rgba(232,169,58,0.45); color: var(--mustard); padding: 4px 10px; border-radius: 20px; font-size: 0.74rem; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; margin-bottom: 14px; }
-.claim h2 { color: var(--paper-raised); font-size: 1.5rem; max-width: 20ch; }
+.claim h1, .claim h2 { color: var(--paper-raised); font-size: 1.5rem; max-width: 20ch; }
 .claim p { color: #B9C4CC; margin-top: 8px; max-width: 38ch; font-size: 0.95rem; }
 .claim .btn-primary { white-space: nowrap; }
 
