@@ -32,9 +32,14 @@ export const faqItems: FaqItem[] = [
       'Yes. Insurers frequently request an updated 4-point or wind mitigation inspection at policy renewal, especially after a carrier change or policy review, not only at the time of purchase. This is just as common a reason to search for a licensed inspector as a new home purchase.',
   },
   {
-    question: 'How often do I need to redo a wind mitigation or 4-point inspection in Florida?',
+    question: 'How long is a wind mitigation inspection good for?',
     answer:
-      'There is no single statewide rule; it depends on the insurance carrier. Many insurers treat a wind mitigation report as valid for around five years, but some request updates sooner, so homeowners should confirm with their insurance agent before assuming an older report still applies.',
+      'There is no single statewide rule and it depends on the carrier, but many Florida insurers treat a wind mitigation report as valid for around five years. Some ask for a newer one sooner, so confirm with your agent before assuming an older report still applies.',
+  },
+  {
+    question: 'How long is a 4-point inspection good for?',
+    answer:
+      'Usually far less time than a wind mitigation report. Carriers commonly want a 4-point completed within the last year, and some want one more recent than that, so moving to a new carrier generally means paying for a fresh inspection rather than reusing an old report. That is the main reason a homeowner who shops for a better rate every few years ends up hiring an inspector again each time, and it is worth asking your agent what that specific carrier will accept before you book.',
   },
   {
     question: 'How do I know a home inspector is actually licensed in Florida?',
