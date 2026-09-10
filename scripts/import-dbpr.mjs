@@ -23,6 +23,10 @@
  *   node scripts/import-dbpr.mjs --county pinellas --emit-sql # print SQL, write nothing
  *   node scripts/import-dbpr.mjs --county pinellas --csv path/to/lic04home.csv
  *   node scripts/import-dbpr.mjs --county pinellas --dry-run  # report changes, write nothing
+ *
+ * A dry run needs only the anon key, since it just reads. Load either from .env
+ * with node's own flag:
+ *   node --env-file=.env scripts/import-dbpr.mjs --county pinellas --dry-run
  *   node scripts/import-dbpr.mjs --county pinellas --force    # allow a large shrink
  *
  * Writing requires SUPABASE_SERVICE_ROLE_KEY: the anon key the site uses is
@@ -238,13 +242,23 @@ async function main() {
     return;
   }
 
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const url = process.env.PUBLIC_SUPABASE_URL;
-  if (!serviceKey || !url) {
-    throw new Error('Set PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to write.');
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const anonKey = process.env.PUBLIC_SUPABASE_ANON_KEY;
+
+  // A dry run only reads listings, which the anon key is allowed to do, so
+  // inspecting what an import would change does not require holding the admin
+  // credential. Writing still does.
+  const key = dryRun ? serviceKey ?? anonKey : serviceKey;
+  if (!url || !key) {
+    throw new Error(
+      dryRun
+        ? 'Set PUBLIC_SUPABASE_URL and either PUBLIC_SUPABASE_ANON_KEY or SUPABASE_SERVICE_ROLE_KEY.'
+        : 'Set PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to write.',
+    );
   }
   const { createClient } = await import('@supabase/supabase-js');
-  const supabase = createClient(url, serviceKey, { auth: { persistSession: false } });
+  const supabase = createClient(url, key, { auth: { persistSession: false } });
 
   const { data: existingRows, error: readError } = await supabase
     .from('listings')
@@ -259,14 +273,10 @@ async function main() {
   // directory, so refuse the whole run instead. --force is the deliberate
   // override for a genuine drop.
   const SHRINK_LIMIT = 0.8;
-  if (existing.size > 0 && deduped.length < existing.size * SHRINK_LIMIT && !force) {
-    throw new Error(
-      `Refusing to run: the extract has ${deduped.length} active ${countySlug} ` +
-        `inspectors but ${existing.size} are on file, a drop of ` +
-        `${Math.round((1 - deduped.length / existing.size) * 100)}%. ` +
-        `Re-run with --force if the drop is real.`,
-    );
-  }
+  const shrank = existing.size > 0 && deduped.length < existing.size * SHRINK_LIMIT;
+  const shrinkPercent = existing.size > 0
+    ? Math.round((1 - deduped.length / existing.size) * 100)
+    : 0;
 
   const toInsert = deduped.filter((l) => !existing.has(l.license_number));
 
@@ -291,7 +301,22 @@ async function main() {
     for (const row of wouldDelist.filter((r) => r.tier !== 'unclaimed')) {
       console.error(`    PAID: ${row.license_number} ${row.licensee_name} (${row.tier})`);
     }
+    if (shrank) {
+      console.error(
+        `\n  WOULD REFUSE TO RUN: the extract shrank ${shrinkPercent}%, past the ` +
+          `${Math.round((1 - SHRINK_LIMIT) * 100)}% limit. A drop that size is more ` +
+          `often a truncated download than a real one. --force overrides.`,
+      );
+    }
     return;
+  }
+
+  if (shrank && !force) {
+    throw new Error(
+      `Refusing to run: the extract has ${deduped.length} active ${countySlug} ` +
+        `inspectors but ${existing.size} are on file, a drop of ${shrinkPercent}%. ` +
+        `Re-run with --dry-run to see what would change, or --force if the drop is real.`,
+    );
   }
 
   if (toInsert.length > 0) {
