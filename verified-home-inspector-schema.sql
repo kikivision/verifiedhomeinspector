@@ -53,6 +53,13 @@ create policy "Public can insert events"
   on listing_events for insert
   with check (true);
 
+-- RLS policies decide which rows a role may touch, but Postgres checks table
+-- privileges first, and a table created here grants nothing to anon by default.
+-- Without these the site's reads fail with 42501 ("permission denied for table
+-- listings") before the policies above are ever consulted.
+grant select on listings to anon, authenticated;
+grant insert on listing_events to anon, authenticated;
+
 -- No public update/delete policies on either table on purpose — claiming
 -- a listing, upgrading tiers, and reading event history for reports are
 -- all admin/service-role operations, not public API actions.

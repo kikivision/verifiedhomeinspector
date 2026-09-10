@@ -1,0 +1,29 @@
+---
+// Netlify posts the claim form here after a successful submission. Kept as a
+// real page rather than Netlify's generic success screen so an inspector who
+// has just handed over their details sees this site, and is told what happens
+// next instead of being left wondering whether the form worked.
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout
+  title="Claim received | Verified Home Inspector"
+  description="We received your listing claim and will be in touch shortly."
+>
+  <section class="section">
+    <div class="wrap">
+      <div class="claim">
+        <div>
+          <div class="claim-eyebrow">For home inspectors</div>
+          <h2>Thanks — we have your details.</h2>
+          <p>
+            We will verify your license number against the Florida DBPR record and email you
+            within one business day to confirm your listing and set up billing. Nothing is
+            charged until your listing is live and you have seen it.
+          </p>
+        </div>
+        <a href="/fl/pinellas/" class="btn-primary">Back to the directory</a>
+      </div>
+    </div>
+  </section>
+</Layout>
