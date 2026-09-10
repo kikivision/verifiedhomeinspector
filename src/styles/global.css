@@ -75,7 +75,10 @@ select, .search-bar input { font-family: 'IBM Plex Sans', sans-serif; padding: 1
 .disclosure { color: var(--slate); font-size: 0.82rem; margin-top: 16px; max-width: 68ch; }
 
 /* Cards */
-.featured-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+/* Column count follows FEATURED_CAP so the row is always full. Two cards in a
+   three-column grid leaves a visible hole where a third should be, which
+   advertises the empty slot rather than the two that are there. */
+.featured-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
 .card { background: var(--paper-raised); border: 1px solid var(--line); border-radius: 5px; padding: 22px; position: relative; }
 .card.featured { border: 1px solid var(--mustard-deep); box-shadow: 0 0 0 1px var(--mustard-deep) inset; }
 .card.ad-slot { border-style: dashed; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 10px; min-height: 200px; }
