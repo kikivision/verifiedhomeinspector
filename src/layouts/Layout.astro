@@ -61,6 +61,13 @@ const { title, currentCountySlug } = Astro.props;
   </footer>
 
   <script>
+    import { initAnalytics } from '../lib/gtag';
+
+    // Every page, not just the county listing. The two form success pages are
+    // the only proof a submission actually completed, and until this moved here
+    // they loaded with no analytics at all — so those page views were invisible.
+    initAnalytics();
+
     const select = document.getElementById('countySelect') as HTMLSelectElement;
     select?.addEventListener('change', () => {
       window.location.href = `/fl/${select.value}`;

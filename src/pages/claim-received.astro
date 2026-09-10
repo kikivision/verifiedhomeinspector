@@ -26,4 +26,14 @@ import Layout from '../layouts/Layout.astro';
       </div>
     </div>
   </section>
+  <script>
+    import { trackEvent } from '../lib/gtag';
+
+    // This page is only reachable after a successful form post, so reaching it
+    // means an inspector actually asked to claim — not that they opened
+    // the form and thought better of it. The button events on the county page
+    // measure intent; this measures completion, and the gap between them is
+    // the abandonment rate.
+    trackEvent('claim_submitted');
+  </script>
 </Layout>
