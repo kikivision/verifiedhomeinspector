@@ -59,6 +59,14 @@ export function trackEvent(name: string, params: Record<string, unknown> = {}): 
     console.info(`[ga4] skipped ${name} — analytics not enabled on ${location.hostname}`);
     return;
   }
+
+  // Astro bundles each page's script separately from the layout's, and does not
+  // guarantee which runs first. A page that fires an event on load could
+  // therefore run before the layout had initialised gtag, and the event was
+  // lost to the catch below. initAnalytics returns immediately if it has
+  // already run, so calling it here makes trackEvent work whatever the order.
+  initAnalytics();
+
   try {
     window.gtag('event', name, params);
   } catch (err) {
