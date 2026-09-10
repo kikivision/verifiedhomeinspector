@@ -151,6 +151,8 @@ select, .search-bar input { font-family: 'IBM Plex Sans', sans-serif; padding: 1
 .search-count { color: var(--slate); font-size: 0.88rem; margin: 8px 4px 0; }
 .search-count:empty { display: none; }
 
+.faq-lead { color: var(--slate); font-size: 1rem; max-width: 68ch; margin: 0 0 18px; }
+
 /* Until an inspector claims their listing there is no phone number to show —
    the DBPR extract carries none — so this button is the only way a homeowner
    can reach anyone in this table. */
@@ -224,15 +226,21 @@ footer p { font-size: 0.8rem; color: var(--slate); margin: 4px 0; max-width: 70c
 /* Coming soon */
 .coming-soon-panel { flex-direction: column; align-items: flex-start; }
 
-@media (min-width: 821px) {
+/* 900, not 820. Between 821 and 900 the header was above the mobile
+   breakpoint but too narrow for the row it switches to: the wordmark broke
+   across two lines and every nav item wrapped. The nav needs about 407px and
+   the wordmark and CTA take the rest, which a small laptop or a tablet in
+   landscape does not have. */
+@media (min-width: 901px) {
   /* The listing table runs to ~20,000px, so an unsticky header means the only
      inspector-facing nav link is gone after the first screen. */
   header { position: sticky; top: 0; z-index: 20; }
 }
 
-@media (max-width: 820px) {
-  /* The nav needs ~407px in a row, wider than a phone. It collapses behind the
-     Menu button and stacks when opened. */
+@media (max-width: 900px) {
+  /* The nav needs ~407px in a row, wider than a phone and wider than the space
+     left over on a small laptop. It collapses behind the Menu button and
+     stacks when opened. */
   .nav-toggle {
     display: inline-flex; align-items: center; gap: 8px;
     font-family: 'IBM Plex Sans', sans-serif; font-size: 0.9rem; font-weight: 500;
