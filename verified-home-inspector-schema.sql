@@ -63,3 +63,29 @@ grant insert on listing_events to anon, authenticated;
 -- No public update/delete policies on either table on purpose — claiming
 -- a listing, upgrading tiers, and reading event history for reports are
 -- all admin/service-role operations, not public API actions.
+
+-- Reporting view for the "free until five requests" offer: how many requests
+-- each listing has had, and whether it has passed the threshold.
+--
+-- Deliberately NOT granted to anon. listing_events is INSERT-only to the public
+-- so a visitor can log an event but never read anyone's history back out, and
+-- this view must not become the hole in that. security_invoker keeps the
+-- underlying RLS in force for whoever queries it, so it is readable from the
+-- SQL editor and a service-role connection, which is where reporting belongs.
+create or replace view listing_request_counts
+with (security_invoker = true) as
+select
+  l.id,
+  l.county,
+  l.city,
+  l.license_number,
+  l.licensee_name,
+  l.business_name,
+  l.tier,
+  count(e.id) filter (where e.event_type = 'click_request') as requests,
+  count(e.id) filter (where e.event_type = 'click_phone') as phone_clicks,
+  count(e.id) filter (where e.event_type = 'click_request') >= 5 as free_period_used,
+  max(e.occurred_at) as last_activity
+from listings l
+left join listing_events e on e.listing_id = l.id
+group by l.id;
