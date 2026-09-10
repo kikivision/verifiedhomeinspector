@@ -1,0 +1,38 @@
+export interface FaqItem {
+  question: string;
+  answer: string;
+}
+
+// IMPORTANT: this is the ONLY place FAQ copy lives. The visible accordion
+// and the FAQPage JSON-LD schema both render from this array. Editing the
+// text here updates both automatically — never hardcode FAQ copy directly
+// into a page or into a separate schema block, or the two will drift and
+// undermine the whole point of having structured data for AI answer engines.
+export const faqItems: FaqItem[] = [
+  {
+    question: 'What is a 4-point inspection?',
+    answer:
+      "A 4-point inspection is a focused review of a home's four highest-risk systems for an insurer: roof, electrical, plumbing, and HVAC. Most Florida carriers require one for homes past a certain age, commonly 25 to 30 years, though the exact cutoff varies by insurer, before writing or renewing a policy.",
+  },
+  {
+    question: 'What is a wind mitigation inspection, and does it actually lower my premium?',
+    answer:
+      'A wind mitigation inspection documents storm-resistant features of a home, such as roof shape, roof-to-wall attachment, and opening protection, that many Florida insurers use to apply premium discounts. It does not guarantee a lower rate, but it is the only way to get credit for those features if the home has them.',
+  },
+  {
+    question:
+      'Do I need a wind mitigation or 4-point inspection if I already own my home, not just when buying one?',
+    answer:
+      'Yes. Insurers frequently request an updated 4-point or wind mitigation inspection at policy renewal, especially after a carrier change or policy review, not only at the time of purchase. This is just as common a reason to search for a licensed inspector as a new home purchase.',
+  },
+  {
+    question: 'How often do I need to redo a wind mitigation or 4-point inspection in Florida?',
+    answer:
+      'There is no single statewide rule; it depends on the insurance carrier. Many insurers treat a wind mitigation report as valid for around five years, but some request updates sooner, so homeowners should confirm with their insurance agent before assuming an older report still applies.',
+  },
+  {
+    question: 'How do I know a home inspector is actually licensed in Florida?',
+    answer:
+      "Licensed Florida home inspectors are registered with the Department of Business and Professional Regulation (DBPR) and issued a license number. Homeowners can verify any inspector's license number directly with the DBPR before booking an inspection.",
+  },
+];

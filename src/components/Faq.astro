@@ -1,0 +1,35 @@
+---
+import { faqItems } from '../lib/faq';
+
+const schema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: faqItems.map((item) => ({
+    '@type': 'Question',
+    name: item.question,
+    acceptedAnswer: {
+      '@type': 'Answer',
+      text: item.answer,
+    },
+  })),
+};
+---
+
+<script type="application/ld+json" set:html={JSON.stringify(schema)} />
+
+<section class="section" id="insurance-renewals">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>Common questions</h2>
+      <div class="note">Wind mitigation and 4-point inspections, explained</div>
+    </div>
+    <div class="faq">
+      {faqItems.map((item, i) => (
+        <details class="faq-item" open={i === 0}>
+          <summary>{item.question}</summary>
+          <p>{item.answer}</p>
+        </details>
+      ))}
+    </div>
+  </div>
+</section>

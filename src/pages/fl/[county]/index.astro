@@ -1,0 +1,213 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import Faq from '../../../components/Faq.astro';
+import { counties, getCounty } from '../../../lib/counties';
+import { getListingsForCounty, type Listing } from '../../../lib/supabase';
+
+export function getStaticPaths() {
+  return counties.map((c) => ({ params: { county: c.slug } }));
+}
+
+const { county: countySlug } = Astro.params;
+const county = getCounty(countySlug!)!;
+// county is guaranteed to exist here: getStaticPaths only ever generates
+// pages for slugs in the counties.ts list, so an invalid slug simply
+// never gets a page built for it (a real 404), rather than needing a
+// runtime redirect that wouldn't work in a static-output build anyway.
+
+// Static generation: this data is fetched at BUILD time, not on every
+// page view. New or updated listings require a rebuild/redeploy to appear
+// on the live site — same model as the other Astro/Netlify sites. If that
+// stops being fast enough once claims/upgrades happen often, switching
+// this route to Astro's server-rendered mode is the fix, not a rewrite.
+const listings: Listing[] = county.status === 'live' ? await getListingsForCounty(county.slug) : [];
+
+const featured = listings.filter((l) => l.tier === 'featured');
+const nonFeatured = listings.filter((l) => l.tier !== 'featured');
+const FEATURED_CAP = 6;
+const openFeaturedSlots = FEATURED_CAP - featured.length;
+---
+
+<Layout title={`${county.name} Home Inspectors | Verified Home Inspector`} currentCountySlug={county.slug}>
+  {county.status === 'coming_soon' ? (
+    <section class="section">
+      <div class="wrap">
+        <div class="claim coming-soon-panel">
+          <h2>{county.name} — coming soon</h2>
+          <p>
+            We're pulling licensed home inspector records for this county now. In the meantime,
+            you can browse Pinellas County, which is fully live.
+          </p>
+          <a href="/fl/pinellas" class="btn-primary">Browse Pinellas County instead</a>
+        </div>
+      </div>
+    </section>
+  ) : (
+    <>
+      <section class="hero" id="homebuyers">
+        <svg class="hex-motif" width="300" height="280" viewBox="0 0 260 250" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <polygon points="74,20 126,50 126,110 74,140 22,110 22,50" stroke="#1D2B3A" stroke-opacity="0.07" stroke-width="2"/>
+          <polygon points="186,20 238,50 238,110 186,140 134,110 134,50" stroke="#1D2B3A" stroke-opacity="0.07" stroke-width="2"/>
+          <polygon points="130,116 182,146 182,206 130,236 78,206 78,146" stroke="#1D2B3A" stroke-opacity="0.07" stroke-width="2"/>
+        </svg>
+        <div class="wrap hero-grid">
+          <div>
+            <div class="county-tag">{county.name}, FL</div>
+            <h1>Find a licensed home inspector before your closing date</h1>
+            <p>
+              Every listing here comes from Florida DBPR license records — no shared leads, no
+              reselling your contact info to five inspectors at once. Just who's actually licensed
+              to inspect in your city.
+            </p>
+            <p style="color:var(--navy-soft);font-weight:500;margin-top:10px;">
+              Needed at closing for a new purchase, and just as often when an insurer requests a
+              new wind mitigation or 4-point inspection at renewal.
+            </p>
+          </div>
+          <div class="stat-card">
+            <div class="num">{listings.length}</div>
+            <div class="cap">Active licensed home inspectors on record in {county.name}</div>
+            <div class="src">Sourced from Florida DBPR licensing records</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="browse">
+        <div class="wrap">
+          <div class="section-head">
+            <h2>Featured inspectors</h2>
+            <div class="note">
+              {featured.length} of {FEATURED_CAP} featured spots claimed — paid placements,
+              license status independently verified for every inspector on this site
+            </div>
+          </div>
+          <div class="featured-grid">
+            {featured.map((l) => (
+              <div class="card featured">
+                <div class="badge">Featured</div>
+                <div class="photo-strip">
+                  <div class="avatar-slot">
+                    {l.licensee_name.split(' ').map((n) => n[0]).slice(0, 2).join('')}
+                  </div>
+                  {l.photo_urls.length > 0 ? (
+                    l.photo_urls.slice(0, 2).map((url) => <img src={url} alt="" class="photo-slot" />)
+                  ) : (
+                    <>
+                      <div class="photo-slot">+ Add<br />photo</div>
+                      <div class="photo-slot">+ Add<br />photo</div>
+                    </>
+                  )}
+                </div>
+                <h3>{l.business_name || l.licensee_name}</h3>
+                <div class="city">{l.licensee_name} · {l.city}, FL</div>
+                <div class="tags">
+                  {l.specialties.length > 0 ? (
+                    l.specialties.map((s) => <span class="tag">{s}</span>)
+                  ) : (
+                    <span class="tag">Licensed Home Inspector</span>
+                  )}
+                </div>
+                <div class="cert-row">
+                  {l.cert_badges.length > 0 ? (
+                    l.cert_badges.map((c) => <span class="cert">{c}</span>)
+                  ) : (
+                    <span class="cert">+ Add certification</span>
+                  )}
+                </div>
+                <div class="lic"><span class="check">✓</span>FL Lic #{l.license_number} — DBPR verified, active</div>
+                <div class="contact">
+                  <span class="phone">{l.phone || 'Phone not yet sourced'}</span>
+                  <button class="request-btn" data-listing-id={l.id} data-page-context={`county_${county.slug}_featured`}>
+                    Request inspector
+                  </button>
+                </div>
+              </div>
+            ))}
+            {Array.from({ length: openFeaturedSlots }).map((_, i) => (
+              <div class="card ad-slot">
+                <h3 style="font-size:1rem;">This spot could be yours</h3>
+                <p style="color:var(--slate);font-size:0.88rem;margin:0;">
+                  {featured.length} of {FEATURED_CAP} featured spots claimed in {county.name}.
+                </p>
+                <a href="#claim" class="btn-primary" style="font-size:0.85rem;padding:8px 16px;">Get featured — $50/mo</a>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="wrap">
+          <div class="section-head">
+            <h2>All {county.name} inspectors</h2>
+            <div class="note">{nonFeatured.length} more listings — free to claim, straight from DBPR license records</div>
+          </div>
+          <div class="list-row head">
+            <div>Licensee</div><div>City</div><div>License</div><div>Specialties</div><div>Listing status</div>
+          </div>
+          {nonFeatured.map((l) => (
+            <div class="list-row">
+              <div class="name">{l.business_name || l.licensee_name}</div>
+              <div>{l.city}</div>
+              <div class="lic-num">{l.license_number}</div>
+              <div class="tags">
+                {l.specialties.length > 0 ? (
+                  l.specialties.map((s) => <span class="tag">{s}</span>)
+                ) : (
+                  <span class="tag">Not yet sourced</span>
+                )}
+              </div>
+              {l.tier === 'claimed' ? (
+                <div style="color:var(--green);font-weight:600;">
+                  <span class="phone">{l.phone}</span>
+                </div>
+              ) : (
+                <div style="color:var(--mustard-deep);font-weight:600;">Unclaimed</div>
+              )}
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <Faq />
+
+      <section class="section" id="claim">
+        <div class="wrap">
+          <div class="claim">
+            <div>
+              <h2>Own a home inspection business in {county.name}?</h2>
+              <p>
+                Your license may already be listed here for free. Claim it for $10/month to add
+                your business name, phone, and bio — or upgrade to a featured spot for $50/month
+                to appear above every free listing.
+              </p>
+            </div>
+            <a href="mailto:hello@verifiedhomeinspector.com" class="btn-primary">Claim your listing</a>
+          </div>
+        </div>
+      </section>
+    </>
+  )}
+
+  <script>
+    import { logListingEvent } from '../../../lib/analytics';
+
+    document.querySelectorAll<HTMLButtonElement>('.request-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const listingId = btn.dataset.listingId;
+        const pageContext = btn.dataset.pageContext || 'unknown';
+        if (!listingId) return;
+
+        const card = btn.closest('.card');
+        const phoneEl = card?.querySelector('.phone');
+        const phone = phoneEl?.textContent?.trim();
+
+        logListingEvent(listingId, 'click_request', pageContext);
+
+        if (phone && phone !== 'Phone not yet sourced') {
+          window.location.href = `tel:${phone.replace(/[^\d+]/g, '')}`;
+        }
+      });
+    });
+  </script>
+</Layout>

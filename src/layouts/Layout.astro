@@ -1,0 +1,70 @@
+---
+import { counties } from '../lib/counties';
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+  currentCountySlug: string;
+}
+
+const { title, currentCountySlug } = Astro.props;
+---
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{title}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+    rel="stylesheet"
+  />
+  <slot name="head" />
+</head>
+<body>
+  <header>
+    <div class="wrap header-row">
+      <a href="/fl/pinellas" class="wordmark">Verified<span>Home Inspector</span></a>
+      <nav>
+        <a href="#browse">Browse Inspectors</a>
+        <a href="#homebuyers">For Homebuyers</a>
+        <a href="#insurance-renewals">Insurance Renewals</a>
+        <a href="#claim" class="nav-cta">List your business</a>
+      </nav>
+    </div>
+    <div class="wrap county-bar">
+      <label for="countySelect">County:</label>
+      <select id="countySelect">
+        {counties.map((c) => (
+          <option value={c.slug} selected={c.slug === currentCountySlug}>
+            {c.name}{c.status === 'coming_soon' ? ' — coming soon' : ''}
+          </option>
+        ))}
+      </select>
+    </div>
+  </header>
+
+  <slot />
+
+  <footer>
+    <div class="wrap">
+      <p>
+        Verified Home Inspector is an independent directory built from publicly available
+        Florida Department of Business and Professional Regulation (DBPR) license records.
+        Inclusion is not an endorsement, and license status should be independently verified
+        with the DBPR before hiring.
+      </p>
+      <p>A Sunstate Bay Ventures LLC property.</p>
+    </div>
+  </footer>
+
+  <script>
+    const select = document.getElementById('countySelect') as HTMLSelectElement;
+    select?.addEventListener('change', () => {
+      window.location.href = `/fl/${select.value}`;
+    });
+  </script>
+</body>
+</html>
