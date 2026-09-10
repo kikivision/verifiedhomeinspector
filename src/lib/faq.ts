@@ -26,6 +26,11 @@ export const faqItems: FaqItem[] = [
       'A wind mitigation inspection documents storm-resistant features of a home, such as roof shape, roof-to-wall attachment, and opening protection, that many Florida insurers use to apply premium discounts. It does not guarantee a lower rate, but it is the only way to get credit for those features if the home has them.',
   },
   {
+    question: 'My roof is more than 15 years old. Can an insurer refuse to cover the house?',
+    answer:
+      'Not on age alone, provided the roof passes an inspection. Florida law, section 627.7011, says an insurer may not refuse to write or renew a policy solely because of the age of a roof that is less than 15 years old. Once a roof reaches 15 years, the insurer must allow you to pay for a roof inspection before it can require a replacement as a condition of coverage, and if that inspection finds the roof has five or more years of useful life remaining, the insurer may not refuse to write or renew the policy solely because of the roof age. A home inspector licensed by the DBPR is one of the professionals the statute permits to perform that inspection. If you are buying rather than renewing, the age and remaining life of the roof are worth knowing before you are committed, because the insurance premium becomes part of the monthly payment your lender uses to decide how much you can borrow.',
+  },
+  {
     question:
       'Do I need a wind mitigation or 4-point inspection if I already own my home, not just when buying one?',
     answer:
