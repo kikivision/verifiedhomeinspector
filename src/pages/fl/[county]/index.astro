@@ -146,7 +146,7 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
           </div>
 
           <!-- Serves both readers of this table. A homeowner narrows to their own
-               city; an inspector types their own name or licence number and finds
+               city; an inspector types their own name or license number and finds
                their row without scrolling past three hundred others to reach it. -->
           <div class="search-bar">
             <label class="visually-hidden" for="citySelect">Filter by city</label>
@@ -169,8 +169,8 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
           <!-- Each unclaimed row's status cell links to the claim form. An
                inspector arrives looking for their own name and finds it here,
                ~20,000px above that form, so offering the claim on the row itself
-               means they never go hunting for it, and the licence number they
-               just recognised is carried into the form for them. Without JS the
+               means they never go hunting for it, and the license number they
+               just recognized is carried into the form for them. Without JS the
                link still jumps to #claim.
 
                This comment lives outside the map on purpose: inside it, Astro
@@ -446,7 +446,7 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
       if (event.target === dialog) dialog.close();
     });
 
-    // Carry the licence number from the row an inspector recognised into the
+    // Carry the license number from the row an inspector recognized into the
     // claim form, so they are not asked to re-type what they just clicked.
     document.querySelectorAll<HTMLAnchorElement>('.claim-link').forEach((link) => {
       link.addEventListener('click', () => {
