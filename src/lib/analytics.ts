@@ -20,6 +20,26 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 type EventType = 'click_phone' | 'click_request';
 
+// These rows are the basis of a billing promise — a listing's free period ends
+// at five homeowner requests — so an event has to come from a real visitor on
+// the real site to count. Both the dev server and Netlify's deploy previews
+// read PUBLIC_SUPABASE_URL from this same project, so without this guard a
+// click while testing writes a request against a real inspector's name. That
+// has already happened twice.
+//
+// An allowlist rather than a localhost check, because deploy previews are the
+// easier trap: they look like the live site and are served from
+// deploy-preview-N--<project>.netlify.app.
+const PRODUCTION_HOSTS = new Set([
+  'verifiedhomeinspector.com',
+  'www.verifiedhomeinspector.com',
+]);
+
+function isRealVisitor(): boolean {
+  if (typeof window === 'undefined') return false;
+  return PRODUCTION_HOSTS.has(window.location.hostname);
+}
+
 /**
  * Call this from an onclick handler on a phone number or "Request
  * inspector" button. `pageContext` should describe where the click
@@ -32,6 +52,15 @@ export async function logListingEvent(
   eventType: EventType,
   pageContext: string
 ): Promise<void> {
+  if (!isRealVisitor()) {
+    // Logged rather than silent, so it is obvious during testing that the click
+    // registered and was deliberately not recorded.
+    console.info(
+      `[analytics] skipped ${eventType} for ${listingId} — ${window.location.hostname} is not the live site`
+    );
+    return;
+  }
+
   try {
     await supabase.from('listing_events').insert({
       listing_id: listingId,
