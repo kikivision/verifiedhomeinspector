@@ -48,7 +48,6 @@ nav a:hover { color: var(--navy); }
 /* Hero */
 .hero { padding: 64px 0 48px; position: relative; overflow: hidden; }
 .hero-grid { position: relative; z-index: 1; }
-.hero-cta { display: inline-block; margin-top: 22px; text-decoration: none; }
 .hex-motif { position: absolute; top: -30px; right: -10px; z-index: 0; pointer-events: none; }
 .hero h1 { font-size: 2.7rem; font-weight: 500; line-height: 1.18; max-width: 14ch; }
 .hero p { color: var(--slate); font-size: 1.08rem; max-width: 42ch; margin-top: 16px; }
