@@ -145,9 +145,15 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
             <div class="note">{nonFeatured.length} more listings — free to claim, straight from DBPR license records</div>
           </div>
 
-          <!-- Serves both readers of this table. A homeowner narrows to their own
-               city; an inspector types their own name or license number and finds
-               their row without scrolling past three hundred others to reach it. -->
+          <!-- The two controls do different jobs, and the placeholder says only
+               what the text box is good at. City belongs to the dropdown: it is
+               an exact match off a discoverable list, and typing a city here
+               returns 100 rows for St. Petersburg, which is a filter rather than
+               a search result. The text box is for narrowing to one person — an
+               inspector finding their own row among three hundred, or a
+               homeowner who already has a name or a license number. City stays
+               in the search index so typing one still works; it just is not
+               advertised as the way to do it. -->
           <div class="search-bar">
             <label class="visually-hidden" for="citySelect">Filter by city</label>
             <select id="citySelect">
@@ -159,7 +165,7 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
               id="listingSearch"
               type="search"
               autocomplete="off"
-              placeholder="Search by name, city, or license number"
+              placeholder="Search by name or license number"
             />
           </div>
           <div class="search-count" id="searchCount" aria-live="polite"></div>
