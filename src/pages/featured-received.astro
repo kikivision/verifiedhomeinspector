@@ -1,0 +1,39 @@
+---
+// Netlify posts the featured-inquiry form here. It exists as a page of its
+// own rather than reusing /claim-received/ so the completion fires
+// featured_submitted instead of claim_submitted: a $50/month sale and a free
+// claim are different conversions and were previously one number in GA4.
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout
+  title="Featured spot request received | Verified Home Inspector"
+  description="We received your request for a featured spot and will be in touch shortly."
+>
+  <section class="section">
+    <div class="wrap">
+      <div class="claim">
+        <div>
+          <div class="claim-eyebrow">For home inspectors</div>
+          <h1>Thanks — we have your details.</h1>
+          <p>
+            We will verify your license number against the Florida DBPR record and email you
+            within one business day to confirm the spot and set up billing. The rate is $50 a
+            month and you keep it for as long as you stay. Nothing is charged until your listing
+            is live and you have seen it.
+          </p>
+        </div>
+        <a href="/fl/pinellas/" class="btn-primary">Back to the directory</a>
+      </div>
+    </div>
+  </section>
+  <script>
+    import { trackEvent } from '../lib/gtag';
+
+    // Only reachable after a successful post, so this measures an inspector who
+    // actually asked for a paid spot rather than one who opened the dialog and
+    // closed it. featured_inquiry on the button measures the intent; the gap
+    // between the two is the abandonment rate.
+    trackEvent('featured_submitted');
+  </script>
+</Layout>
