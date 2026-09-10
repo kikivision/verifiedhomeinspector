@@ -1,0 +1,28 @@
+---
+// Netlify posts the inspector-request form here. Kept as a real page so a
+// homeowner who has just sent their details knows the request went to one
+// named inspector and not into a lead pool.
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout
+  title="Request sent | Verified Home Inspector"
+  description="Your inspection request has been sent to the inspector you chose."
+>
+  <section class="section">
+    <div class="wrap">
+      <div class="claim">
+        <div>
+          <h2>Your request is on its way.</h2>
+          <p>
+            It went to the one inspector you picked, and to nobody else. Most inspectors reply
+            within a business day. If you do not hear back, come back and send a request to
+            another licensed inspector in your city — every listing on this site comes straight
+            from the Florida DBPR record.
+          </p>
+        </div>
+        <a href="/fl/pinellas/" class="btn-primary">Back to the directory</a>
+      </div>
+    </div>
+  </section>
+</Layout>

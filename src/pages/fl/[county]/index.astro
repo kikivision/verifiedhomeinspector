@@ -164,7 +164,7 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
           </div>
           <div class="search-count" id="searchCount" aria-live="polite"></div>
           <div class="list-row head">
-            <div>Licensee</div><div>City</div><div>License</div><div>Specialties</div><div>Listing status</div>
+            <div>Licensee</div><div>City</div><div>License</div><div>Specialties</div><div>Listing status</div><div>Contact</div>
           </div>
           <!-- Each unclaimed row's status cell links to the claim form. An
                inspector arrives looking for their own name and finds it here,
@@ -202,12 +202,86 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
                   </a>
                 </div>
               )}
+              <div>
+                <button
+                  class="request-btn-row"
+                  data-listing-id={l.id}
+                  data-license={l.license_number}
+                  data-name={l.business_name || l.licensee_name}
+                  data-page-context={`county_${county.slug}_table`}
+                >
+                  Request
+                </button>
+              </div>
             </div>
           ))}
         </div>
       </section>
 
       <Faq />
+
+      <!-- One dialog serves all 317 rows: the inspector's identity is written into
+           the hidden fields when a row's Request button is pressed. Netlify reads
+           this form out of the built HTML the same way it reads the claim form,
+           so an inquiry needs no mailbox on this domain either. -->
+      <dialog id="requestDialog" class="request-dialog">
+        <form
+          name="inspector-request"
+          method="POST"
+          data-netlify="true"
+          netlify-honeypot="referral-code"
+          action="/request-received/"
+        >
+          <input type="hidden" name="form-name" value="inspector-request" />
+          <input type="hidden" name="county" value={county.name} />
+          <input type="hidden" name="inspector-license" id="requestLicense" />
+          <input type="hidden" name="inspector-name" id="requestName" />
+          <p class="visually-hidden">
+            <label>Leave this field empty: <input name="referral-code" /></label>
+          </p>
+
+          <div class="request-head">
+            <h2>Request an inspection</h2>
+            <button type="button" class="request-close" id="requestClose" aria-label="Close">×</button>
+          </div>
+          <p class="request-who">
+            Going to <strong id="requestWho"></strong>. This goes to that inspector only — your
+            details are never sent to anyone else.
+          </p>
+
+          <label>
+            Your name
+            <input type="text" name="homeowner-name" required />
+          </label>
+          <label>
+            Email
+            <input type="email" name="homeowner-email" required />
+          </label>
+          <label>
+            Phone
+            <input type="tel" name="homeowner-phone" />
+          </label>
+          <label>
+            Property city or ZIP
+            <input type="text" name="property-location" />
+          </label>
+          <label>
+            What you need
+            <select name="inspection-type">
+              <option value="Full home inspection">Full home inspection</option>
+              <option value="4-point inspection">4-point inspection</option>
+              <option value="Wind mitigation">Wind mitigation</option>
+              <option value="Wind mitigation + 4-point">Wind mitigation and 4-point</option>
+              <option value="Not sure yet">Not sure yet</option>
+            </select>
+          </label>
+          <label>
+            Anything else
+            <textarea name="message" rows="3"></textarea>
+          </label>
+          <button type="submit" class="btn-primary">Send request</button>
+        </form>
+      </dialog>
 
       <section class="section" id="claim">
         <div class="wrap">
@@ -216,10 +290,14 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
               <div class="claim-eyebrow">For home inspectors</div>
               <h2>Own a home inspection business in {county.name}?</h2>
               <p>
-                Your license may already be listed here for free. Claim it for $10/month to add
-                your business name, phone, and bio, or upgrade to a featured spot for $50/month
-                to appear above every free listing. You pay a flat monthly rate and homeowners
-                call you directly, with no shared leads and no per-lead charges.
+                Your license is already listed here, straight from the DBPR record. Claiming it
+                adds your business name, phone, and bio, and costs nothing until we have passed
+                you five homeowner requests — those arrive in your inbox, so you can count them
+                yourself rather than take our word for it. After that it is $10/month, or
+                $50/month for a featured spot above every free listing, and the first six
+                featured inspectors keep that rate for as long as they stay. You pay one flat
+                monthly rate and homeowners contact you directly, with no shared leads and no
+                per-lead charges.
               </p>
             </div>
             <!-- Netlify picks this form up from the built HTML at deploy time and
@@ -270,8 +348,10 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
                      than a bare slug like "featured". Plain hyphens and no em
                      dashes, since these are read in an inbox, not on the page. -->
                 <select name="plan">
-                  <option value="Claim - $10">Claim my listing — $10/mo</option>
-                  <option value="Featured - $50">Featured spot — $50/mo</option>
+                  <option value="Claim - free until 5 requests, then $10/mo">
+                    Claim my listing — free until 5 requests
+                  </option>
+                  <option value="Featured - $50/mo (founding rate)">Featured spot — $50/mo</option>
                   <option value="Not sure yet">Not sure yet, send me details</option>
                 </select>
               </label>
@@ -321,6 +401,39 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
 
     search?.addEventListener('input', applyFilters);
     citySelect?.addEventListener('change', applyFilters);
+
+    // Opening the request dialog is the moment a homeowner shows intent in a
+    // specific inspector, so it is logged here rather than on submit: it counts
+    // interest even when someone abandons the form, which is the number worth
+    // showing an inspector. The inquiry they actually receive is the paid
+    // milestone, and that arrives by email, not from this table.
+    const dialog = document.querySelector<HTMLDialogElement>('#requestDialog');
+    const requestLicense = document.querySelector<HTMLInputElement>('#requestLicense');
+    const requestName = document.querySelector<HTMLInputElement>('#requestName');
+    const requestWho = document.querySelector<HTMLElement>('#requestWho');
+
+    document.querySelectorAll<HTMLButtonElement>('.request-btn-row').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const { listingId, license, name, pageContext } = btn.dataset;
+        if (!dialog || !requestLicense || !requestName || !requestWho) return;
+
+        requestLicense.value = license ?? '';
+        requestName.value = name ?? '';
+        requestWho.textContent = `${name ?? 'this inspector'} (FL Lic #${license ?? ''})`;
+
+        if (listingId) {
+          logListingEvent(listingId, 'click_request', pageContext ?? 'unknown');
+        }
+        dialog.showModal();
+      });
+    });
+
+    document.querySelector('#requestClose')?.addEventListener('click', () => dialog?.close());
+    // Clicking the backdrop closes too: the dialog element itself is the click
+    // target when the press lands outside the form.
+    dialog?.addEventListener('click', (event) => {
+      if (event.target === dialog) dialog.close();
+    });
 
     // Carry the licence number from the row an inspector recognised into the
     // claim form, so they are not asked to re-type what they just clicked.

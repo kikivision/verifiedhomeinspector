@@ -97,7 +97,7 @@ select, .search-bar input { font-family: 'IBM Plex Sans', sans-serif; padding: 1
 .request-btn:hover { background: var(--navy-soft); }
 
 /* Plain listing rows */
-.list-row { display: grid; grid-template-columns: 2.2fr 1.1fr 1.2fr 2fr 1.1fr; gap: 16px; align-items: center; padding: 16px 4px; border-bottom: 1px solid var(--line); font-size: 0.92rem; }
+.list-row { display: grid; grid-template-columns: 2fr 1fr 1.1fr 1.7fr 1.1fr 0.9fr; gap: 16px; align-items: center; padding: 16px 4px; border-bottom: 1px solid var(--line); font-size: 0.92rem; }
 .list-row.head { color: var(--slate); font-size: 0.8rem; font-weight: 500; border-bottom: 1px solid var(--navy); }
 .list-row .name { font-weight: 500; color: var(--navy); }
 .list-row .lic-num { color: var(--slate); font-size: 0.85rem; }
@@ -111,6 +111,25 @@ select, .search-bar input { font-family: 'IBM Plex Sans', sans-serif; padding: 1
    filtered-out rows need this to actually disappear. */
 .list-row[hidden] { display: none; }
 .search-count { color: var(--slate); font-size: 0.88rem; margin: 12px 4px 0; }
+
+/* Until an inspector claims their listing there is no phone number to show —
+   the DBPR extract carries none — so this button is the only way a homeowner
+   can reach anyone in this table. */
+.request-btn-row { font-family: 'IBM Plex Sans', sans-serif; background: transparent; color: var(--navy); border: 1px solid var(--navy); padding: 6px 14px; border-radius: 3px; font-size: 0.85rem; font-weight: 500; cursor: pointer; white-space: nowrap; }
+.request-btn-row:hover { background: var(--navy); color: var(--paper-raised); }
+
+.request-dialog { border: none; border-radius: 6px; padding: 0; max-width: 460px; width: calc(100% - 32px); background: var(--paper-raised); color: var(--ink); }
+.request-dialog::backdrop { background: rgba(29, 43, 58, 0.55); }
+.request-dialog form { display: grid; gap: 12px; padding: 24px; }
+.request-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.request-head h2 { font-size: 1.25rem; }
+.request-close { background: none; border: none; font-size: 1.6rem; line-height: 1; color: var(--slate); cursor: pointer; padding: 0 4px; }
+.request-who { color: var(--slate); font-size: 0.86rem; margin: 0; }
+.request-who strong { color: var(--navy); }
+.request-dialog label { display: flex; flex-direction: column; gap: 5px; font-size: 0.8rem; color: var(--slate); font-weight: 500; }
+.request-dialog input, .request-dialog select, .request-dialog textarea { font-family: 'IBM Plex Sans', sans-serif; padding: 9px 10px; border: 1px solid var(--line); border-radius: 3px; background: #fff; color: var(--ink); font-size: 0.92rem; width: 100%; }
+.request-dialog textarea { resize: vertical; }
+.request-dialog .btn-primary { justify-self: start; margin-top: 4px; }
 
 .claim-link { color: var(--mustard-deep); font-weight: 600; text-decoration: none; }
 .claim-link span { text-decoration: underline; text-underline-offset: 2px; white-space: nowrap; }
@@ -170,6 +189,10 @@ footer p { font-size: 0.8rem; color: var(--slate); margin: 4px 0; max-width: 70c
   .hero-grid { grid-template-columns: 1fr; }
   .featured-grid { grid-template-columns: 1fr; }
   .list-row { grid-template-columns: 1fr; gap: 4px; }
+  /* Rows stack on a phone, so the request button gets its own line and a tap
+     target that clears the 44px guideline rather than the 32px it needs on a
+     desktop row. */
+  .request-btn-row { padding: 13px 18px; margin-top: 6px; }
   .list-row.head { display: none; }
   .claim { flex-direction: column; align-items: flex-start; }
   .claim-form { grid-template-columns: 1fr; min-width: 0; max-width: none; width: 100%; }
