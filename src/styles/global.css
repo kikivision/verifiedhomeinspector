@@ -245,7 +245,11 @@ footer p { font-size: 0.8rem; color: var(--slate); margin: 4px 0; max-width: 70c
 
   /* Side by side, the heading wraps into its own note and the two collide.
      There is no room for two columns of text on a phone. */
-  .section-head { flex-direction: column; align-items: flex-start; gap: 6px; }
+  .section-head { flex-direction: column; align-items: flex-start; gap: 6px; margin-bottom: 14px; padding-bottom: 10px; }
+
+  /* 44px above and below each section stacks into 88px of nothing between the
+     last featured card and the list, on a screen with 852px to spend. */
+  .section { padding: 24px 0; }
   .featured-grid { grid-template-columns: 1fr; }
   .list-row { grid-template-columns: 1fr; gap: 4px; }
   /* Rows stack on a phone, so the request button gets its own line and a tap
