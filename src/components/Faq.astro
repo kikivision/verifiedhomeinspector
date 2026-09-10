@@ -23,6 +23,15 @@ const schema = {
       <h2>Common questions</h2>
       <div class="note">Wind mitigation and 4-point inspections, explained</div>
     </div>
+    <!-- This sentence used to open the hero, where it was the back half of a
+         nine-line paragraph a phone had to scroll past before showing a single
+         inspector. It says what the questions below answer, so it earns its
+         space here and costs nothing at the top of the page. -->
+    <p class="faq-lead">
+      Insurers want their own reports, so a carrier will usually ask for a 4-point on an older
+      home before it will write a policy, and for a wind mitigation to apply the storm-resistance
+      discounts.
+    </p>
     <div class="faq">
       {faqItems.map((item, i) => (
         <details class="faq-item" open={i === 0}>

@@ -46,27 +46,44 @@ nav a:hover { color: var(--navy); }
 .county-bar select { padding: 6px 10px; font-size: 0.88rem; }
 
 /* Hero */
-.hero { padding: 64px 0 48px; position: relative; overflow: hidden; }
+.hero { padding: 40px 0 32px; position: relative; overflow: hidden; }
 .hero-grid { position: relative; z-index: 1; }
 .hex-motif { position: absolute; top: -30px; right: -10px; z-index: 0; pointer-events: none; }
-.hero h1 { font-size: 2.7rem; font-weight: 500; line-height: 1.18; max-width: 14ch; }
-.hero p { color: var(--slate); font-size: 1.08rem; max-width: 42ch; margin-top: 16px; }
-.county-tag { display: inline-block; border: 1px solid var(--mustard-deep); color: var(--mustard-deep); padding: 4px 10px; border-radius: 20px; font-size: 0.8rem; margin-bottom: 18px; font-weight: 500; }
+/* These two max-widths were the whole reason the first featured card sat below
+   the fold on a 900px-tall laptop. 14ch broke a 48-character H1 across three
+   lines and 42ch made the paragraph eight, so the hero spent 547px rendering
+   text in a 435px column while the other 600px of the row held nothing but a
+   decorative motif. Widened, the same copy is two lines and four, the hero is
+   364px, and both featured cards finish above 900px. */
+.hero h1 { font-size: 2.5rem; font-weight: 500; line-height: 1.18; max-width: 22ch; }
+.hero p { color: var(--slate); font-size: 1.08rem; max-width: 68ch; margin-top: 16px; }
+.county-tag { display: inline-block; border: 1px solid var(--mustard-deep); color: var(--mustard-deep); padding: 4px 10px; border-radius: 20px; font-size: 0.8rem; margin-bottom: 12px; font-weight: 500; }
+/* Featured spots are what the hero is asking people to scroll to, and the
+   listings are what the whole page exists for, so both start tighter than the
+   44px every other section gets. */
+#browse.section { padding-top: 28px; }
+#all-inspectors.section { padding-top: 24px; }
 
 
 /* Search bar */
-.search-bar { display: flex; gap: 12px; margin-top: 32px; background: var(--paper-raised); border: 1px solid var(--line); border-radius: 5px; padding: 14px; flex-wrap: wrap; }
+/* One row, at every width. Wrapping turned this into two full-width controls
+   stacked in a box 119px tall on a phone, which read as a form to fill in
+   before the directory would show anything. */
+.search-bar { display: flex; gap: 8px; margin-top: 18px; background: var(--paper-raised); border: 1px solid var(--line); border-radius: 5px; padding: 10px; flex-wrap: nowrap; }
 select, .search-bar input { font-family: 'IBM Plex Sans', sans-serif; padding: 10px 12px; border: 1px solid var(--line); border-radius: 3px; background: #fff; color: var(--ink); font-size: 0.95rem; }
-.search-bar select { flex: 1; min-width: 160px; }
+/* min-width on a flex child is what forced the wrap: 160 + 200 + gap does not
+   fit 319px, so both dropped to their own line. Zero lets them share the row
+   and shrink together. */
+.search-bar select { flex: 0 0 34%; min-width: 0; }
 /* The text field is the primary way an inspector finds their own row, so it
    takes the larger share of the bar and stays full width once these wrap. */
-.search-bar input { flex: 2; min-width: 200px; }
+.search-bar input { flex: 1 1 auto; min-width: 0; }
 .btn-primary { background: var(--mustard); color: var(--navy); border: none; padding: 10px 22px; border-radius: 3px; font-weight: 600; font-size: 0.95rem; cursor: pointer; }
 .btn-primary:hover { background: var(--mustard-deep); color: var(--paper-raised); }
 
 /* Sections */
 .section { padding: 44px 0; }
-.section-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 22px; border-bottom: 1px solid var(--line); padding-bottom: 14px; }
+.section-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 16px; border-bottom: 1px solid var(--line); padding-bottom: 10px; }
 .section-head h2 { font-size: 1.5rem; font-weight: 500; }
 .section-head .note { color: var(--slate); font-size: 0.88rem; }
 /* Below the cards rather than above them: a disclosure still has to be present,
@@ -103,7 +120,9 @@ select, .search-bar input { font-family: 'IBM Plex Sans', sans-serif; padding: 1
 
 /* Plain listing rows */
 .list-row { display: grid; grid-template-columns: 1.9fr 0.9fr 1fr 1.2fr 1.1fr 1.5fr; gap: 16px; align-items: center; padding: 16px 4px; border-bottom: 1px solid var(--line); font-size: 0.92rem; }
-.list-row.head { color: var(--slate); font-size: 0.8rem; font-weight: 500; border-bottom: 1px solid var(--navy); }
+/* Inherits .list-row's 16px, which is padding sized for a row of content, not
+   for a line of 0.8rem column labels. */
+.list-row.head { color: var(--slate); font-size: 0.8rem; font-weight: 500; border-bottom: 1px solid var(--navy); padding-block: 8px; }
 .list-row .name { font-weight: 500; color: var(--navy); }
 /* Quieter than the name so the row still scans by name first, but present on
    every row because the column headers disappear on a phone. */
@@ -127,7 +146,12 @@ select, .search-bar input { font-family: 'IBM Plex Sans', sans-serif; padding: 1
 /* .list-row sets display:grid, which beats the user-agent [hidden] rule, so
    filtered-out rows need this to actually disappear. */
 .list-row[hidden] { display: none; }
-.search-count { color: var(--slate); font-size: 0.88rem; margin: 12px 4px 0; }
+/* Empty until someone types, but the margin applied anyway, so a 0px-tall
+   element was still pushing the first inspector down the page. */
+.search-count { color: var(--slate); font-size: 0.88rem; margin: 8px 4px 0; }
+.search-count:empty { display: none; }
+
+.faq-lead { color: var(--slate); font-size: 1rem; max-width: 68ch; margin: 0 0 18px; }
 
 /* Until an inspector claims their listing there is no phone number to show —
    the DBPR extract carries none — so this button is the only way a homeowner
@@ -202,15 +226,28 @@ footer p { font-size: 0.8rem; color: var(--slate); margin: 4px 0; max-width: 70c
 /* Coming soon */
 .coming-soon-panel { flex-direction: column; align-items: flex-start; }
 
-@media (min-width: 821px) {
+/* Two breakpoints, because the header and the page body stop fitting at
+   different widths.
+
+   900 is the header. Between 821 and 900 it was above the old breakpoint but
+   too narrow for the row it switches to, so the wordmark broke across two
+   lines and every nav item wrapped: the nav needs about 407px and the
+   wordmark and CTA take the rest, which a small laptop or a tablet in
+   landscape does not have.
+
+   820 is the body. Content is still comfortable in two columns at 850px — a
+   featured card stretched to the full 794px to hold one line of text looks
+   worse than the pair did — so the grids and the type keep the old value. */
+@media (min-width: 901px) {
   /* The listing table runs to ~20,000px, so an unsticky header means the only
      inspector-facing nav link is gone after the first screen. */
   header { position: sticky; top: 0; z-index: 20; }
 }
 
-@media (max-width: 820px) {
-  /* The nav needs ~407px in a row, wider than a phone. It collapses behind the
-     Menu button and stacks when opened. */
+@media (max-width: 900px) {
+  /* The nav needs ~407px in a row, wider than a phone and wider than the space
+     left over on a small laptop. It collapses behind the Menu button and
+     stacks when opened. */
   .nav-toggle {
     display: inline-flex; align-items: center; gap: 8px;
     font-family: 'IBM Plex Sans', sans-serif; font-size: 0.9rem; font-weight: 500;
@@ -240,10 +277,20 @@ footer p { font-size: 0.8rem; color: var(--slate); margin: 4px 0; max-width: 70c
   nav.is-open a { width: 100%; padding: 14px 2px; border-bottom: 1px solid var(--line); }
   nav.is-open .nav-cta { margin-top: 12px; border-bottom: none; width: auto; }
   .header-row { flex-wrap: wrap; padding-block: 16px; }
+}
 
+@media (max-width: 820px) {
   /* Reclaim vertical space so the listings start closer to the top. */
-  .hero { padding: 28px 0 24px; }
-  .hero h1 { font-size: 1.9rem; }
+  .hero { padding: 20px 0; }
+  .hero h1 { font-size: 1.8rem; }
+  /* 1.08rem over a 319px column is eight lines of hero copy before a phone
+     shows a single inspector. A point smaller with tighter leading is the
+     same words in the same order, 36px shorter. */
+  .hero p { font-size: 1rem; line-height: 1.55; margin-top: 12px; }
+  .county-tag { margin-bottom: 10px; }
+  .county-bar { padding-block: 10px; }
+  #browse.section { padding-top: 16px; }
+  #all-inspectors.section { padding-top: 16px; }
 
   /* Side by side, the heading wraps into its own note and the two collide.
      There is no room for two columns of text on a phone. */
