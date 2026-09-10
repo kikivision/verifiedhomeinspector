@@ -16,6 +16,10 @@ create table listings (
   photo_urls jsonb not null default '[]'::jsonb,
   featured_position int check (featured_position between 1 and 6),
   claimed_at timestamptz,
+  -- Set when a license stops appearing in the DBPR extract. Null means current.
+  -- The importer marks rows here and never deletes them, so a claimed listing
+  -- survives a bad upstream file and can be restored by clearing this.
+  delisted_at timestamptz,
   created_at timestamptz not null default now()
 );
 

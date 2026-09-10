@@ -8,14 +8,22 @@
  *   https://www2.myfloridalicense.com/home-inspectors/public-records/
  *
  * The extract excludes null-and-void, delinquent and involuntarily inactive
- * licensees, so a licensee disappearing between runs means their license is
- * no longer current. Those are deactivated here rather than deleted, so a
- * claimed listing is never silently destroyed by a bad upstream file.
+ * licensees, so a licensee disappearing between runs means their license is no
+ * longer current. Those rows are marked with delisted_at and are never deleted,
+ * so a claimed listing survives a bad upstream file and can be restored by
+ * clearing that column.
+ *
+ * Claimed data is never overwritten. Only city, licensee_name and delisted_at
+ * are written back to an existing row; business_name, phone, bio and tier are
+ * left exactly as the inspector set them. A paying customer cannot be reverted
+ * to unclaimed by an import.
  *
  * Usage:
- *   node scripts/import-dbpr.mjs --county pinellas            # upsert to Supabase
+ *   node scripts/import-dbpr.mjs --county pinellas            # write to Supabase
  *   node scripts/import-dbpr.mjs --county pinellas --emit-sql # print SQL, write nothing
  *   node scripts/import-dbpr.mjs --county pinellas --csv path/to/lic04home.csv
+ *   node scripts/import-dbpr.mjs --county pinellas --dry-run  # report changes, write nothing
+ *   node scripts/import-dbpr.mjs --county pinellas --force    # allow a large shrink
  *
  * Writing requires SUPABASE_SERVICE_ROLE_KEY: the anon key the site uses is
  * read-only by design, and inserting listings is an admin operation.
@@ -175,6 +183,8 @@ async function main() {
   };
   const countySlug = flag('county', 'pinellas');
   const emitSql = args.includes('--emit-sql');
+  const force = args.includes('--force');
+  const dryRun = args.includes('--dry-run');
   const countyCode = COUNTIES[countySlug];
   if (!countyCode) {
     throw new Error(`Unknown county "${countySlug}". Known: ${Object.keys(COUNTIES).join(', ')}`);
@@ -236,13 +246,120 @@ async function main() {
   const { createClient } = await import('@supabase/supabase-js');
   const supabase = createClient(url, serviceKey, { auth: { persistSession: false } });
 
-  // Only license-derived columns are updated on conflict, so a listing an
-  // inspector has already claimed keeps its business name, phone and bio.
-  const { error } = await supabase
+  const { data: existingRows, error: readError } = await supabase
     .from('listings')
-    .upsert(deduped, { onConflict: 'license_number', ignoreDuplicates: false });
-  if (error) throw error;
-  console.error(`[dbpr] upserted ${deduped.length} ${countySlug} listings`);
+    .select('license_number, city, licensee_name, tier, delisted_at')
+    .eq('county', countySlug);
+  if (readError) throw readError;
+  const existing = new Map(existingRows.map((row) => [row.license_number, row]));
+
+  // A run that suddenly sees far fewer licensees than are on file is far more
+  // likely to be a truncated download or a changed file layout than a real
+  // collapse in the profession. Delisting on that evidence would empty the
+  // directory, so refuse the whole run instead. --force is the deliberate
+  // override for a genuine drop.
+  const SHRINK_LIMIT = 0.8;
+  if (existing.size > 0 && deduped.length < existing.size * SHRINK_LIMIT && !force) {
+    throw new Error(
+      `Refusing to run: the extract has ${deduped.length} active ${countySlug} ` +
+        `inspectors but ${existing.size} are on file, a drop of ` +
+        `${Math.round((1 - deduped.length / existing.size) * 100)}%. ` +
+        `Re-run with --force if the drop is real.`,
+    );
+  }
+
+  const toInsert = deduped.filter((l) => !existing.has(l.license_number));
+
+  if (dryRun) {
+    const currentLicenses = new Set(deduped.map((l) => l.license_number));
+    const wouldDelist = existingRows.filter(
+      (row) => !currentLicenses.has(row.license_number) && row.delisted_at === null,
+    );
+    const wouldChange = deduped.filter((l) => {
+      const cur = existing.get(l.license_number);
+      return cur && (cur.city !== l.city || cur.licensee_name !== l.licensee_name);
+    });
+    console.error(
+      `[dbpr] DRY RUN — nothing written\n` +
+        `  on file:        ${existing.size}\n` +
+        `  in extract:     ${deduped.length}\n` +
+        `  would add:      ${toInsert.length}\n` +
+        `  would update:   ${wouldChange.length} (city/name only)\n` +
+        `  would delist:   ${wouldDelist.length}\n` +
+        `  paid at risk:   ${wouldDelist.filter((r) => r.tier !== 'unclaimed').length}`,
+    );
+    for (const row of wouldDelist.filter((r) => r.tier !== 'unclaimed')) {
+      console.error(`    PAID: ${row.license_number} ${row.licensee_name} (${row.tier})`);
+    }
+    return;
+  }
+
+  if (toInsert.length > 0) {
+    const { error } = await supabase.from('listings').insert(toInsert);
+    if (error) throw error;
+  }
+
+  // The critical difference from an upsert: only the three license-derived
+  // columns are written back. business_name, phone, bio and above all tier are
+  // never touched, so a claimed or featured listing cannot be reverted to
+  // unclaimed by an import. Rows whose license details are unchanged are
+  // skipped entirely, which most months is nearly all of them.
+  let updated = 0;
+  for (const listing of deduped) {
+    const current = existing.get(listing.license_number);
+    if (!current) continue;
+    const needsUpdate =
+      current.city !== listing.city ||
+      current.licensee_name !== listing.licensee_name ||
+      current.delisted_at !== null;
+    if (!needsUpdate) continue;
+
+    const { error } = await supabase
+      .from('listings')
+      .update({
+        city: listing.city,
+        licensee_name: listing.licensee_name,
+        // Back in the extract means current again.
+        delisted_at: null,
+      })
+      .eq('license_number', listing.license_number);
+    if (error) throw error;
+    updated += 1;
+  }
+
+  // Anyone on file but missing from a healthy extract is no longer current.
+  // They are marked, never deleted, so a claimed listing survives a bad file
+  // and can be restored by clearing delisted_at.
+  const currentLicenses = new Set(deduped.map((l) => l.license_number));
+  const missing = existingRows.filter(
+    (row) => !currentLicenses.has(row.license_number) && row.delisted_at === null,
+  );
+  for (const row of missing) {
+    const { error } = await supabase
+      .from('listings')
+      .update({ delisted_at: new Date().toISOString() })
+      .eq('license_number', row.license_number);
+    if (error) throw error;
+  }
+
+  console.error(
+    `[dbpr] ${countySlug}: ${toInsert.length} added, ${updated} updated, ` +
+      `${missing.length} delisted, ${deduped.length - toInsert.length - updated} unchanged`,
+  );
+
+  // A paying inspector losing their license is not a data-cleanup event. It
+  // needs a person: billing has to stop and they have to be told, and neither
+  // should happen silently inside a monthly cron job.
+  const paidAndMissing = missing.filter((row) => row.tier !== 'unclaimed');
+  if (paidAndMissing.length > 0) {
+    console.error(
+      `\n[dbpr] ATTENTION: ${paidAndMissing.length} PAID listing(s) no longer ` +
+        `appear in the DBPR extract. Stop billing and contact them:`,
+    );
+    for (const row of paidAndMissing) {
+      console.error(`  ${row.license_number}  ${row.licensee_name}  (${row.tier})`);
+    }
+  }
 }
 
 main().catch((err) => {
