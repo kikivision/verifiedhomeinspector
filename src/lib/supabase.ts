@@ -43,6 +43,11 @@ export async function getListingsForCounty(countySlug: string): Promise<Listing[
   const { data, error } = await supabase
     .from('listings')
     .select('*')
+    // Delisted rows stopped appearing in the DBPR extract, so the license is no
+    // longer current. They stay in the table — deleting them would destroy a
+    // claimed listing over what might be a bad upstream file — but a site whose
+    // promise is verified licensure must not show them.
+    .is('delisted_at', null)
     .eq('county', countySlug)
     .order('featured_position', { ascending: true, nullsFirst: false });
 
