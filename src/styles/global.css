@@ -226,11 +226,18 @@ footer p { font-size: 0.8rem; color: var(--slate); margin: 4px 0; max-width: 70c
 /* Coming soon */
 .coming-soon-panel { flex-direction: column; align-items: flex-start; }
 
-/* 900, not 820. Between 821 and 900 the header was above the mobile
-   breakpoint but too narrow for the row it switches to: the wordmark broke
-   across two lines and every nav item wrapped. The nav needs about 407px and
-   the wordmark and CTA take the rest, which a small laptop or a tablet in
-   landscape does not have. */
+/* Two breakpoints, because the header and the page body stop fitting at
+   different widths.
+
+   900 is the header. Between 821 and 900 it was above the old breakpoint but
+   too narrow for the row it switches to, so the wordmark broke across two
+   lines and every nav item wrapped: the nav needs about 407px and the
+   wordmark and CTA take the rest, which a small laptop or a tablet in
+   landscape does not have.
+
+   820 is the body. Content is still comfortable in two columns at 850px — a
+   featured card stretched to the full 794px to hold one line of text looks
+   worse than the pair did — so the grids and the type keep the old value. */
 @media (min-width: 901px) {
   /* The listing table runs to ~20,000px, so an unsticky header means the only
      inspector-facing nav link is gone after the first screen. */
@@ -270,7 +277,9 @@ footer p { font-size: 0.8rem; color: var(--slate); margin: 4px 0; max-width: 70c
   nav.is-open a { width: 100%; padding: 14px 2px; border-bottom: 1px solid var(--line); }
   nav.is-open .nav-cta { margin-top: 12px; border-bottom: none; width: auto; }
   .header-row { flex-wrap: wrap; padding-block: 16px; }
+}
 
+@media (max-width: 820px) {
   /* Reclaim vertical space so the listings start closer to the top. */
   .hero { padding: 20px 0; }
   .hero h1 { font-size: 1.8rem; }
