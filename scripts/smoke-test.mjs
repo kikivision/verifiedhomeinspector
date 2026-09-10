@@ -232,6 +232,18 @@ for (const path of pages) {
     `${page} has no apple-touch-icon link.`);
 }
 
+// A privacy policy and terms nobody can reach are the same as not having
+// them. The link is the deliverable, not the page.
+for (const path of pages) {
+  const html = await readFile(path, 'utf8');
+  if (/<meta http-equiv="refresh"/i.test(html) && html.length < 2000) continue;
+  const page = '/' + relative(DIST, path).replace(/index\.html$/, '');
+  for (const legal of ['/privacy/', '/terms/']) {
+    check(html.includes(`href="${legal}"`),
+      `${page} does not link to ${legal} in its footer.`);
+  }
+}
+
 // The sitemap is the one file nobody looks at after it is generated. Its
 // failure mode is silent and slow: Google crawls what it lists, so a wrong
 // host, a missing trailing slash, or a URL that 404s costs crawl budget on a
@@ -264,6 +276,13 @@ if (sitemapIndex && robots) {
   }
 
   check(listed.length > 0, 'The sitemap lists no pages at all.');
+
+  // These are real pages and belong in search results. The confirmation-page
+  // pattern is deliberately narrow so it cannot swallow them.
+  for (const path of ['/privacy/', '/terms/']) {
+    check(listed.includes(`${SITE_ORIGIN}${path}`),
+      `Sitemap does not list ${path}, which should be indexed.`);
+  }
 
   for (const url of listed) {
     // www 301s to the apex. Listing the redirecting host makes every entry a
