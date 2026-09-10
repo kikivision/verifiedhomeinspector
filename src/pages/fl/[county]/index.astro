@@ -170,7 +170,7 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
           </div>
           <div class="search-count" id="searchCount" aria-live="polite"></div>
           <div class="list-row head">
-            <div>Licensee</div><div>City</div><div>License</div><div>Specialties</div><div>Listing status</div><div>Contact</div>
+            <div>Licensee</div><div>City</div><div>License</div><div>Specialties</div><div>Listing status</div><div>Hire</div>
           </div>
           <!-- Each unclaimed row's status cell links to the claim form. An
                inspector arrives looking for their own name and finds it here,
@@ -204,7 +204,7 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
               ) : (
                 <div>
                   <a href="#claim" class="claim-link" data-license={l.license_number} data-county={county.slug}>
-                    Unclaimed <span>— claim it</span>
+                    Unclaimed <span>Is this you? Claim it</span>
                   </a>
                 </div>
               )}
@@ -217,7 +217,7 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
                   data-page-context={`county_${county.slug}_table`}
                   data-county={county.slug}
                 >
-                  Request
+                  Request this inspector
                 </button>
               </div>
             </div>
