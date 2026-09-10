@@ -27,7 +27,12 @@ const nonFeatured = listings.filter((l) => l.tier !== 'featured');
 // Cities actually present in the data, so the filter can never offer a city
 // with nothing behind it.
 const cities = [...new Set(nonFeatured.map((l) => l.city))].sort((a, b) => a.localeCompare(b));
-const FEATURED_CAP = 6;
+// Three, not six: six empty placeholders pushed the real names most of a screen
+// further down, and an empty spot advertises the product far less well than a
+// claimed one does. Raise this once enough spots are actually sold that the row
+// looks occupied. The database allows positions up to 6, so raising it back is a
+// one-line change with no migration.
+const FEATURED_CAP = 3;
 const openFeaturedSlots = FEATURED_CAP - featured.length;
 ---
 
@@ -292,8 +297,8 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
                 adds your business name, phone, and bio, and costs nothing until we have passed
                 you five homeowner requests — those arrive in your inbox, so you can count them
                 yourself rather than take our word for it. After that it is $10/month, or
-                $50/month for a featured spot above every free listing, and the first six
-                featured inspectors keep that rate for as long as they stay. You pay one flat
+                $50/month for a featured spot above every free listing, and the first
+                inspectors to take one keep that rate for as long as they stay. You pay one flat
                 monthly rate and homeowners contact you directly, with no shared leads and no
                 per-lead charges.
               </p>
