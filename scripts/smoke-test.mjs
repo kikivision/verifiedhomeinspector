@@ -116,11 +116,12 @@ if (cap !== null) {
   );
 }
 
-// Both forms are the site's only conversion paths, and Netlify only registers a
+// The forms are the site's only conversion paths, and Netlify only registers a
 // form it can find in the built HTML. A missing hidden field means the
 // submission arrives with no idea who it was for.
 const forms = {
   'claim-listing': ['form-name', 'county', 'license-number', 'licensee-name', 'email', 'plan'],
+  'featured-inquiry': ['form-name', 'county', 'plan', 'license-number', 'licensee-name', 'email'],
   'inspector-request': [
     'form-name', 'county', 'inspector-license', 'inspector-name',
     'homeowner-name', 'homeowner-email',

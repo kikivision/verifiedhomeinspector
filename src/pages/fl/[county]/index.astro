@@ -121,13 +121,17 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
                 </div>
               </div>
             ))}
-            {Array.from({ length: openFeaturedSlots }).map((_, i) => (
+            {Array.from({ length: openFeaturedSlots }).map(() => (
               <div class="card ad-slot">
                 <h3 style="font-size:1rem;">This spot could be yours</h3>
                 <p style="color:var(--slate);font-size:0.88rem;margin:0;">
-                  Above every free listing in {county.name}, on the page homeowners land on.
+                  {nonFeatured.length} licensed inspectors are listed in {county.name}. Only{' '}
+                  {FEATURED_CAP} spots sit above all of them, and every request goes to one
+                  inspector only.
                 </p>
-                <a href="#claim" class="btn-primary" style="font-size:0.85rem;padding:8px 16px;">Get featured — $50/mo</a>
+                <button type="button" class="btn-primary featured-btn" data-county={county.slug} style="font-size:0.85rem;padding:8px 16px;">
+                  Get featured
+                </button>
               </div>
             ))}
           </div>
@@ -137,6 +141,65 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
           </p>
         </div>
       </section>
+
+      <!-- The price lives here rather than on the button. On the card it read as
+           a price tag on a placeholder; in the dialog it is the first thing an
+           inspector sees after asking, which is where a number belongs. Netlify
+           reads this form out of the built HTML like the other two. -->
+      <dialog id="featuredDialog" class="request-dialog">
+        <form
+          name="featured-inquiry"
+          method="POST"
+          data-netlify="true"
+          netlify-honeypot="company-website"
+          action="/claim-received/"
+        >
+          <input type="hidden" name="form-name" value="featured-inquiry" />
+          <input type="hidden" name="county" value={county.name} />
+          <!-- Matches the wording the claim form's select posts, so both land in
+               the inbox saying the same thing about the same plan. -->
+          <input type="hidden" name="plan" value="Featured - $50/mo (founding rate)" />
+          <p class="visually-hidden">
+            <label>Leave this field empty: <input name="company-website" /></label>
+          </p>
+
+          <div class="request-head">
+            <h2>Get a featured spot</h2>
+            <button type="button" class="request-close" id="featuredClose" aria-label="Close">×</button>
+          </div>
+          <p class="request-who">
+            $50 a month for a spot above all {nonFeatured.length} listings in {county.name}. The
+            first inspectors to take one keep that rate for as long as they stay. Nothing is
+            charged until your listing is live and you have seen it.
+          </p>
+
+          <label>
+            License number
+            <input type="text" name="license-number" required placeholder="HI12345" />
+          </label>
+          <label>
+            Your name
+            <input type="text" name="licensee-name" required />
+          </label>
+          <label>
+            Business name
+            <input type="text" name="business-name" />
+          </label>
+          <label>
+            Email
+            <input type="email" name="email" required />
+          </label>
+          <label>
+            Phone
+            <input type="tel" name="phone" />
+          </label>
+          <label>
+            Anything you want to ask first
+            <textarea name="message" rows="3"></textarea>
+          </label>
+          <button type="submit" class="btn-primary">Send</button>
+        </form>
+      </dialog>
 
       <section class="section" id="all-inspectors">
         <div class="wrap">
@@ -446,6 +509,23 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
         });
         dialog.showModal();
       });
+    });
+
+    // The card's Get featured button opens its own dialog. Logged on open for
+    // the same reason as the request dialog: it counts an inspector who asked,
+    // including the ones who close the form again, and that number is the one
+    // worth knowing before any of these spots have sold.
+    const featuredDialog = document.querySelector<HTMLDialogElement>('#featuredDialog');
+    document.querySelectorAll<HTMLButtonElement>('.featured-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        if (!featuredDialog) return;
+        trackEvent('featured_inquiry', { county: btn.dataset.county });
+        featuredDialog.showModal();
+      });
+    });
+    document.querySelector('#featuredClose')?.addEventListener('click', () => featuredDialog?.close());
+    featuredDialog?.addEventListener('click', (event) => {
+      if (event.target === featuredDialog) featuredDialog.close();
     });
 
     document.querySelector('#requestClose')?.addEventListener('click', () => dialog?.close());
