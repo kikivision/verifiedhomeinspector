@@ -14,7 +14,7 @@
  *   node scripts/set-tier.mjs HI3532 claimed --dry-run
  *
  * Flags:
- *   --business, --phone, --bio   details the inspector is paying to show
+ *   --business, --phone          details the inspector is paying to show
  *   --position N                 featured slot, 1-6, required for featured
  *   --dry-run                    print the change, write nothing
  *   --deploy                     trigger a rebuild so the change goes live
@@ -140,13 +140,11 @@ async function main() {
     // on a listing they no longer pay for.
     update.business_name = null;
     update.phone = null;
-    update.bio = null;
     update.claimed_at = null;
   } else {
     update.claimed_at = listing.claimed_at ?? new Date().toISOString();
     if (flags.business !== undefined) update.business_name = flags.business;
     if (flags.phone !== undefined) update.phone = flags.phone;
-    if (flags.bio !== undefined) update.bio = flags.bio;
   }
 
   const changes = Object.entries(update)

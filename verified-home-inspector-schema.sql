@@ -10,7 +10,6 @@ create table listings (
   business_name text,
   phone text,
   tier text not null default 'unclaimed' check (tier in ('unclaimed', 'claimed', 'featured')),
-  bio text,
   specialties jsonb not null default '[]'::jsonb,
   cert_badges jsonb not null default '[]'::jsonb,
   photo_urls jsonb not null default '[]'::jsonb,

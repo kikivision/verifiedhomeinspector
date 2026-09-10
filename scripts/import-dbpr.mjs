@@ -14,7 +14,7 @@
  * clearing that column.
  *
  * Claimed data is never overwritten. Only city, licensee_name and delisted_at
- * are written back to an existing row; business_name, phone, bio and tier are
+ * are written back to an existing row; business_name, phone and tier are
  * left exactly as the inspector set them. A paying customer cannot be reverted
  * to unclaimed by an import.
  *
@@ -166,7 +166,7 @@ function toListing(record, countySlug) {
     licensee_name: formatLicenseeName(record[COL.licenseeName]),
     // The DBPR "doing business as" field is not a home-inspection business
     // name: in Pinellas it holds things like "INDIVIDUAL" and unrelated
-    // contracting entities. Business name, phone and bio are what an inspector
+    // contracting entities. Business name and phone are what an inspector
     // supplies when they claim a listing, so those stay null here and a claimed
     // listing's own values are never overwritten by a later import.
     business_name: null,
@@ -327,7 +327,7 @@ async function main() {
   }
 
   // The critical difference from an upsert: only the three license-derived
-  // columns are written back. business_name, phone, bio and above all tier are
+  // columns are written back. business_name, phone and above all tier are
   // never touched, so a claimed or featured listing cannot be reverted to
   // unclaimed by an import. Rows whose license details are unchanged are
   // skipped entirely, which most months is nearly all of them.
