@@ -28,6 +28,7 @@
  * with node's own flag:
  *   node --env-file=.env scripts/import-dbpr.mjs --county pinellas --dry-run
  *   node scripts/import-dbpr.mjs --county pinellas --force    # allow a large shrink
+ *   node scripts/import-dbpr.mjs --county pinellas --deploy   # rebuild if anything changed
  *
  * Writing requires SUPABASE_SERVICE_ROLE_KEY: the anon key the site uses is
  * read-only by design, and inserting listings is an admin operation.
@@ -189,6 +190,7 @@ async function main() {
   const emitSql = args.includes('--emit-sql');
   const force = args.includes('--force');
   const dryRun = args.includes('--dry-run');
+  const deploy = args.includes('--deploy');
   const countyCode = COUNTIES[countySlug];
   if (!countyCode) {
     throw new Error(`Unknown county "${countySlug}". Known: ${Object.keys(COUNTIES).join(', ')}`);
@@ -367,10 +369,24 @@ async function main() {
     if (error) throw error;
   }
 
+  const changed = toInsert.length + updated + missing.length;
   console.error(
     `[dbpr] ${countySlug}: ${toInsert.length} added, ${updated} updated, ` +
       `${missing.length} delisted, ${deduped.length - toInsert.length - updated} unchanged`,
   );
+
+  // The site is built statically, so database changes are invisible to visitors
+  // until it rebuilds. Only rebuild when something actually changed: most months
+  // this import is a no-op and a deploy would be pure noise.
+  if (deploy && changed > 0) {
+    const hook = process.env.NETLIFY_BUILD_HOOK;
+    if (!hook) throw new Error('--deploy needs NETLIFY_BUILD_HOOK set to a Netlify build hook URL.');
+    const res = await fetch(hook, { method: 'POST' });
+    if (!res.ok) throw new Error(`Build hook failed: HTTP ${res.status}`);
+    console.error('[dbpr] rebuild triggered');
+  } else if (deploy) {
+    console.error('[dbpr] nothing changed, so no rebuild needed');
+  }
 
   // A paying inspector losing their license is not a data-cleanup event. It
   // needs a person: billing has to stop and they have to be told, and neither
