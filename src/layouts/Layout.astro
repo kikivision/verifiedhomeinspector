@@ -27,7 +27,22 @@ const { title, currentCountySlug } = Astro.props;
   <header>
     <div class="wrap header-row">
       <a href="/fl/pinellas" class="wordmark">Verified<span>Home Inspector</span></a>
-      <nav>
+      <!-- The nav needs about 407px laid out in a row, which does not fit a phone.
+           Below the breakpoint it collapses behind this button. The listing page
+           runs to tens of thousands of pixels, so these in-page jumps are worth
+           more on a phone than on a desktop, which is why they collapse rather
+           than move to the footer. -->
+      <button
+        type="button"
+        class="nav-toggle"
+        id="navToggle"
+        aria-expanded="false"
+        aria-controls="primaryNav"
+      >
+        <span class="nav-toggle-bars" aria-hidden="true"></span>
+        Menu
+      </button>
+      <nav id="primaryNav">
         <a href="#browse">Browse Inspectors</a>
         <a href="#homebuyers">For Homebuyers</a>
         <a href="#insurance-renewals">Insurance Renewals</a>
@@ -67,6 +82,22 @@ const { title, currentCountySlug } = Astro.props;
     // the only proof a submission actually completed, and until this moved here
     // they loaded with no analytics at all — so those page views were invisible.
     initAnalytics();
+
+    const navToggle = document.getElementById('navToggle');
+    const primaryNav = document.getElementById('primaryNav');
+    navToggle?.addEventListener('click', () => {
+      const open = navToggle.getAttribute('aria-expanded') === 'true';
+      navToggle.setAttribute('aria-expanded', String(!open));
+      primaryNav?.classList.toggle('is-open', !open);
+    });
+    // Every link here is an in-page jump, so the menu has to close itself —
+    // nothing navigates away to close it.
+    primaryNav?.querySelectorAll('a').forEach((link) => {
+      link.addEventListener('click', () => {
+        navToggle?.setAttribute('aria-expanded', 'false');
+        primaryNav.classList.remove('is-open');
+      });
+    });
 
     const select = document.getElementById('countySelect') as HTMLSelectElement;
     select?.addEventListener('change', () => {
