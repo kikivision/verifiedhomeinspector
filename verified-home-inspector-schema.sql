@@ -72,6 +72,17 @@ create policy "Public can insert events"
 grant select on listings to anon, authenticated;
 grant insert on listing_events to anon, authenticated;
 
+-- service_role bypasses RLS but table privileges are still checked, and this
+-- project was created without Supabase's usual default grants. Without these
+-- the admin scripts authenticate successfully and are then refused by Postgres
+-- with "permission denied for table listings", which reads like a bad key.
+grant select, insert, update, delete on listings to service_role;
+grant select, insert, update, delete on listing_events to service_role;
+
+-- So a table added later does not have to rediscover the same thing.
+alter default privileges in schema public
+  grant select, insert, update, delete on tables to service_role;
+
 -- No public update/delete policies on either table on purpose — claiming
 -- a listing, upgrading tiers, and reading event history for reports are
 -- all admin/service-role operations, not public API actions.
