@@ -30,7 +30,7 @@
 const TIERS = ['unclaimed', 'claimed', 'featured'];
 // Kept in step with the page's cap. The database check allows up to 6, so this
 // enforces current policy rather than the schema's outer limit.
-const FEATURED_CAP = 3;
+const FEATURED_CAP = 2;
 
 function parseArgs(argv) {
   const positional = [];
