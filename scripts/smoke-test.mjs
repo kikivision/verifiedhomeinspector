@@ -279,7 +279,13 @@ if (sitemapIndex && robots) {
   // Confirmation pages and counties with no data are built but must not be
   // offered to a crawler. Excluding them is a filter in astro.config.mjs that
   // is easy to drop while refactoring, and nothing else would notice.
-  for (const path of ['/claim-received/', '/request-received/']) {
+  // Discovered from the build rather than listed, because the list went stale
+  // the moment a third confirmation page was added: it named two, and the new
+  // one would have been offered to Google with nothing to stop it.
+  const confirmationPages = [...built].filter((p) => /^\/[a-z-]+-received\/$/.test(p));
+  check(confirmationPages.length >= 3,
+    `Found ${confirmationPages.length} confirmation page(s); claim, request and featured are expected.`);
+  for (const path of confirmationPages) {
     check(!listed.includes(`${SITE_ORIGIN}${path}`),
       `Sitemap lists ${path}, a form confirmation page.`);
     check(robots.includes(`Disallow: ${path}`),

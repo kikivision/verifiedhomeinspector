@@ -13,13 +13,17 @@ const comingSoon = new Set(
 );
 
 // Pages that exist but should not be in search results:
-//   - the two form confirmation pages, which only make sense after a submit
+//   - the form confirmation pages, which only make sense after a submit
 //   - counties with no data yet, whose page is one "coming soon" paragraph
-// Adding a county to counties.ts as 'live' puts it in the sitemap; nothing
-// here needs to change.
+// Both are matched rather than listed, so adding a county as 'live' or adding
+// another confirmation page needs no edit here. The list version had already
+// gone stale once: a third confirmation page was added and this still named
+// two.
+const CONFIRMATION_PAGE = /^\/[a-z-]+-received\/$/;
+
 function shouldIndex(url) {
   const path = new URL(url).pathname;
-  if (path === '/claim-received/' || path === '/request-received/') return false;
+  if (CONFIRMATION_PAGE.test(path)) return false;
   if (comingSoon.has(path)) return false;
   return true;
 }
