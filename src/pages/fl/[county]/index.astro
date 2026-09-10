@@ -122,9 +122,8 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
                 </div>
                 <div class="lic"><span class="check">✓</span>FL Lic #{l.license_number} — DBPR verified, active</div>
                 <div class="contact">
-                  <span class="phone">{l.phone || 'Phone not yet sourced'}</span>
                   <button class="request-btn" data-listing-id={l.id} data-page-context={`county_${county.slug}_featured`}>
-                    Request inspector
+                    Request this inspector
                   </button>
                 </div>
               </div>
@@ -187,7 +186,7 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
                emitted it once per listing — 123KB on a 253KB page. -->
           {nonFeatured.map((l) => (
             <div
-              class="list-row"
+              class:list={['list-row', { 'is-claimed': l.tier !== 'unclaimed' }]}
               data-city={l.city}
               data-search={`${l.licensee_name} ${l.business_name ?? ''} ${l.city} ${l.license_number}`.toLowerCase()}
             >
@@ -206,9 +205,10 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
                   <span class="tag tag-empty">—</span>
                 )}
               </div>
-              {l.tier === 'claimed' ? (
-                <div style="color:var(--green);font-weight:600;">
-                  <span class="phone">{l.phone}</span>
+              {l.tier !== 'unclaimed' ? (
+                <div class="claimed-status">
+                  <span class="claimed-mark">Claimed</span>
+                  <span class="claimed-note">Responds to requests</span>
                 </div>
               ) : (
                 <div>
@@ -307,13 +307,13 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
               <h2>Own a home inspection business in {county.name}?</h2>
               <p>
                 Your license is already listed here, straight from the DBPR record. Claiming it
-                adds your business name, phone, and bio, and costs nothing until we have passed
-                you five homeowner requests — those arrive in your inbox, so you can count them
-                yourself rather than take our word for it. After that it is $10/month, or
-                $50/month for a featured spot above every free listing, and the first
-                inspectors to take one keep that rate for as long as they stay. You pay one flat
-                monthly rate and homeowners contact you directly, with no shared leads and no
-                per-lead charges.
+                puts your business name on the listing and moves you above every unclaimed
+                inspector in the county, and it costs nothing until we have passed you five
+                homeowner requests. Those arrive in your inbox, so you can count them yourself
+                rather than take our word for it. After that it is $10/month, or $50/month for a
+                featured spot above every free listing, and the first inspectors to take one keep
+                that rate for as long as they stay. Every request goes to you and nobody else:
+                we never send one homeowner to several inspectors, and we never charge per lead.
               </p>
             </div>
             <!-- Netlify picks this form up from the built HTML at deploy time and
@@ -350,7 +350,7 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
                 <input type="text" name="business-name" />
               </label>
               <label>
-                Phone
+                Phone (so we can reach you)
                 <input type="tel" name="phone" />
               </label>
               <label>
@@ -485,15 +485,7 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
         const pageContext = btn.dataset.pageContext || 'unknown';
         if (!listingId) return;
 
-        const card = btn.closest('.card');
-        const phoneEl = card?.querySelector('.phone');
-        const phone = phoneEl?.textContent?.trim();
-
         logListingEvent(listingId, 'click_request', pageContext);
-
-        if (phone && phone !== 'Phone not yet sourced') {
-          window.location.href = `tel:${phone.replace(/[^\d+]/g, '')}`;
-        }
       });
     });
   </script>

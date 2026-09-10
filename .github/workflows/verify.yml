@@ -26,6 +26,27 @@ jobs:
 
       - run: npm ci
 
+      # Astro throws a stack trace from inside its own internals when these are
+      # absent, which says nothing about what to do. Fail here instead, naming
+      # the secret and where to add it.
+      - name: Check required secrets
+        env:
+          PUBLIC_SUPABASE_URL: ${{ secrets.PUBLIC_SUPABASE_URL }}
+          PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.PUBLIC_SUPABASE_ANON_KEY }}
+        run: |
+          missing=""
+          [ -z "$PUBLIC_SUPABASE_URL" ] && missing="$missing PUBLIC_SUPABASE_URL"
+          [ -z "$PUBLIC_SUPABASE_ANON_KEY" ] && missing="$missing PUBLIC_SUPABASE_ANON_KEY"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repository secret(s):$missing"
+            echo ""
+            echo "Add them under Settings > Secrets and variables > Actions."
+            echo "Both values are in the project's .env file, and both are public"
+            echo "by design: the anon key ships inside the deployed JavaScript."
+            exit 1
+          fi
+          echo "Required secrets are present."
+
       # The build needs Supabase to render listings. Without these the page
       # builds empty and the smoke test fails on the listing count, which is
       # the correct outcome: a site with no inspectors on it is broken.

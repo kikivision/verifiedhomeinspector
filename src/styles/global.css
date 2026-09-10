@@ -102,6 +102,14 @@ select, .search-bar input { font-family: 'IBM Plex Sans', sans-serif; padding: 1
 /* Quieter than the name so the row still scans by name first, but present on
    every row because the column headers disappear on a phone. */
 .list-row .role { font-size: 0.78rem; color: var(--slate); margin-top: 2px; }
+
+/* A claimed listing was indistinguishable from an unclaimed one apart from the
+   text in one cell, which is thin for something an inspector pays for monthly.
+   The tint is deliberately quiet: featured is the tier that should dominate. */
+.list-row.is-claimed { background: var(--paper-raised); box-shadow: inset 3px 0 0 var(--green); }
+.claimed-status { display: flex; flex-direction: column; gap: 3px; align-items: flex-start; }
+.claimed-mark { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--green); }
+.claimed-note { font-size: 0.78rem; color: var(--slate); }
 .tag-empty { border-color: transparent; color: var(--line); }
 .list-row .lic-num { color: var(--slate); font-size: 0.85rem; }
 .list-row .tags { margin: 0; }
