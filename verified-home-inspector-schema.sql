@@ -32,6 +32,14 @@ create table listing_events (
 create index idx_listings_county on listings(county);
 create index idx_listings_city on listings(city);
 create index idx_listings_tier on listings(tier);
+
+-- Six featured slots per county are sold separately, so two listings holding the
+-- same slot means one of them is paying for something they are not getting.
+-- Partial, so only actually-featured rows are constrained: unclaimed and claimed
+-- rows all carry a null featured_position and must stay unconstrained.
+create unique index uniq_featured_slot_per_county
+  on listings (county, featured_position)
+  where tier = 'featured' and featured_position is not null;
 create index idx_events_listing on listing_events(listing_id);
 create index idx_events_type_context on listing_events(event_type, page_context);
 
