@@ -21,6 +21,18 @@ const { title, description, currentCountySlug } = Astro.props;
        silently, so every page shipped without one and Google wrote its own
        from whatever text it found first. -->
   {description && <meta name="description" content={description} />}
+  <!-- The site shipped with Astro's default logo, and with no icon link at
+       all: browsers were finding /favicon.ico only by convention. Three
+       entries is the whole modern set — .ico for browsers that still ask for
+       it by convention, .svg for the ones that prefer it and get a crisp icon
+       at any size, and the Apple one for a home-screen bookmark, which iOS
+       renders on an opaque tile of its own. -->
+  <link rel="icon" href="/favicon.ico" sizes="32x32" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <!-- Tints the mobile browser chrome, so this matches the sticky header the
+       chrome sits against, not the icon. -->
+  <meta name="theme-color" content="#FCFBF6" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link
     href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500&family=IBM+Plex+Sans:wght@400;500;600&display=swap"

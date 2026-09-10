@@ -182,6 +182,56 @@ if (gtagChunk) {
   }
 }
 
+// A favicon fails silently in exactly two ways, and the site had both: the
+// files were Astro's default logo, and no <link rel="icon"> existed, so the
+// browser was finding /favicon.ico by convention alone. Neither shows up
+// anywhere except in the tab, which nobody looks at while building a page.
+const icons = ['favicon.ico', 'favicon.svg', 'apple-touch-icon.png'];
+for (const icon of icons) {
+  const buf = await readFile(join(DIST, icon)).catch(() => null);
+  check(buf !== null, `${icon} was not built.`);
+  if (buf) check(buf.length > 200, `${icon} is only ${buf.length} bytes, which is not an icon.`);
+}
+
+// An SVG that is not well-formed XML renders as nothing at all, and Astro
+// copies public/ verbatim without parsing it, so the build cannot fail on it.
+// This happened: a comment in favicon.svg contained the token name "--navy",
+// and a double hyphen is illegal inside an XML comment. The file was the
+// right size and completely blank in a browser.
+const svgIcon = await readFile(join(DIST, 'favicon.svg'), 'utf8').catch(() => null);
+if (svgIcon) {
+  for (const [, body] of svgIcon.matchAll(/<!--([\s\S]*?)-->/g)) {
+    check(!body.includes('--'),
+      'favicon.svg has a double hyphen inside an XML comment, which makes it unparseable.',
+      `In: ${body.trim().slice(0, 60)}...`);
+  }
+  check(/^\s*<svg[\s>]/.test(svgIcon) && /<\/svg>\s*$/.test(svgIcon.trim()),
+    'favicon.svg is not a well-formed SVG document.');
+  check(svgIcon.includes('<path') && svgIcon.includes('<rect'),
+    'favicon.svg no longer contains the tile and the house.');
+}
+
+// The .ico is assembled by hand, so a malformed header would go unnoticed
+// until a browser quietly fell back to a blank page icon.
+const ico = await readFile(join(DIST, 'favicon.ico')).catch(() => null);
+if (ico) {
+  check(ico.readUInt16LE(0) === 0 && ico.readUInt16LE(2) === 1,
+    'favicon.ico does not start with a valid ICO header.');
+  const count = ico.readUInt16LE(4);
+  check(count >= 3, `favicon.ico contains ${count} image(s); 16, 32 and 48 are expected.`);
+}
+
+for (const path of pages) {
+  const html = await readFile(path, 'utf8');
+  if (/<meta http-equiv="refresh"/i.test(html) && html.length < 2000) continue;
+  const page = '/' + relative(DIST, path).replace(/index\.html$/, '');
+  check(/<link[^>]+rel="icon"[^>]+href="\/favicon\.svg"/.test(html),
+    `${page} has no <link rel="icon"> for the SVG.`,
+    'Without a link tag the browser only finds /favicon.ico, and only by convention.');
+  check(/<link[^>]+rel="apple-touch-icon"/.test(html),
+    `${page} has no apple-touch-icon link.`);
+}
+
 // The sitemap is the one file nobody looks at after it is generated. Its
 // failure mode is silent and slow: Google crawls what it lists, so a wrong
 // host, a missing trailing slash, or a URL that 404s costs crawl budget on a
