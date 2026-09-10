@@ -1,0 +1,40 @@
+# Runs on every pull request and every push to main.
+#
+# This exists because a series of changes here looked correct in the diff and
+# were wrong in the output: a prop passed to a component that never read it, a
+# script that ran before the thing it depended on, a comment written inside a
+# loop that shipped 123KB of repeated text. None were visible by reading the
+# source, and each reached the live site.
+#
+# A red X on the pull request is a signal that does not require reading Astro.
+name: Verify
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - run: npm ci
+
+      # The build needs Supabase to render listings. Without these the page
+      # builds empty and the smoke test fails on the listing count, which is
+      # the correct outcome: a site with no inspectors on it is broken.
+      - name: Build
+        env:
+          PUBLIC_SUPABASE_URL: ${{ secrets.PUBLIC_SUPABASE_URL }}
+          PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.PUBLIC_SUPABASE_ANON_KEY }}
+          PUBLIC_GA_MEASUREMENT_ID: ${{ secrets.PUBLIC_GA_MEASUREMENT_ID }}
+        run: npm run build
+
+      - name: Smoke test
+        run: npm run smoke
