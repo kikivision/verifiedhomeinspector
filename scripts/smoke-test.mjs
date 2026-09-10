@@ -193,6 +193,24 @@ for (const icon of icons) {
   if (buf) check(buf.length > 200, `${icon} is only ${buf.length} bytes, which is not an icon.`);
 }
 
+// An SVG that is not well-formed XML renders as nothing at all, and Astro
+// copies public/ verbatim without parsing it, so the build cannot fail on it.
+// This happened: a comment in favicon.svg contained the token name "--navy",
+// and a double hyphen is illegal inside an XML comment. The file was the
+// right size and completely blank in a browser.
+const svgIcon = await readFile(join(DIST, 'favicon.svg'), 'utf8').catch(() => null);
+if (svgIcon) {
+  for (const [, body] of svgIcon.matchAll(/<!--([\s\S]*?)-->/g)) {
+    check(!body.includes('--'),
+      'favicon.svg has a double hyphen inside an XML comment, which makes it unparseable.',
+      `In: ${body.trim().slice(0, 60)}...`);
+  }
+  check(/^\s*<svg[\s>]/.test(svgIcon) && /<\/svg>\s*$/.test(svgIcon.trim()),
+    'favicon.svg is not a well-formed SVG document.');
+  check(svgIcon.includes('<path') && svgIcon.includes('<rect'),
+    'favicon.svg no longer contains the tile and the house.');
+}
+
 // The .ico is assembled by hand, so a malformed header would go unnoticed
 // until a browser quietly fell back to a blank page icon.
 const ico = await readFile(join(DIST, 'favicon.ico')).catch(() => null);

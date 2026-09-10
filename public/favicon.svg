@@ -1,8 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Verified Home Inspector">
-  <!-- The hexagon is the motif already drawn behind the hero, so the tab icon
-       and the page are recognisably the same thing. Filled rather than
-       stroked: an outline at 16px collapses into a grey smudge. -->
-  <polygon points="32,1 58.8,16.5 58.8,47.5 32,63 5.2,47.5 5.2,16.5" fill="#1D2B3A"/>
-  <path d="M19 33.5 L28 42.5 L46 22.5" fill="none" stroke="#E8A93A"
-        stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- A house, because it is the one subject that means the same thing in
+       every county this directory expands into.
+
+       The tile is #22456E rather than the navy token #1D2B3A. At 16px a
+       browser averages a whole shape down to a few pixels and subtle hue goes
+       with it: the token has so little blue in it that the icon rendered as a
+       black square. The page keeps its own navy for text, where the colour is
+       read at full size and needs no extra separation.
+
+       One shape, not two. The hexagon behind the hero was tried here first,
+       with the house inside it, and at 16px neither survived: big enough to
+       read as a house left the hexagon a thin ring, and small enough to sit
+       inside it flattened the roof into a dome. -->
+  <rect x="1" y="1" width="62" height="62" rx="13" fill="#22456E"/>
+  <path d="M32,14 L51,31 L51,50 L13,50 L13,31 Z" fill="#E8A93A"/>
 </svg>

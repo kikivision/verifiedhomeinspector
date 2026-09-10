@@ -30,7 +30,9 @@ const { title, description, currentCountySlug } = Astro.props;
   <link rel="icon" href="/favicon.ico" sizes="32x32" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-  <meta name="theme-color" content="#1D2B3A" />
+  <!-- Tints the mobile browser chrome, so this matches the sticky header the
+       chrome sits against, not the icon. -->
+  <meta name="theme-color" content="#FCFBF6" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link
     href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
