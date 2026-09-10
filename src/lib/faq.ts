@@ -10,6 +10,12 @@ export interface FaqItem {
 // undermine the whole point of having structured data for AI answer engines.
 export const faqItems: FaqItem[] = [
   {
+    question:
+      'My home insurance went up. Can I get a cheaper rate, and what inspections would I need?',
+    answer:
+      'Often you can, and it is worth asking. A Florida homeowner who thinks their premium is too high can call their insurance agent and ask them to shop other carriers for the same house. If a cheaper carrier is available, that carrier will almost always require a current 4-point inspection before it will write the policy, and a wind mitigation inspection is what earns the storm-resistance discounts on top of that. Both are performed by a licensed home inspector, and both are needed again each time you move to a new carrier, which is why many Florida homeowners hire an inspector every few years without ever buying or selling a house.',
+  },
+  {
     question: 'What is a 4-point inspection?',
     answer:
       "A 4-point inspection is a focused review of a home's four highest-risk systems for an insurer: roof, electrical, plumbing, and HVAC. Most Florida carriers require one for homes past a certain age, commonly 25 to 30 years, though the exact cutoff varies by insurer, before writing or renewing a policy.",
