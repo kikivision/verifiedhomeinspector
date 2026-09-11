@@ -156,7 +156,14 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
                     CSS all exist, and rendering any of them would quietly break
                     the business model. If that changes, change it on purpose. */}
                 <div class="contact">
-                  <button class="request-btn" data-listing-id={l.id} data-page-context={`county_${county.slug}_featured`}>
+                  <button
+                    class="request-btn"
+                    data-listing-id={l.id}
+                    data-license={l.license_number}
+                    data-name={l.business_name || l.licensee_name}
+                    data-page-context={`county_${county.slug}_featured`}
+                    data-county={county.slug}
+                  >
                     Request this inspector
                   </button>
                 </div>
@@ -529,7 +536,12 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
     const requestName = document.querySelector<HTMLInputElement>('#requestName');
     const requestWho = document.querySelector<HTMLElement>('#requestWho');
 
-    document.querySelectorAll<HTMLButtonElement>('.request-btn-row').forEach((btn) => {
+    // Both the featured card's button and every row's button, bound together
+    // on purpose. They were two handlers for one user action, and only the row
+    // one opened the dialog — so the single button on the PAID card logged an
+    // analytics event and did nothing else, while all 316 free listings below
+    // it worked. Splitting them again is how that returns.
+    document.querySelectorAll<HTMLButtonElement>('.request-btn, .request-btn-row').forEach((btn) => {
       btn.addEventListener('click', () => {
         const { listingId, license, name, pageContext, county } = btn.dataset;
         if (!dialog || !requestLicense || !requestName || !requestWho) return;
@@ -593,16 +605,6 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
           const name = document.querySelector<HTMLInputElement>('input[name="licensee-name"]');
           name?.focus({ preventScroll: true });
         }, 0);
-      });
-    });
-
-    document.querySelectorAll<HTMLButtonElement>('.request-btn').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const listingId = btn.dataset.listingId;
-        const pageContext = btn.dataset.pageContext || 'unknown';
-        if (!listingId) return;
-
-        logListingEvent(listingId, 'click_request', pageContext);
       });
     });
   </script>
