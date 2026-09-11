@@ -419,13 +419,32 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
               <p>
                 Your license is already listed here, straight from the DBPR record. Claiming it
                 puts your business name on the listing and moves you above every unclaimed
-                inspector in the county, and it costs nothing until we have passed you five
-                homeowner requests. Those arrive in your inbox, so you can count them yourself
+                inspector in the county, and while we're building out Florida it costs nothing
+                until we have passed you five homeowner requests. Those arrive in your inbox, so you can count them yourself
                 rather than take our word for it. After that it is $10/month, or $50/month for a
                 featured spot above every free listing, and the first inspectors to take one keep
                 that rate for as long as they stay. Every request goes to you and nobody else:
                 we never send one homeowner to several inspectors, and we never charge per lead.
               </p>
+              {/* Deliberately NOT in faqItems. That array feeds the FAQPage
+                  JSON-LD on every county page, and it is homeowner-intent
+                  content aimed at search — 4-point, wind mitigation, roof
+                  age. Inspector questions in the same array would enter the
+                  structured data and surface for queries we do not want.
+                  This sits where inspectors already are instead. */}
+              <div class="inspector-qa">
+                <h3>How do homeowners contact me?</h3>
+                <p>
+                  A request comes to us first, and we forward it to you the same business
+                  day. It goes to you and nobody else.
+                </p>
+                <p>
+                  We do it this way while we're building out Florida so that every lead is
+                  counted. That is what makes your first five genuinely free rather than
+                  something you take our word for: they arrive in your inbox, so you can
+                  count them yourself.
+                </p>
+              </div>
             </div>
             <!-- Netlify picks this form up from the built HTML at deploy time and
                  emails each submission on, so claiming needs no mailbox on this
