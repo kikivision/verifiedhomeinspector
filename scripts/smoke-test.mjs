@@ -278,6 +278,33 @@ for (const path of pages) {
     `${page} has no apple-touch-icon link.`);
 }
 
+// A bare fragment in the shared header resolves against whatever page it is
+// rendered on, so the nav silently stopped working the moment the layout was
+// used by a page that is not a county listing. Five pages shipped that way.
+// Every header link must be absolute, and its target id must actually exist.
+const countyIds = new Set(
+  [...(await readFile(join(DIST, 'fl/pinellas/index.html'), 'utf8'))
+    .matchAll(/\sid="([a-z-]+)"/g)].map((m) => m[1])
+);
+for (const path of pages) {
+  const html = await readFile(path, 'utf8');
+  if (/<meta http-equiv="refresh"/i.test(html) && html.length < 2000) continue;
+  const page = '/' + relative(DIST, path).replace(/index\.html$/, '');
+  const nav = html.match(/<nav[^>]*>([\s\S]*?)<\/nav>/)?.[1] ?? '';
+  const hrefs = [...nav.matchAll(/href="([^"]+)"/g)].map((m) => m[1]);
+  check(hrefs.length > 0, `${page} has no nav links.`);
+  for (const href of hrefs) {
+    check(href.startsWith('/'),
+      `${page} nav links to "${href}", a bare fragment.`,
+      'It resolves against the current URL, so it only works on a county page.');
+    const id = href.split('#')[1];
+    if (id) {
+      check(countyIds.has(id),
+        `${page} nav links to #${id}, which is not an id on the county page.`);
+    }
+  }
+}
+
 // A privacy policy and terms nobody can reach are the same as not having
 // them. The link is the deliverable, not the page.
 for (const path of pages) {

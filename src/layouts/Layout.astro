@@ -10,6 +10,14 @@ interface Props {
 
 const { title, description, currentCountySlug } = Astro.props;
 
+// The nav used bare fragments, which only work on a county page. On /privacy/,
+// /terms/ and the three confirmation pages they resolved against the current
+// URL — /privacy/#browse — and went nowhere. Pointing at the directory makes
+// every nav link work from every page, and a same-page fragment still scrolls
+// rather than reloading.
+const navCounty = currentCountySlug ?? counties.find((c) => c.status === 'live')!.slug;
+const directory = `/fl/${navCounty}/`;
+
 // Absolute URLs, because og:image and og:url are read by crawlers that have no
 // page to resolve a relative path against. Astro.site comes from `site` in
 // astro.config.mjs, so this follows the canonical host rather than repeating it.
@@ -88,10 +96,15 @@ const ogImage = new URL('/og-image.png', Astro.site);
         Menu
       </button>
       <nav id="primaryNav">
-        <a href="#browse">Browse Inspectors</a>
-        <a href="#homebuyers">For Homebuyers</a>
-        <a href="#insurance-renewals">Insurance Renewals</a>
-        <a href="#claim" class="nav-cta">List your business</a>
+        <!-- Three, not four, and each one lands where its label says.
+             "Browse Inspectors" pointed at #browse, which is the featured row:
+             the one link a homeowner would click to see inspectors landed on
+             two empty paid slots. It points at the list now.
+             "For Homebuyers" pointed at the h1, so it scrolled to the top of
+             the page you were already on, which the wordmark already does. -->
+        <a href={`${directory}#all-inspectors`}>Find an inspector</a>
+        <a href={`${directory}#insurance-renewals`}>Insurance questions</a>
+        <a href={`${directory}#claim`} class="nav-cta">List your business</a>
       </nav>
     </div>
     <div class="wrap county-bar">
