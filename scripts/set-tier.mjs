@@ -15,6 +15,8 @@
  *
  * Flags:
  *   --business, --phone          details the inspector is paying to show
+ *   --specialties "A, B, C"      comma-separated, replaces the list outright
+ *   --experience N               years in business, shown as "N+ years"
  *   --position N                 featured slot, 1-6, required for featured
  *   --dry-run                    print the change, write nothing
  *   --deploy                     trigger a rebuild so the change goes live
@@ -145,10 +147,30 @@ async function main() {
     update.claimed_at = listing.claimed_at ?? new Date().toISOString();
     if (flags.business !== undefined) update.business_name = flags.business;
     if (flags.phone !== undefined) update.phone = flags.phone;
+    // Replaces the list rather than appending: an inspector who drops a service
+    // needs a way to remove it, and --specialties "" is that way. Appending
+    // would make removal impossible without hand-written SQL, which is the one
+    // thing this script exists to avoid.
+    if (flags.experience !== undefined) {
+      const years = Number(flags.experience);
+      if (!Number.isInteger(years) || years < 0 || years > 80) {
+        throw new Error(`--experience must be a whole number of years, got "${flags.experience}".`);
+      }
+      update.years_experience = years;
+    }
+    if (flags.specialties !== undefined) {
+      update.specialties = flags.specialties
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+    }
   }
 
   const changes = Object.entries(update)
-    .filter(([key, value]) => listing[key] !== value)
+    // Compared as JSON because specialties is an array: === on two arrays is
+    // always false, so every run would report a change and the "nothing to
+    // change" guard below would never fire.
+    .filter(([key, value]) => JSON.stringify(listing[key]) !== JSON.stringify(value))
     .map(([key, value]) => `  ${key}: ${JSON.stringify(listing[key])} -> ${JSON.stringify(value)}`);
 
   console.error(`${listing.licensee_name} (${license}) in ${listing.city}, ${listing.county}`);
