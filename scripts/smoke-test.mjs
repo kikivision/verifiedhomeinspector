@@ -238,9 +238,28 @@ if (insurance) {
   const liveSlugs = [...(await readFile('src/lib/counties.ts', 'utf8'))
     .matchAll(/slug: '([^']+)'[^}]*status: 'live'/g)].map((m) => m[1]);
   check(liveSlugs.length > 0, 'No live counties found in counties.ts.');
-  for (const slug of liveSlugs) {
-    check(insurance.includes(`href="/fl/${slug}/#all-inspectors"`),
-      `The insurance page does not link to the ${slug} inspector list.`);
+  const picker = insurance.match(/<select id="inspectorCountySelect">([\s\S]*?)<\/select>/)?.[1];
+  check(picker !== undefined, 'The insurance page has no county picker.');
+  if (picker) {
+    for (const slug of liveSlugs) {
+      check(picker.includes(`value="${slug}"`),
+        `The county picker has no option for ${slug}.`);
+    }
+    // A picker that navigates nowhere looks identical to one that works.
+    //
+    // Astro inlines a small script into the HTML and emits a larger one as a
+    // module in _astro, and which it does depends on the size of the script
+    // rather than on anything in this repo. Looking in only one of the two
+    // places is a test that passes or fails for reasons unrelated to the code,
+    // so this reads the page and everything the page loads.
+    let behavior = insurance;
+    for (const [, src] of insurance.matchAll(/<script[^>]+src="(\/_astro\/[^"]+)"/g)) {
+      behavior += await readFile(join(DIST, src.slice(1)), 'utf8').catch(() => '');
+    }
+    check(behavior.includes('inspectorCountySelect'),
+      'Nothing the insurance page loads references the county picker.');
+    check(behavior.includes('#all-inspectors'),
+      'The county picker does not navigate to #all-inspectors.');
   }
 }
 

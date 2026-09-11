@@ -50,18 +50,32 @@ const live = counties.filter((c) => c.status === 'live');
         Requesting an inspector sends your details to that inspector and to nobody else. We never
         pass the same homeowner to several inspectors, and we never sell contact information.
       </p>
-      <ul class="county-links">
-        {live.map((c) => (
-          <li>
-            <a href={`/fl/${c.slug}/#all-inspectors`}>
-              {c.name}{c.metro ? ` · ${c.metro}` : ''}
-            </a>
-          </li>
-        ))}
-      </ul>
+      <!-- A dropdown rather than a row of buttons: Florida has 67 counties and
+           this list only grows. Live counties only — a county with no data yet
+           has a "coming soon" page and no #all-inspectors section to land on,
+           so offering it here would be a dead end from a button that promises
+           inspectors. -->
+      <div class="county-picker">
+        <label class="visually-hidden" for="inspectorCountySelect">Choose your county</label>
+        <select id="inspectorCountySelect">
+          <option value="">Choose your county…</option>
+          {live.map((c) => (
+            <option value={c.slug}>{c.name}{c.metro ? ` · ${c.metro}` : ''}</option>
+          ))}
+        </select>
+      </div>
     </div>
   </section>
 
   <Faq />
 
+  <script>
+    // Its own id: the header carries a #countySelect of its own, and two
+    // elements sharing an id would leave one of them unwired.
+    const select = document.getElementById('inspectorCountySelect') as HTMLSelectElement | null;
+    select?.addEventListener('change', () => {
+      if (!select.value) return;
+      window.location.href = `/fl/${select.value}/#all-inspectors`;
+    });
+  </script>
 </Layout>
