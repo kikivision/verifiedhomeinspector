@@ -15,18 +15,34 @@ import Layout from '../layouts/Layout.astro';
         <div>
           <h1>Your request is on its way.</h1>
           <p>
-            It went to the one inspector you picked, and to nobody else. Most inspectors reply
-            within a business day. If you do not hear back, come back and send a request to
-            another licensed inspector in your city — every listing on this site comes straight
-            from the Florida DBPR record.
+            It went to the one inspector you picked, and to nobody else. Most reply within a
+            business day. Every listing here comes straight from the Florida DBPR record, so you
+            can send a request to another licensed inspector any time you want a second quote.
           </p>
         </div>
-        <a href="/fl/pinellas/" class="btn-primary">Back to the directory</a>
+        {/* Defaults to the homepage and is upgraded to the county they came
+            from by the script below. Hardcoded to Pinellas until now, which
+            sent a homeowner in Orlando back to inspectors 100 miles away. */}
+        <a href="/" class="btn-primary" id="backLink">Back to the directory</a>
       </div>
     </div>
   </section>
   <script>
+    import { counties } from '../lib/counties';
     import { trackEvent } from '../lib/gtag';
+
+    // Send them back to the county they were browsing, which arrives as ?from=
+    // on the form action. Matched against the counties list rather than
+    // interpolated: the value comes from the URL, so anything not a county we
+    // actually publish is ignored and the link stays on the homepage.
+    const from = new URLSearchParams(window.location.search).get('from');
+    const county = counties.find((c) => c.slug === from && c.status === 'live');
+    const backLink = document.querySelector<HTMLAnchorElement>('#backLink');
+    if (county && backLink) {
+      backLink.href = `/fl/${county.slug}/`;
+      backLink.textContent = `Back to ${county.metro ?? county.name} inspectors`;
+    }
+
 
     // This page is only reachable after a successful form post, so reaching it
     // means a homeowner actually sent an inquiry — not that they opened

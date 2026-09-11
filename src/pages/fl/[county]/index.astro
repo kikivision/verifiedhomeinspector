@@ -353,7 +353,11 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
           method="POST"
           data-netlify="true"
           netlify-honeypot="referral-code"
-          action="/request-received/"
+          {/* Carries the county through so the confirmation page can send them
+              back where they came from. The hidden county field below is the
+              county NAME, for the notification email to read; this is the slug,
+              because it has to build a URL. */}
+          action={`/request-received/?from=${county.slug}`}
         >
           <input type="hidden" name="form-name" value="inspector-request" />
           <input type="hidden" name="county" value={county.name} />
