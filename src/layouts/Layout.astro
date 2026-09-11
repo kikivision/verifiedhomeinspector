@@ -71,7 +71,7 @@ const ogImage = new URL('/og-image.png', Astro.site);
 <body>
   <header>
     <div class="wrap header-row">
-      <a href="/fl/pinellas/" class="wordmark">Verified<span>Home Inspector</span></a>
+      <a href="/" class="wordmark">Verified<span>Home Inspector</span></a>
       <!-- The nav needs about 407px laid out in a row, which does not fit a phone.
            Below the breakpoint it collapses behind this button. The listing page
            runs to tens of thousands of pixels, so these in-page jumps are worth
@@ -97,6 +97,11 @@ const ogImage = new URL('/og-image.png', Astro.site);
     <div class="wrap county-bar">
       <label for="countySelect">County:</label>
       <select id="countySelect">
+        {/* The homepage passes no current county, and without this the browser
+            selects the first option — so the bar claimed "Pinellas County" on a
+            page that is not Pinellas, and choosing Pinellas then fired no
+            change event and went nowhere. */}
+        {!currentCountySlug && <option value="" selected>Choose a county…</option>}
         {counties.map((c) => (
           <option value={c.slug} selected={c.slug === currentCountySlug}>
             {c.name}{c.status === 'coming_soon' ? ' — coming soon' : ''}
@@ -165,6 +170,7 @@ const ogImage = new URL('/og-image.png', Astro.site);
 
     const select = document.getElementById('countySelect') as HTMLSelectElement;
     select?.addEventListener('change', () => {
+      if (!select.value) return;
       window.location.href = `/fl/${select.value}/`;
     });
   </script>

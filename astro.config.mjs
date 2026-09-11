@@ -35,8 +35,5 @@ export default defineConfig({
   // ('ignore') would emit the un-slashed form, so every URL in the sitemap
   // would be a redirect, and so would the site's own internal links.
   trailingSlash: 'always',
-  redirects: {
-    '/': '/fl/pinellas/',
-  },
   integrations: [sitemap({ filter: shouldIndex })],
 });
