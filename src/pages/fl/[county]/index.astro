@@ -90,12 +90,19 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
                     the only people who ever saw them were homeowners — an
                     unfinished-looking card on a placement someone is paying
                     for. Empty now means absent, not advertised. */}
-                <div class="photo-strip">
-                  <div class="avatar-slot">
-                    {l.licensee_name.split(' ').map((n) => n[0]).slice(0, 2).join('')}
+                {/* No initials tile. A navy square reading "RW" is not a
+                    brand, it is a placeholder wearing the colours of one, and
+                    with the photo slots gone it was the largest element on a
+                    paid card while carrying no information the heading below
+                    it did not already give. The strip appears only when there
+                    is a real image to put in it. */}
+                {l.photo_urls.length > 0 && (
+                  <div class="photo-strip">
+                    {l.photo_urls.slice(0, 3).map((url) => (
+                      <img src={url} alt="" class="photo-slot" />
+                    ))}
                   </div>
-                  {l.photo_urls.slice(0, 2).map((url) => <img src={url} alt="" class="photo-slot" />)}
-                </div>
+                )}
                 <h3>{l.business_name || l.licensee_name}</h3>
                 {/* The heading falls back to the licensee's name when there is
                     no business name, so printing the name again here rendered
