@@ -46,6 +46,10 @@ async function htmlFiles(dir) {
 }
 
 const pages = await htmlFiles(DIST);
+// Several later checks need every page's HTML, so it is read once here rather
+// than re-read per assertion.
+const faqHtml = new Map();
+for (const p of pages) faqHtml.set(p, await readFile(p, 'utf8'));
 check(pages.length > 0, 'No HTML was built at all.');
 
 for (const path of pages) {
@@ -188,26 +192,67 @@ for (const [name, fields] of Object.entries(forms)) {
 
 // The FAQ answers questions people type into search engines, and the schema is
 // what answer engines read. The two render from one array and must not drift.
-const schemaJson = county.match(
-  /<script type="application\/ld\+json">([\s\S]*?)<\/script>/,
-)?.[1];
-check(schemaJson !== undefined, 'No FAQPage JSON-LD on the county page.');
-if (schemaJson) {
-  let schema = null;
-  try {
-    schema = JSON.parse(schemaJson);
-  } catch (err) {
-    failures.push(`FAQPage JSON-LD does not parse: ${err.message}`);
+//
+// It lives on exactly one URL. Building it per county put five copies of the
+// same eight questions in the build — four counties plus the homepage — and
+// identical FAQPage schema on five URLs makes them compete with each other for
+// the same query instead of one of them winning it.
+const faqPages = pages.filter((p) => {
+  const html = faqHtml.get(p);
+  return html && html.includes('"@type":"FAQPage"');
+});
+check(faqPages.length === 1,
+  `${faqPages.length} pages carry FAQPage schema; exactly one should.`,
+  faqPages.map((p) => '/' + relative(DIST, p).replace(/index\.html$/, '')).join(', '));
+
+const insurance = await readFile(join(DIST, 'insurance-inspections/index.html'), 'utf8')
+  .catch(() => null);
+check(insurance !== null, 'The insurance page was not built.');
+
+if (insurance) {
+  const schemaJson = insurance.match(
+    /<script type="application\/ld\+json">([\s\S]*?)<\/script>/,
+  )?.[1];
+  check(schemaJson !== undefined, 'No FAQPage JSON-LD on the insurance page.');
+  if (schemaJson) {
+    let schema = null;
+    try {
+      schema = JSON.parse(schemaJson);
+    } catch (err) {
+      failures.push(`FAQPage JSON-LD does not parse: ${err.message}`);
+    }
+    if (schema) {
+      const sourceCount = ((await readFile('src/lib/faq.ts', 'utf8')).match(/^\s{2}\{$/gm) ?? []).length;
+      const schemaCount = schema.mainEntity?.length ?? 0;
+      check(schemaCount === sourceCount,
+        `FAQ schema has ${schemaCount} entries but faq.ts defines ${sourceCount}.`);
+      const rendered = (insurance.match(/class="faq-item"/g) ?? []).length;
+      check(rendered === schemaCount,
+        `FAQ accordion renders ${rendered} items but the schema has ${schemaCount}.`);
+    }
   }
-  if (schema) {
-    const sourceCount = ((await readFile('src/lib/faq.ts', 'utf8')).match(/^\s{2}\{$/gm) ?? []).length;
-    const schemaCount = schema.mainEntity?.length ?? 0;
-    check(schemaCount === sourceCount,
-      `FAQ schema has ${schemaCount} entries but faq.ts defines ${sourceCount}.`);
-    const rendered = (county.match(/class="faq-item"/g) ?? []).length;
-    check(rendered === schemaCount,
-      `FAQ accordion renders ${rendered} items but the schema has ${schemaCount}.`);
+
+  // An article that does not lead back to an inspector is a dead end on a
+  // directory, and a statewide page cannot guess the reader's county, so it
+  // has to offer every live one.
+  const liveSlugs = [...(await readFile('src/lib/counties.ts', 'utf8'))
+    .matchAll(/slug: '([^']+)'[^}]*status: 'live'/g)].map((m) => m[1]);
+  check(liveSlugs.length > 0, 'No live counties found in counties.ts.');
+  for (const slug of liveSlugs) {
+    check(insurance.includes(`href="/fl/${slug}/#all-inspectors"`),
+      `The insurance page does not link to the ${slug} inspector list.`);
   }
+}
+
+// Every page that dropped the FAQ has to offer the page that now holds it, or
+// the only route to it is the header nav.
+for (const path of pages) {
+  const html = faqHtml.get(path);
+  if (!html) continue;
+  const page = '/' + relative(DIST, path).replace(/index\.html$/, '');
+  if (page === '/insurance-inspections/' || !/^\/(fl\/[a-z-]+\/)?$/.test(page)) continue;
+  check(html.includes('href="/insurance-inspections/"'),
+    `${page} does not link to /insurance-inspections/.`);
 }
 
 // A page that calls trackEvent without gtag loaded throws into a catch and the
@@ -282,10 +327,11 @@ for (const path of pages) {
 // rendered on, so the nav silently stopped working the moment the layout was
 // used by a page that is not a county listing. Five pages shipped that way.
 // Every header link must be absolute, and its target id must actually exist.
-const countyIds = new Set(
-  [...(await readFile(join(DIST, 'fl/pinellas/index.html'), 'utf8'))
-    .matchAll(/\sid="([a-z-]+)"/g)].map((m) => m[1])
-);
+const idsFor = new Map();
+for (const [p, html] of faqHtml) {
+  const page = '/' + relative(DIST, p).replace(/index\.html$/, '');
+  idsFor.set(page, new Set([...html.matchAll(/\sid="([a-z-]+)"/g)].map((m) => m[1])));
+}
 for (const path of pages) {
   const html = await readFile(path, 'utf8');
   if (/<meta http-equiv="refresh"/i.test(html) && html.length < 2000) continue;
@@ -297,10 +343,16 @@ for (const path of pages) {
     check(href.startsWith('/'),
       `${page} nav links to "${href}", a bare fragment.`,
       'It resolves against the current URL, so it only works on a county page.');
-    const id = href.split('#')[1];
+    const [target, id] = href.split('#');
     if (id) {
-      check(countyIds.has(id),
-        `${page} nav links to #${id}, which is not an id on the county page.`);
+      // Resolved against the page the link points at. Checking every fragment
+      // against the county page would pass /#browse, which is a different
+      // section on a different page.
+      const ids = idsFor.get(target || '/');
+      check(ids !== undefined, `${page} nav links to ${target}, which was not built.`);
+      if (ids) {
+        check(ids.has(id), `${page} nav links to ${href}, but #${id} is not on ${target || '/'}.`);
+      }
     }
   }
 }

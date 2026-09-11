@@ -1,0 +1,86 @@
+---
+// One statewide page, not one per county. The FAQ carries FAQPage schema, and
+// the same schema on five URLs makes them compete with each other for the same
+// query instead of one of them winning it. Nothing in the answers is
+// county-specific — the statutes and the carrier rules are the same in Pinellas
+// and Orange — so there is nothing four pages could have said that this one
+// cannot.
+//
+// The page still has to lead to an inspector, and a statewide page cannot know
+// which county the reader is in, so it ends with the county list rather than a
+// single button.
+import Layout from '../layouts/Layout.astro';
+import Faq from '../components/Faq.astro';
+import { counties } from '../lib/counties';
+
+const live = counties.filter((c) => c.status === 'live');
+---
+
+<Layout
+  title="4-Point and Wind Mitigation Inspections in Florida | Verified Home Inspector"
+  description="What Florida insurers want at renewal: a 4-point on an older home and a wind mitigation for storm discounts, both from a DBPR-licensed home inspector."
+>
+  <section class="hero">
+    <div class="wrap">
+      <div class="county-tag">Florida</div>
+      <h1>4-point and wind mitigation inspections</h1>
+      <p style="color:var(--navy-soft);font-weight:500;margin-top:10px;max-width:68ch;">
+        Most people book a home inspection once, before they buy a house. In Florida the
+        inspections an insurer asks for come round again and again, for homeowners who have no
+        intention of moving.
+      </p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="legal" style="max-width:68ch;">
+        <p>
+          If your premium has gone up and your agent shops other carriers for you, the carrier
+          that quotes a better rate will almost always want a current 4-point inspection before
+          it writes the policy, and a wind mitigation inspection is what earns the
+          storm-resistance discounts on top of that. Both are performed by a home inspector
+          licensed by the Florida Department of Business and Professional Regulation, and both
+          are usually needed again the next time you change carrier. That is why a homeowner who
+          shops for a better rate every few years ends up hiring an inspector every few years
+          without ever buying or selling a house.
+        </p>
+        <p>
+          Roof age is the other reason a Florida homeowner suddenly needs an inspector.
+          Section 627.7011 of the Florida Statutes says an insurer may not refuse to write or
+          renew a policy solely because of the age of a roof that is less than 15 years old, and
+          once a roof reaches 15 years the insurer must let you pay for an inspection before it
+          can demand a replacement as a condition of coverage. If that inspection finds five or
+          more years of useful life remaining, the insurer may not refuse solely because of the
+          roof age. Subsection (5)(a) names a home inspector licensed under section 468.8314 as
+          one of the professionals who can perform it — the same license every inspector in this
+          directory holds.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <Faq />
+
+  <section class="section" id="find-an-inspector">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>Find a licensed inspector</h2>
+        <div class="note">Every listing verified against the Florida DBPR record</div>
+      </div>
+      <p style="color:var(--slate);max-width:68ch;margin-top:0;">
+        Requesting an inspector sends your details to that inspector and to nobody else. We never
+        pass the same homeowner to several inspectors, and we never sell contact information.
+      </p>
+      <ul class="county-links">
+        {live.map((c) => (
+          <li>
+            <a href={`/fl/${c.slug}/#all-inspectors`}>
+              {c.name}{c.metro ? ` · ${c.metro}` : ''}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </section>
+</Layout>

@@ -354,3 +354,13 @@ footer p { font-size: 0.8rem; color: var(--slate); margin: 4px 0; max-width: 70c
    max-width is the source file's own width so the mark is never upscaled. */
 .logo-plate { background: #FFFFFF; border: 1px solid var(--line); border-radius: 4px; padding: 14px; margin-bottom: 14px; display: flex; align-items: center; justify-content: center; }
 .logo-plate img { max-width: 210px; max-height: 80px; width: auto; height: auto; object-fit: contain; }
+
+/* The statewide insurance page cannot know which county a reader is in, so it
+   offers all of them rather than one button. Links rather than a select: a
+   crawler follows these, and they need no JavaScript. */
+.county-links { list-style: none; padding: 0; margin: 18px 0 0; display: flex; flex-wrap: wrap; gap: 10px; }
+.county-links a {
+  display: inline-block; padding: 10px 16px; border: 1px solid var(--line);
+  border-radius: 4px; background: var(--paper-raised); color: var(--navy); font-size: 0.92rem;
+}
+.county-links a:hover { border-color: var(--navy); }

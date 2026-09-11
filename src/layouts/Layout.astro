@@ -11,12 +11,15 @@ interface Props {
 const { title, description, currentCountySlug } = Astro.props;
 
 // The nav used bare fragments, which only work on a county page. On /privacy/,
-// /terms/ and the three confirmation pages they resolved against the current
-// URL — /privacy/#browse — and went nowhere. Pointing at the directory makes
-// every nav link work from every page, and a same-page fragment still scrolls
-// rather than reloading.
-const navCounty = currentCountySlug ?? counties.find((c) => c.status === 'live')!.slug;
-const directory = `/fl/${navCounty}/`;
+// /terms/ and the confirmation pages they resolved against the current URL —
+// /privacy/#browse — and went nowhere. These are absolute, and a same-page
+// fragment still scrolls rather than reloading.
+//
+// Off a county page there is no county to send anyone to, and picking one for
+// them would be a guess. The homepage's own county selector is the honest
+// destination, so that is where the two county-shaped links point instead.
+const inspectors = currentCountySlug ? `/fl/${currentCountySlug}/#all-inspectors` : '/#browse';
+const listYours = currentCountySlug ? `/fl/${currentCountySlug}/#claim` : '/#claim';
 
 // Absolute URLs, because og:image and og:url are read by crawlers that have no
 // page to resolve a relative path against. Astro.site comes from `site` in
@@ -102,9 +105,9 @@ const ogImage = new URL('/og-image.png', Astro.site);
              two empty paid slots. It points at the list now.
              "For Homebuyers" pointed at the h1, so it scrolled to the top of
              the page you were already on, which the wordmark already does. -->
-        <a href={`${directory}#all-inspectors`}>Find an inspector</a>
-        <a href={`${directory}#insurance-renewals`}>Insurance questions</a>
-        <a href={`${directory}#claim`} class="nav-cta">List your business</a>
+        <a href={inspectors}>Find an inspector</a>
+        <a href="/insurance-inspections/">Insurance inspections</a>
+        <a href={listYours} class="nav-cta">List your business</a>
       </nav>
     </div>
     <div class="wrap county-bar">
