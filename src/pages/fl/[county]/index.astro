@@ -26,12 +26,21 @@ const nonFeatured = listings.filter((l) => l.tier !== 'featured');
 // Cities actually present in the data, so the filter can never offer a city
 // with nothing behind it.
 const cities = [...new Set(nonFeatured.map((l) => l.city))].sort((a, b) => a.localeCompare(b));
-// Two to start. An empty spot advertises the product far less well than a
-// claimed one does, so the row should be small enough that selling it looks
-// achievable rather than sparse. Raise this once spots are actually being sold.
-// The database allows positions up to 6, so raising it is a one-line change
-// with no migration.
+// What an inspector BUYS is one of FEATURED_TARGET spots. What is live today is
+// FEATURED_CAP, and the gap between them is deliberate: while the county pages
+// are still being built out, a buyer is one of two rather than one of four.
+//
+// Stating it that way round matters. Anchoring on four makes raising the cap
+// the plan rather than a halving of what someone paid for, and it makes today's
+// smaller row a bonus with an end date instead of a promise we take back. The
+// copy must never state the LIVE count as the offer — "only 2 spots" sold to
+// someone who later sees four is scarcity we removed from them in writing.
+//
+// The database allows positions up to 6 and .featured-grid is two columns, so
+// any EVEN cap fills its rows; an odd one leaves a visible hole where a card
+// should be. 4 and 6 are both fine, 3 and 5 are not.
 const FEATURED_CAP = 2;
+const FEATURED_TARGET = 4;
 const openFeaturedSlots = FEATURED_CAP - featured.length;
 ---
 
@@ -172,9 +181,10 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
               <div class="card ad-slot">
                 <h3 style="font-size:1rem;">This spot could be yours</h3>
                 <p style="color:var(--slate);font-size:0.88rem;margin:0;">
-                  {nonFeatured.length} licensed inspectors are listed in {county.name}. Only{' '}
-                  {FEATURED_CAP} spots sit above all of them, and every request goes to one
-                  inspector only.
+                  {nonFeatured.length} licensed inspectors are listed in {county.name}. Featured
+                  is one of {FEATURED_TARGET} spots above all of them, and every request goes to
+                  one inspector only. Only {FEATURED_CAP} are live while we build out the county
+                  pages, so right now you would be one of {FEATURED_CAP}.
                 </p>
                 <button type="button" class="btn-primary featured-btn" data-county={county.slug} style="font-size:0.85rem;padding:8px 16px;">
                   Get featured
@@ -441,13 +451,32 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
               <p>
                 Your license is already listed here, straight from the DBPR record. Claiming it
                 puts your business name on the listing and moves you above every unclaimed
-                inspector in the county, and it costs nothing until we have passed you five
-                homeowner requests. Those arrive in your inbox, so you can count them yourself
+                inspector in the county, and while we're building out Florida it costs nothing
+                until we have passed you five homeowner requests. Those arrive in your inbox, so you can count them yourself
                 rather than take our word for it. After that it is $10/month, or $50/month for a
                 featured spot above every free listing, and the first inspectors to take one keep
                 that rate for as long as they stay. Every request goes to you and nobody else:
                 we never send one homeowner to several inspectors, and we never charge per lead.
               </p>
+              {/* Deliberately NOT in faqItems. That array feeds the FAQPage
+                  JSON-LD on every county page, and it is homeowner-intent
+                  content aimed at search — 4-point, wind mitigation, roof
+                  age. Inspector questions in the same array would enter the
+                  structured data and surface for queries we do not want.
+                  This sits where inspectors already are instead. */}
+              <div class="inspector-qa">
+                <h3>How do homeowners contact me?</h3>
+                <p>
+                  A request comes to us first, and we forward it to you the same business
+                  day. It goes to you and nobody else.
+                </p>
+                <p>
+                  We do it this way while we're building out Florida so that every lead is
+                  counted. That is what makes your first five genuinely free rather than
+                  something you take our word for: they arrive in your inbox, so you can
+                  count them yourself.
+                </p>
+              </div>
             </div>
             <!-- Netlify picks this form up from the built HTML at deploy time and
                  emails each submission on, so claiming needs no mailbox on this
