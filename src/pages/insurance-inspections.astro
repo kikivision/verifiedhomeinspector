@@ -7,8 +7,10 @@
 // cannot.
 //
 // The page still has to lead to an inspector, and a statewide page cannot know
-// which county the reader is in, so it ends with the county list rather than a
-// single button.
+// which county the reader is in, so it offers the county list rather than a
+// single button. That list sits under the lead copy rather than under the FAQ:
+// someone who already knows they need a 4-point should not have to read eight
+// questions to reach an inspector.
 import Layout from '../layouts/Layout.astro';
 import Faq from '../components/Faq.astro';
 import { counties } from '../lib/counties';
@@ -22,50 +24,23 @@ const live = counties.filter((c) => c.status === 'live');
 >
   <section class="hero">
     <div class="wrap">
-      <div class="county-tag">Florida</div>
-      <h1>4-point and wind mitigation inspections</h1>
+      <div class="county-tag">Insurance renewals</div>
+      <h1>Switching your homeowner's insurance company?</h1>
       <p style="color:var(--navy-soft);font-weight:500;margin-top:10px;max-width:68ch;">
-        Most people book a home inspection once, before they buy a house. In Florida the
-        inspections an insurer asks for come round again and again, for homeowners who have no
-        intention of moving.
+        Start with your insurance agent. Ask them to shop other carriers for the same house, and
+        they will tell you what the new carrier needs. In almost every case that means a current
+        4-point inspection, and often a wind mitigation as well, which is what earns the
+        storm-resistance discounts. Both are performed by a home inspector licensed by the
+        Florida DBPR, and both are yours to schedule.
       </p>
     </div>
   </section>
 
-  <!-- No top padding: the hero's own bottom padding already separates these,
-       and stacking both left a 75px hole in the middle of one continuous
-       thought, with no rule or heading to explain it. -->
-  <section class="section" id="intro" style="padding-top:0;">
-    <div class="wrap">
-      <div class="legal" style="max-width:68ch;">
-        <p>
-          If your premium has gone up and your agent shops other carriers for you, the carrier
-          that quotes a better rate will almost always want a current 4-point inspection before
-          it writes the policy, and a wind mitigation inspection is what earns the
-          storm-resistance discounts on top of that. Both are performed by a home inspector
-          licensed by the Florida Department of Business and Professional Regulation, and both
-          are usually needed again the next time you change carrier. That is why a homeowner who
-          shops for a better rate every few years ends up hiring an inspector every few years
-          without ever buying or selling a house.
-        </p>
-        <p>
-          Roof age is the other reason a Florida homeowner suddenly needs an inspector.
-          Section 627.7011 of the Florida Statutes says an insurer may not refuse to write or
-          renew a policy solely because of the age of a roof that is less than 15 years old, and
-          once a roof reaches 15 years the insurer must let you pay for an inspection before it
-          can demand a replacement as a condition of coverage. If that inspection finds five or
-          more years of useful life remaining, the insurer may not refuse solely because of the
-          roof age. Subsection (5)(a) names a home inspector licensed under section 468.8314 as
-          one of the professionals who can perform it — the same license every inspector in this
-          directory holds.
-        </p>
-      </div>
-    </div>
-  </section>
-
-  <Faq />
-
-  <section class="section" id="find-an-inspector">
+  <!-- The way to an inspector sits directly under the copy that explains why
+       someone needs one, rather than below the FAQ. A reader who already knows
+       they need a 4-point should not have to scroll past eight questions
+       answering a question they no longer have. -->
+  <section class="section" id="find-an-inspector" style="padding-top:8px;">
     <div class="wrap">
       <div class="section-head">
         <h2>Find a licensed inspector</h2>
@@ -86,4 +61,7 @@ const live = counties.filter((c) => c.status === 'live');
       </ul>
     </div>
   </section>
+
+  <Faq />
+
 </Layout>
