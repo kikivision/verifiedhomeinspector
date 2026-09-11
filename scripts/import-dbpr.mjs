@@ -37,12 +37,66 @@
 const EXTRACT_URL =
   'https://www2.myfloridalicense.com/sto/file_download/extracts/lic04home.csv';
 
-// DBPR county codes. Add a county here plus a slug the site routes on.
+// DBPR county codes, with an anchor city for each.
+//
+// The codes are NOT sequential or alphabetical, and two of the three here were
+// wrong: hillsborough was '29' (Franklin County — one inspector, in Carrabelle)
+// and pasco was '51' (Manatee County — 184 inspectors, in Bradenton). Pinellas
+// was right, which is why nothing ever looked broken: it is the only county
+// that had been imported.
+//
+// That is a silent failure. A wrong code still returns rows, still reports a
+// successful import, and fills a county page with inspectors from somewhere
+// else entirely — a Pasco page of Bradenton businesses. Nothing downstream can
+// tell the difference, so the check has to happen here.
+//
+// The anchor is the county seat or largest city, and must be the most common
+// city in the matched rows. Verified against the extract on 2026-09-11 by
+// grouping every row by county code and reading the city distribution.
 const COUNTIES = {
-  pinellas: '62',
-  hillsborough: '29',
-  pasco: '51',
+  pinellas: { code: '62', anchor: 'ST. PETERSBURG' },
+  hillsborough: { code: '39', anchor: 'TAMPA' },
+  pasco: { code: '61', anchor: 'NEW PORT RICHEY' },
+  orange: { code: '58', anchor: 'ORLANDO' },
 };
+
+// How far down the city ranking the anchor may appear. Not 1: Pasco has no
+// dominant city — New Port Richey (43), Land O Lakes (39), Wesley Chapel (36)
+// and Hudson (33) are close enough that a weekly extract can reorder them, and
+// requiring the top spot would fail a perfectly good import. Five is still
+// decisive against a wrong code, because a different county's top five shares
+// no city with the right one at all.
+const ANCHOR_WITHIN_TOP = 5;
+
+/**
+ * Refuse a run whose rows do not look like the county that was asked for.
+ *
+ * Requires the county's anchor city to appear among the most common cities in
+ * the matched rows. Case- and punctuation-insensitive, because city spellings
+ * in the extract are free text ("ST. PETERSBURG", "ST PETERSBURG", "SAINT
+ * PETERSBURG") and the anchor should not have to enumerate them.
+ */
+function assertCountyLooksRight(slug, anchor, rows) {
+  const normalize = (city) => city.trim().toUpperCase().replace(/[.']/g, '').replace(/\s+/g, ' ');
+  const counts = new Map();
+  for (const row of rows) {
+    const city = normalize(row[COL.city] || '');
+    if (city) counts.set(city, (counts.get(city) ?? 0) + 1);
+  }
+  if (counts.size === 0) {
+    throw new Error(`No rows matched county "${slug}" — check its code in COUNTIES.`);
+  }
+  const ranked = [...counts].sort((a, b) => b[1] - a[1]);
+  const top = ranked.slice(0, ANCHOR_WITHIN_TOP).map(([city]) => city);
+  if (!top.includes(normalize(anchor))) {
+    const sample = ranked.slice(0, ANCHOR_WITHIN_TOP).map(([c, n]) => `${c} (${n})`).join(', ');
+    throw new Error(
+      `County code for "${slug}" looks wrong. Expected ${normalize(anchor)} among the ` +
+        `top ${ANCHOR_WITHIN_TOP} cities, got: ${sample}. ` +
+        `A wrong code imports a different county's inspectors and reports success.`,
+    );
+  }
+}
 
 // Column positions in the lic04home.csv layout (the file has no header row).
 const COL = {
@@ -191,7 +245,8 @@ async function main() {
   const force = args.includes('--force');
   const dryRun = args.includes('--dry-run');
   const deploy = args.includes('--deploy');
-  const countyCode = COUNTIES[countySlug];
+  const county = COUNTIES[countySlug];
+  const countyCode = county?.code;
   if (!countyCode) {
     throw new Error(`Unknown county "${countySlug}". Known: ${Object.keys(COUNTIES).join(', ')}`);
   }
@@ -213,6 +268,8 @@ async function main() {
       r[COL.secondaryStatus] === ACTIVE &&
       r[COL.altLicenseNumber].trim().toUpperCase().startsWith('HI'),
   );
+  assertCountyLooksRight(countySlug, county.anchor, matched);
+
   const listings = matched.map((r) => toListing(r, countySlug));
 
   const seen = new Set();

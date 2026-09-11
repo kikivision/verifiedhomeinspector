@@ -1,7 +1,7 @@
 ---
 import Layout from '../../../layouts/Layout.astro';
 import Faq from '../../../components/Faq.astro';
-import { counties, getCounty } from '../../../lib/counties';
+import { counties, getCounty, searchName } from '../../../lib/counties';
 import { getListingsForCounty, type Listing } from '../../../lib/supabase';
 
 export function getStaticPaths() {
@@ -37,8 +37,8 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
 ---
 
 <Layout
-  title={`${county.name} Home Inspectors | Verified Home Inspector`}
-  description={`Every licensed home inspector in ${county.name}, Florida, from state DBPR records. Find one for a pre-purchase inspection, a 4-point, or a wind mitigation.`}
+  title={`${searchName(county)} Home Inspectors | Verified Home Inspector`}
+  description={`Every licensed home inspector in ${searchName(county)}, Florida, from state DBPR records. Find one for a pre-purchase inspection, a 4-point, or a wind mitigation.`}
   currentCountySlug={county.slug}
 >
   {county.status === 'coming_soon' ? (
@@ -65,7 +65,7 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
         <div class="wrap hero-grid">
           <div>
             <div class="county-tag">{county.name}, FL</div>
-            <h1>Find a licensed home inspector in {county.name}</h1>
+            <h1>Find a licensed home inspector in {searchName(county)}</h1>
             <p style="color:var(--navy-soft);font-weight:500;margin-top:10px;">
               Before you close on a house, an inspection tells you the condition of the roof,
               structure, electrical, plumbing, and HVAC, which are the systems that cost the most
