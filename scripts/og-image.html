@@ -1,0 +1,47 @@
+<!doctype html>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:1200px;height:630px}
+  body{
+    background:#1D2B3A;
+    font-family:'IBM Plex Sans',sans-serif;
+    position:relative;overflow:hidden;
+    display:flex;flex-direction:column;justify-content:center;
+    padding:0 86px;
+  }
+  /* Same three-hexagon motif as the hero, same 0.07 stroke opacity inverted
+     for the navy ground, bled off the right edge as it is on the page. */
+  .hex{position:absolute;top:-40px;right:-70px;opacity:.9}
+  .mark{display:flex;align-items:center;gap:22px;margin-bottom:40px}
+  .house{flex:none}
+  .wordmark{font-family:'Fraunces',serif;font-weight:500;font-size:40px;color:#FCFBF6;letter-spacing:-.01em}
+  .wordmark i{color:#E8A93A;font-style:italic}
+  h1{
+    font-family:'Fraunces',serif;font-weight:500;font-size:66px;line-height:1.1;
+    color:#FCFBF6;max-width:17ch;letter-spacing:-.015em;
+  }
+  p{margin-top:26px;font-size:25px;color:#B9C4CC;max-width:44ch;line-height:1.45}
+  .rule{margin-top:44px;display:flex;align-items:center;gap:18px}
+  .rule span{height:1px;width:64px;background:#E8A93A;display:block}
+  .rule b{font-weight:600;font-size:21px;color:#E8A93A;letter-spacing:.04em}
+</style>
+<svg class="hex" width="430" height="400" viewBox="0 0 260 250" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <polygon points="74,20 126,50 126,110 74,140 22,110 22,50" stroke="#FCFBF6" stroke-opacity="0.10" stroke-width="2"/>
+  <polygon points="186,20 238,50 238,110 186,140 134,110 134,50" stroke="#FCFBF6" stroke-opacity="0.10" stroke-width="2"/>
+  <polygon points="130,116 182,146 182,206 130,236 78,206 78,146" stroke="#FCFBF6" stroke-opacity="0.10" stroke-width="2"/>
+</svg>
+
+<div class="mark">
+  <svg class="house" width="60" height="60" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+    <rect x="1" y="1" width="62" height="62" rx="13" fill="#22456E"/>
+    <path d="M32,14 L51,31 L51,50 L13,50 L13,31 Z" fill="#E8A93A"/>
+  </svg>
+  <div class="wordmark">Verified<i>Home Inspector</i></div>
+</div>
+
+<h1>Find a licensed home inspector in Florida</h1>
+<p>Every active inspector, listed from state DBPR license records &mdash; with the license number, city, and how to reach them.</p>
+<div class="rule"><span></span><b>verifiedhomeinspector.com</b></div>
