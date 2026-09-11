@@ -115,7 +115,12 @@ placed straight from a card is a lead nobody can count.
 
 The `phone` column, the `click_phone` event type and the `.card .phone`
 CSS all exist and are unused. That is not an unfinished feature, and
-wiring them up would quietly break the model.
+wiring them up today would quietly break the model.
+
+This is current policy rather than a permanent rule — the plan is to show
+contact details once the volume makes hand-routing impossible, and the
+pricing has to change in the same step. See [DECISIONS.md](DECISIONS.md)
+before touching it.
 
 ## Analytics scope
 

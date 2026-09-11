@@ -5,6 +5,68 @@ until you know why. Newest first.
 
 ---
 
+## 2026-09-11 — At scale, show contact details and measure clicks instead of requests
+
+**Direction set. Not built, and not yet due.** The trigger is volume:
+roughly 100 paying inspectors, or any point where routing every lead by
+hand stops being possible.
+
+### The plan
+
+Today every lead passes through the request form so it can be counted,
+and no listing shows a phone number or a website (see "Contact is
+deliberately not shown" in the README). That works because the volume is
+small enough to watch by hand.
+
+At scale it stops working. The intent is to show inspectors' contact
+details directly so homeowners call them, keep a lighter measurement — a
+tracked click rather than a counted form submission — and let the
+relationship prove itself: if the traffic is real the inspector keeps
+paying, and if it is not they stop.
+
+### Why this is fine
+
+Counting exists to prove value, not for its own sake. Once there is
+enough traffic that value is self-evident, an exact count is a cost
+rather than a feature — it is a bottleneck sitting between a homeowner
+and the person they want to call, and it costs real leads on a phone
+where tapping to call is what people do.
+
+`listing_events.event_type` already includes `click_phone`. Whoever
+designed that table expected this, so the measurement half needs a
+`tel:` link that logs before dialling, not a new system.
+
+### What has to change WITH it, not after
+
+**The "free until five requests" offer cannot survive this.** It is a
+promise denominated in counted requests, and a tracked phone tap is not
+one — it measures intent, not a conversation. Switching contact on
+without repricing means billing against a number that no longer means
+what it did. The offer appears in four places: the homepage claim panel,
+the county claim panel, terms, and the request dialog's own copy.
+
+**The exclusivity promise stops being the product.** "Every request goes
+to you and nobody else. We never send one homeowner to several
+inspectors, and we never charge per lead" is true of form requests and
+says nothing about a published phone number. It stays honest, but it
+stops being the reason to pay, so the pitch has to rest on placement and
+traffic instead. Same for the privacy page's version of it.
+
+**Churn is a real signal but a slow one.** "They keep paying or they do
+not" is the honest fallback and it is genuinely sufficient for deciding
+whether the site works. It is not sufficient for noticing a single
+inspector whose leads dried up two months ago. That is precisely why the
+click metric is still worth having: not to bill against, but to see a
+problem before a cancellation does.
+
+### What would bring it forward
+
+An inspector saying the form cost them a job — a homeowner who wanted to
+call and did not fill anything in. One such report is worth more than the
+volume trigger, because it is the failure the form was always risking.
+
+---
+
 ## 2026-09-11 — When both featured spots fill, show a waitlist, not an empty slot
 
 **Decided. Not built.** Build it when a second county sells its first
