@@ -32,7 +32,10 @@ const live = counties.filter((c) => c.status === 'live');
     </div>
   </section>
 
-  <section class="section">
+  <!-- No top padding: the hero's own bottom padding already separates these,
+       and stacking both left a 75px hole in the middle of one continuous
+       thought, with no rule or heading to explain it. -->
+  <section class="section" id="intro" style="padding-top:0;">
     <div class="wrap">
       <div class="legal" style="max-width:68ch;">
         <p>
