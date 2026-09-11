@@ -72,6 +72,45 @@ for (const path of pages) {
     );
   }
 
+  // The share preview is invisible from the page itself: nothing looks wrong
+  // in a browser when these are missing, and the first time you find out is
+  // when a link you sent someone renders as a bare URL. og:image must be
+  // absolute — a crawler has no page to resolve a relative path against — and
+  // must point at a file that actually shipped, which is the half a tag check
+  // alone would miss.
+  for (const [tag, pattern] of [
+    ['og:title', /<meta property="og:title" content="([^"]*)"/],
+    ['og:image', /<meta property="og:image" content="([^"]*)"/],
+    ['og:url', /<meta property="og:url" content="([^"]*)"/],
+    ['twitter:card', /<meta name="twitter:card" content="([^"]*)"/],
+  ]) {
+    const value = html.match(pattern)?.[1];
+    check(value !== undefined && value.trim().length > 0, `${page}: no ${tag}.`,
+      'A shared link previews as a bare URL without it.');
+    if (value && (tag === 'og:image' || tag === 'og:url')) {
+      check(value.startsWith('https://'), `${page}: ${tag} is not absolute ("${value}").`,
+        'Crawlers cannot resolve a relative URL.');
+    }
+  }
+
+  const ogImage = html.match(/<meta property="og:image" content="([^"]*)"/)?.[1];
+  if (ogImage) {
+    const file = join(DIST, new URL(ogImage).pathname);
+    let bytes = 0;
+    try {
+      bytes = (await stat(file)).size;
+    } catch {
+      failures.push(`${page}: og:image points at ${ogImage}, which was not built.`);
+    }
+    // Both limits are real: iMessage and WhatsApp give up on a slow fetch and
+    // fall back to a bare link, and an empty file would still pass a tag check.
+    if (bytes) {
+      check(bytes > 1024, `og:image is only ${bytes} bytes.`, 'Almost certainly not a real image.');
+      check(bytes <= 5 * 1024 * 1024, `og:image is ${Math.round(bytes / 1024)}KB.`,
+        'Some scrapers skip images over about 5MB.');
+    }
+  }
+
   const h1s = html.match(/<h1[\s>]/g) ?? [];
   check(h1s.length === 1, `${page}: found ${h1s.length} <h1> elements, expected exactly 1.`);
 
