@@ -354,3 +354,14 @@ footer p { font-size: 0.8rem; color: var(--slate); margin: 4px 0; max-width: 70c
    max-width is the source file's own width so the mark is never upscaled. */
 .logo-plate { background: #FFFFFF; border: 1px solid var(--line); border-radius: 4px; padding: 14px; margin-bottom: 14px; display: flex; align-items: center; justify-content: center; }
 .logo-plate img { max-width: 210px; max-height: 80px; width: auto; height: auto; object-fit: contain; }
+
+/* Inspector Q&A inside the navy claim panel. The heading needs an explicit
+   colour: the global h1,h2,h3 rule paints headings --navy, which is this
+   panel's own background, so without this it renders navy on navy and is
+   invisible. .claim h1,h2 already carry their own override for the same
+   reason; h3 had no reason to exist inside the panel until now.
+   Sits on the panel's own ground rather than in a card, so it reads as the
+   same voice answering a question, not a second promotional block. */
+.inspector-qa { margin-top: 26px; padding-top: 20px; border-top: 1px solid rgba(232,169,58,0.28); }
+.inspector-qa h3 { color: var(--mustard); font-size: 1rem; font-weight: 600; margin-bottom: 8px; }
+.inspector-qa p { color: #B9C4CC; margin-top: 8px; max-width: 60ch; font-size: 0.95rem; }
