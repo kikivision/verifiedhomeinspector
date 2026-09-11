@@ -324,3 +324,21 @@ footer p { font-size: 0.8rem; color: var(--slate); margin: 4px 0; max-width: 70c
   .claim { flex-direction: column; align-items: flex-start; }
   .claim-form { grid-template-columns: 1fr; min-width: 0; max-width: none; width: 100%; }
 }
+
+/* Homepage county chooser. Two columns matches .featured-grid above, so the
+   cards line up with the rest of the site rather than introducing a second
+   grid rhythm. The whole card is the link: a card with a single destination
+   that only responds on its last line reads as broken on a phone. */
+.county-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+.county-card { display: block; text-decoration: none; color: inherit; transition: border-color .15s, transform .15s; }
+.county-card:hover { border-color: var(--mustard-deep); transform: translateY(-2px); }
+.county-card h3 { font-family: 'Fraunces', serif; }
+.county-count { margin-top: 12px; font-size: 0.92rem; font-weight: 500; color: var(--navy); }
+.county-card .view { display: inline-block; margin-top: 14px; }
+.claim-counties { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+.claim-counties a { border: 1px solid rgba(232,169,58,0.45); color: var(--mustard); padding: 8px 16px; border-radius: 3px; font-size: 0.92rem; font-weight: 500; }
+.claim-counties a:hover { background: var(--mustard); color: var(--navy); }
+
+@media (max-width: 700px) {
+  .county-grid { grid-template-columns: 1fr; }
+}

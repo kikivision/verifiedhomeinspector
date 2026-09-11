@@ -1,0 +1,102 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Faq from '../components/Faq.astro';
+import { counties, searchName } from '../lib/counties';
+import { getListingCounts } from '../lib/supabase';
+
+// The root was a redirect to /fl/pinellas/ — an Astro redirect, which in a
+// static build emits a noindex meta-refresh stub. Google confirmed it:
+// "Excluded by 'noindex' tag". So the domain itself could never rank, including
+// for its own brand name, and with a second county there was no longer one
+// obvious place to send people.
+const live = counties.filter((c) => c.status === 'live');
+const comingSoon = counties.filter((c) => c.status !== 'live');
+const counts = await getListingCounts(live.map((c) => c.slug));
+const total = Object.values(counts).reduce((sum, n) => sum + n, 0);
+---
+
+<Layout
+  title="Florida Home Inspectors | Verified Home Inspector"
+  description="Every licensed home inspector in Florida, from state DBPR records. Browse by county for a pre-purchase inspection, a 4-point, or a wind mitigation."
+>
+  <!-- The header nav is shared and its links are in-page anchors: #homebuyers,
+       #browse, #insurance-renewals, #claim. They exist on the county pages, so
+       this page has to carry the same four or half the nav silently does
+       nothing here. -->
+  <section class="hero" id="homebuyers">
+    <svg class="hex-motif" width="300" height="280" viewBox="0 0 260 250" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <polygon points="74,20 126,50 126,110 74,140 22,110 22,50" stroke="#1D2B3A" stroke-opacity="0.07" stroke-width="2"/>
+      <polygon points="186,20 238,50 238,110 186,140 134,110 134,50" stroke="#1D2B3A" stroke-opacity="0.07" stroke-width="2"/>
+      <polygon points="130,116 182,146 182,206 130,236 78,206 78,146" stroke="#1D2B3A" stroke-opacity="0.07" stroke-width="2"/>
+    </svg>
+    <div class="wrap hero-grid">
+      <div>
+        <div class="county-tag">Florida</div>
+        <h1>Find a licensed home inspector in Florida</h1>
+        <p style="color:var(--navy-soft);font-weight:500;margin-top:10px;">
+          Before you close on a house, an inspection tells you the condition of the roof,
+          structure, electrical, plumbing, and HVAC, which are the systems that cost the most
+          to fix once the house is yours.
+        </p>
+        <p>
+          Every inspector here holds a current Florida home inspector license, listed straight
+          from state DBPR records. Pick your county to see who works in your area, what they
+          specialise in, and how to reach them.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="browse">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>Browse by county</h2>
+        <div class="note">{total.toLocaleString()} licensed inspectors listed</div>
+      </div>
+      <div class="county-grid">
+        {live.map((county) => (
+          <a class="card county-card" href={`/fl/${county.slug}/`}>
+            <h3>{searchName(county)}</h3>
+            {/* Orlando and Tampa are what people search, but the county is the
+                precise fact and the only thing the data is keyed on, so a card
+                whose heading is a city still names the county underneath. */}
+            <div class="city">{county.metro ? `${county.name}, FL` : 'Florida'}</div>
+            <div class="county-count">{(counts[county.slug] ?? 0).toLocaleString()} licensed inspectors</div>
+            <span class="view">Browse {searchName(county)} &rarr;</span>
+          </a>
+        ))}
+      </div>
+      {comingSoon.length > 0 && (
+        <p class="note" style="margin-top:16px;color:var(--slate);font-size:0.88rem;">
+          Coming soon: {comingSoon.map((c) => c.name).join(', ')}.
+        </p>
+      )}
+    </div>
+  </section>
+
+  <Faq />
+
+  <section class="section" id="claim">
+    <div class="wrap">
+      <div class="claim coming-soon-panel">
+        <div class="claim-eyebrow">For home inspectors</div>
+        <h2>Own a home inspection business in Florida?</h2>
+        <p style="max-width:52ch;">
+          Your license is already listed here, straight from the DBPR record. Claiming it puts
+          your business name on the listing and moves you above every unclaimed inspector in
+          your county, and it costs nothing until we have passed you five homeowner requests.
+          Open your county to claim it.
+        </p>
+        <!-- Links rather than a second copy of the claim form. The form carries
+             the county it was submitted from, so it belongs on a county page;
+             duplicating it here would mean two forms to keep in step and a
+             county field with nothing to fill it. -->
+        <div class="claim-counties">
+          {live.map((county) => (
+            <a href={`/fl/${county.slug}/#claim`}>{searchName(county)}</a>
+          ))}
+        </div>
+      </div>
+    </div>
+  </section>
+</Layout>
