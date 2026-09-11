@@ -29,6 +29,22 @@ export interface Listing {
   cert_badges: string[];
   photo_urls: string[];
   featured_position: number | null;
+  /**
+   * Brand mark, as a site-relative path like "/logos/rmc-inspections.png".
+   *
+   * Named path rather than the conventional url because "url" reads as where
+   * the logo GOES, and it goes nowhere — it renders as a bare <img> with no
+   * anchor around it, deliberately. A logo linking to the inspector's own site
+   * would be a lead leaving uncounted, the same hole as printing their phone
+   * number. The value is also required to be relative, so it is a path in the
+   * literal sense too.
+   *
+   * Not part of photo_urls: a logo and a job photo want opposite treatment —
+   * one contained on a plate at its own aspect ratio, the other filling a
+   * square slot — and sharing one field is what put a brand mark in a square
+   * photo slot to begin with.
+   */
+  logo_path: string | null;
   /** Years in business, as the inspector states it. Rendered as "N+ years". */
   years_experience: number | null;
   claimed_at: string | null;

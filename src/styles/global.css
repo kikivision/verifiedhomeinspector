@@ -118,7 +118,6 @@ select, .search-bar input { font-family: 'IBM Plex Sans', sans-serif; padding: 1
 .photo-strip { display: flex; gap: 6px; margin-bottom: 14px; }
 .photo-strip > * { flex: 0 0 calc((100% - 12px) / 3); width: auto; }
 .photo-slot { width: 100%; aspect-ratio: 1; border-radius: 4px; background: #EEEAE0; border: 1px dashed var(--line); display: flex; align-items: center; justify-content: center; font-size: 0.68rem; color: var(--slate); text-align: center; line-height: 1.2; }
-.avatar-slot { width: 100%; aspect-ratio: 1; border-radius: 4px; background: var(--navy-soft); color: var(--paper-raised); display: flex; align-items: center; justify-content: center; font-family: 'Fraunces', serif; font-size: 1.1rem; font-weight: 500; }
 .cert-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .cert { font-size: 0.74rem; color: var(--slate); background: transparent; border: 1px dashed var(--line); padding: 3px 9px; border-radius: 3px; }
 .request-btn { background: var(--navy); color: var(--paper-raised); border: none; padding: 8px 16px; border-radius: 3px; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
@@ -348,3 +347,10 @@ footer p { font-size: 0.8rem; color: var(--slate); margin: 4px 0; max-width: 70c
 @media (max-width: 700px) {
   .county-grid { grid-template-columns: 1fr; }
 }
+
+/* Logo plate on a featured card. White rather than the card's warm ground
+   because the logos we get are flattened PNGs with baked-in white; an explicit
+   plate makes that deliberate instead of looking like a failed cut-out.
+   max-width is the source file's own width so the mark is never upscaled. */
+.logo-plate { background: #FFFFFF; border: 1px solid var(--line); border-radius: 4px; padding: 14px; margin-bottom: 14px; display: flex; align-items: center; justify-content: center; }
+.logo-plate img { max-width: 210px; max-height: 80px; width: auto; height: auto; object-fit: contain; }

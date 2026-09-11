@@ -17,6 +17,7 @@
  *   --business, --phone          details the inspector is paying to show
  *   --specialties "A, B, C"      comma-separated, replaces the list outright
  *   --experience N               years in business, shown as "N+ years"
+ *   --logo /logos/name.png       brand mark; site-relative, committed to public/
  *   --position N                 featured slot, 1-6, required for featured
  *   --dry-run                    print the change, write nothing
  *   --deploy                     trigger a rebuild so the change goes live
@@ -151,6 +152,15 @@ async function main() {
     // needs a way to remove it, and --specialties "" is that way. Appending
     // would make removal impossible without hand-written SQL, which is the one
     // thing this script exists to avoid.
+    if (flags.logo !== undefined) {
+      // Site-relative only. An absolute URL would put a third-party host in the
+      // render path of a paid card, so the file is committed to public/ and
+      // served from our own domain.
+      if (flags.logo && !flags.logo.startsWith('/')) {
+        throw new Error(`--logo must be a site-relative path like /logos/name.png, got "${flags.logo}".`);
+      }
+      update.logo_path = flags.logo || null;
+    }
     if (flags.experience !== undefined) {
       const years = Number(flags.experience);
       if (!Number.isInteger(years) || years < 0 || years > 80) {
