@@ -49,6 +49,12 @@ the click. Raw impression logging and full lead-capture forms
 deliberately out of scope for v1 — see the comments in that file
 before adding either.
 
+## Decisions
+
+Things decided but not built, and things built in a way that looks wrong
+until you know why, live in [DECISIONS.md](DECISIONS.md). Read it before
+changing the featured row.
+
 ## Brand tokens
 
 All colors, type, and component styles live in
