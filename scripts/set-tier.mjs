@@ -159,7 +159,7 @@ async function main() {
       if (flags.logo && !flags.logo.startsWith('/')) {
         throw new Error(`--logo must be a site-relative path like /logos/name.png, got "${flags.logo}".`);
       }
-      update.logo_url = flags.logo || null;
+      update.logo_path = flags.logo || null;
     }
     if (flags.experience !== undefined) {
       const years = Number(flags.experience);

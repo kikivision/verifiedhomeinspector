@@ -99,9 +99,9 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
 
                     Capped at the file's own 210px so it is never upscaled;
                     a small source enlarged is worse than a small source. */}
-                {l.logo_url && (
+                {l.logo_path && (
                   <div class="logo-plate">
-                    <img src={l.logo_url} alt={`${l.business_name ?? l.licensee_name} logo`} />
+                    <img src={l.logo_path} alt={`${l.business_name ?? l.licensee_name} logo`} />
                   </div>
                 )}
                 {/* No initials tile. A navy square reading "RW" is not a
