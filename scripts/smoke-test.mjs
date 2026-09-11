@@ -56,6 +56,13 @@ for (const path of pages) {
   // A redirect stub has no head worth checking.
   const isRedirectStub = /<meta http-equiv="refresh"/i.test(html) && html.length < 2000;
   if (isRedirectStub) {
+    // The root was a stub for exactly as long as nobody noticed, because this
+    // check skipped it: Astro's `redirects` emits a meta-refresh page carrying
+    // <meta name="robots" content="noindex">, so the domain itself could not be
+    // indexed and no assertion below ever ran against it. Every other page may
+    // legitimately be a stub; the homepage may not.
+    check(page !== '/', 'The homepage is a redirect stub.',
+      'Astro emits these with noindex, so the domain cannot rank at all.');
     notes.push(`${page} is a redirect stub, skipped`);
     continue;
   }

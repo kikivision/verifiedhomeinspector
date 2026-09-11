@@ -62,3 +62,30 @@ export async function getListingsForCounty(countySlug: string): Promise<Listing[
     return a.licensee_name.localeCompare(b.licensee_name);
   });
 }
+
+/**
+ * How many live listings each county has, for the homepage county chooser.
+ *
+ * A HEAD count per county rather than one query grouped client-side, because
+ * PostgREST caps a row-returning select at 1,000 and there are already more
+ * listings than that across the four counties — a grouped count would silently
+ * lose the tail and under-report a county with no error. `head: true` returns
+ * only the count and is not subject to that cap.
+ */
+export async function getListingCounts(slugs: string[]): Promise<Record<string, number>> {
+  const entries = await Promise.all(
+    slugs.map(async (slug) => {
+      const { count, error } = await supabase
+        .from('listings')
+        .select('id', { count: 'exact', head: true })
+        .is('delisted_at', null)
+        .eq('county', slug);
+      if (error) {
+        console.error(`Error counting listings for ${slug}:`, error.message);
+        return [slug, 0] as const;
+      }
+      return [slug, count ?? 0] as const;
+    }),
+  );
+  return Object.fromEntries(entries);
+}
