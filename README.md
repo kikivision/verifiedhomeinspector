@@ -117,10 +117,11 @@ The `phone` column, the `click_phone` event type and the `.card .phone`
 CSS all exist and are unused. That is not an unfinished feature, and
 wiring them up today would quietly break the model.
 
-This is current policy rather than a permanent rule — the plan is to show
-contact details once the volume makes hand-routing impossible, and the
-pricing has to change in the same step. See [DECISIONS.md](DECISIONS.md)
-before touching it.
+This is current policy rather than a permanent rule. The plan is to show
+contact details eventually, but leaving beta has to happen first — the
+"free until five requests" offer is denominated in counted requests, and
+showing contact ends counting. See [DECISIONS.md](DECISIONS.md) before
+touching either.
 
 ## Analytics scope
 
