@@ -355,6 +355,17 @@ footer p { font-size: 0.8rem; color: var(--slate); margin: 4px 0; max-width: 70c
 .logo-plate { background: #FFFFFF; border: 1px solid var(--line); border-radius: 4px; padding: 14px; margin-bottom: 14px; display: flex; align-items: center; justify-content: center; }
 .logo-plate img { max-width: 210px; max-height: 80px; width: auto; height: auto; object-fit: contain; }
 
+/* The statewide insurance page cannot know which county a reader is in, so it
+   asks. Sized as a primary control rather than a form field, because choosing
+   a county is the action the page is asking for. The homepage links every
+   county in its own browse section, so nothing crawlable is lost here. */
+.county-picker { margin-top: 18px; }
+.county-picker select {
+  font-size: 1rem; padding: 13px 16px; min-width: 280px; max-width: 100%;
+  border: 1px solid var(--navy); border-radius: 4px; background: var(--paper-raised);
+  color: var(--navy); font-weight: 500; cursor: pointer;
+}
+
 /* Inspector Q&A inside the navy claim panel. The heading needs an explicit
    colour: the global h1,h2,h3 rule paints headings --navy, which is this
    panel's own background, so without this it renders navy on navy and is

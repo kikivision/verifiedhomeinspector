@@ -1,6 +1,5 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import Faq from '../components/Faq.astro';
 import { counties, searchName } from '../lib/counties';
 import { getListingCounts } from '../lib/supabase';
 
@@ -74,7 +73,26 @@ const total = Object.values(counts).reduce((sum, n) => sum + n, 0);
     </div>
   </section>
 
-  <Faq />
+  <!-- The FAQ moved to /insurance-inspections/. Two pages carrying the same
+       FAQPage schema compete with each other for the same query rather than
+       one of them winning it, so it lives on exactly one URL now. -->
+  <section class="section" id="insurance-renewals">
+    <div class="wrap">
+      <div class="claim">
+        <div>
+          <div class="claim-eyebrow">For homeowners</div>
+          <h2>Shopping for cheaper home insurance?</h2>
+          <p>
+            A carrier will usually ask for a 4-point inspection on an older home before it writes
+            a policy, and a wind mitigation is what earns the storm-resistance discounts. Both
+            are done by the same licensed inspectors listed here, and both come round again each
+            time you change carrier.
+          </p>
+        </div>
+        <a href="/insurance-inspections/" class="btn-primary">Insurance inspections explained</a>
+      </div>
+    </div>
+  </section>
 
   <section class="section" id="claim">
     <div class="wrap">

@@ -115,7 +115,13 @@ placed straight from a card is a lead nobody can count.
 
 The `phone` column, the `click_phone` event type and the `.card .phone`
 CSS all exist and are unused. That is not an unfinished feature, and
-wiring them up would quietly break the model.
+wiring them up today would quietly break the model.
+
+This is current policy rather than a permanent rule. The plan is to show
+contact details eventually, but leaving beta has to happen first — the
+"free until five requests" offer is denominated in counted requests, and
+showing contact ends counting. See [DECISIONS.md](DECISIONS.md) before
+touching either.
 
 ## Analytics scope
 
