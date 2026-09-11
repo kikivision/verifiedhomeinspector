@@ -13,6 +13,9 @@ create table listings (
   specialties jsonb not null default '[]'::jsonb,
   cert_badges jsonb not null default '[]'::jsonb,
   photo_urls jsonb not null default '[]'::jsonb,
+  -- Brand mark. Separate from photo_urls because a logo is contained on a
+  -- plate at its own aspect ratio and a job photo fills a square slot.
+  logo_url text,
   featured_position int check (featured_position between 1 and 6),
   -- Years in business, as the inspector states it, rendered as "N+ years".
   -- Not a cert_badge: it is not a certification, and putting it there would

@@ -347,3 +347,10 @@ footer p { font-size: 0.8rem; color: var(--slate); margin: 4px 0; max-width: 70c
 @media (max-width: 700px) {
   .county-grid { grid-template-columns: 1fr; }
 }
+
+/* Logo plate on a featured card. White rather than the card's warm ground
+   because the logos we get are flattened PNGs with baked-in white; an explicit
+   plate makes that deliberate instead of looking like a failed cut-out.
+   max-width is the source file's own width so the mark is never upscaled. */
+.logo-plate { background: #FFFFFF; border: 1px solid var(--line); border-radius: 4px; padding: 14px; margin-bottom: 14px; display: flex; align-items: center; justify-content: center; }
+.logo-plate img { max-width: 210px; max-height: 80px; width: auto; height: auto; object-fit: contain; }

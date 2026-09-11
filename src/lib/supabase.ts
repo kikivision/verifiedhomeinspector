@@ -29,6 +29,13 @@ export interface Listing {
   cert_badges: string[];
   photo_urls: string[];
   featured_position: number | null;
+  /**
+   * Brand mark, served from /logos/. Deliberately not part of photo_urls: a
+   * logo and a job photo want different treatment — one is contained on a
+   * plate at its own aspect ratio, the other fills a square slot — and sharing
+   * one field is what put a brand mark in a square photo slot to begin with.
+   */
+  logo_url: string | null;
   /** Years in business, as the inspector states it. Rendered as "N+ years". */
   years_experience: number | null;
   claimed_at: string | null;

@@ -90,6 +90,20 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
                     the only people who ever saw them were homeowners — an
                     unfinished-looking card on a placement someone is paying
                     for. Empty now means absent, not advertised. */}
+                {/* The logo sits on an explicit white plate. The file has no
+                    alpha — 64% of it is solid #FFFFFF — and the card ground is
+                    warm off-white, so placed bare it reads as a white rectangle
+                    someone forgot to cut out. Keying the white out instead
+                    would fringe the navy and teal edges at this size. A plate
+                    makes the white deliberate.
+
+                    Capped at the file's own 210px so it is never upscaled;
+                    a small source enlarged is worse than a small source. */}
+                {l.logo_url && (
+                  <div class="logo-plate">
+                    <img src={l.logo_url} alt={`${l.business_name ?? l.licensee_name} logo`} />
+                  </div>
+                )}
                 {/* No initials tile. A navy square reading "RW" is not a
                     brand, it is a placeholder wearing the colours of one, and
                     with the photo slots gone it was the largest element on a
