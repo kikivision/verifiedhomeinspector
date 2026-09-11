@@ -1,0 +1,147 @@
+---
+// Every claim on this page was checked against the code rather than written
+// from a template: the field lists come from the three form definitions in
+// [county]/index.astro, the analytics description from lib/gtag.ts, and the
+// listing_events description from lib/analytics.ts, which writes three
+// columns and no identifier of any kind.
+import Layout from '../layouts/Layout.astro';
+
+const UPDATED = 'September 10, 2026';
+---
+
+<Layout
+  title="Privacy Policy | Verified Home Inspector"
+  description="What Verified Home Inspector collects, what it does with it, and who it is shared with. Homeowner requests go to one inspector and are never sold or resold."
+>
+  <section class="section">
+    <div class="wrap">
+      <article class="legal">
+        <h1>Privacy Policy</h1>
+        <p class="legal-updated">Last updated {UPDATED}</p>
+
+        <p>
+          Verified Home Inspector is operated by Sunstate Bay Ventures LLC, a Florida limited
+          liability company. This page describes what the site collects, what happens to it, and
+          who it goes to. It is written to be read rather than to be comprehensive, so if
+          something here is unclear, ask and we will answer it plainly.
+        </p>
+
+        <h2>The directory itself is public record</h2>
+        <p>
+          The inspector names, license numbers, cities, and license statuses in this directory
+          come from the Florida Department of Business and Professional Regulation, which
+          publishes them as public records. We did not collect them from the inspectors listed,
+          and an inspector does not have to give us anything to appear here. The DBPR extract
+          carries no phone numbers and no email addresses, so neither appears on a listing
+          unless the inspector gave it to us themselves.
+        </p>
+        <p>
+          If you are listed and believe your record is wrong, tell us and we will correct it
+          against the current DBPR record.
+        </p>
+
+        <h2>What you send us through a form</h2>
+        <p>There are three forms on this site, and each collects only what it needs.</p>
+        <ul>
+          <li>
+            <strong>Requesting an inspector.</strong> Your name, email address, phone number if
+            you give one, the city or ZIP of the property, the kind of inspection you want, and
+            anything you write in the message box. The county and the name and license number of
+            the inspector you chose are recorded with it.
+          </li>
+          <li>
+            <strong>Claiming a listing.</strong> Your license number, your name, your business
+            name if you give one, your email address, your phone number if you give one, and
+            which plan you selected.
+          </li>
+          <li>
+            <strong>Asking about a featured spot.</strong> The same details as a claim, plus
+            anything you write in the message box.
+          </li>
+        </ul>
+        <p>
+          Each form also contains a hidden field that a person never sees. Automated submissions
+          fill it in and real people do not, so anything that arrives with it filled is
+          discarded as spam.
+        </p>
+
+        <h2>Where a homeowner request goes</h2>
+        <p>
+          A request goes to the one inspector you selected, and to nobody else. We do not send
+          the same homeowner to several inspectors, we do not sell contact details, and we do not
+          charge inspectors for individual leads. We keep a count of how many requests a listing
+          has received, because a listing is free until it has received five and that count is
+          how the billing promise is kept.
+        </p>
+
+        <h2>Analytics</h2>
+        <p>
+          The site uses Google Analytics 4 to count visits and to count how many times the
+          request, claim, and featured buttons are used. Google Analytics sets cookies in your
+          browser and collects the usual technical information: pages viewed, approximate
+          location derived from your IP address, and your device and browser type. It runs only
+          on the live site, so visits to development and preview versions are not recorded.
+        </p>
+        <p>
+          You can prevent this by blocking cookies in your browser settings, or by installing the
+          Google Analytics opt-out browser add-on that Google publishes.
+        </p>
+
+        <h2>Counting clicks on a listing</h2>
+        <p>
+          When a request button is used, the site records three things in its own database: which
+          listing was clicked, what kind of click it was, and which part of the page it came
+          from. It does not record your name, your email address, your IP address, or any
+          identifier that could be traced back to you, and there is no way to reconstruct who
+          clicked from what is stored. These rows exist so an inspector can be shown how much
+          interest their listing has drawn.
+        </p>
+
+        <h2>Companies that process this on our behalf</h2>
+        <ul>
+          <li><strong>Netlify</strong> hosts the site and receives the form submissions.</li>
+          <li><strong>Google Analytics</strong> provides the visit and button counts described above.</li>
+          <li><strong>Supabase</strong> stores the directory and the click counts.</li>
+        </ul>
+        <p>
+          Each of these has its own privacy policy governing what it does with what it handles.
+        </p>
+
+        <h2>How long any of it is kept</h2>
+        <p>
+          Form submissions are kept while they are useful — a homeowner request until the
+          inspection is arranged and long enough after that to resolve any question about it, and
+          an inspector's claim for as long as the listing is active. Ask us to delete a
+          submission and we will, unless we are required to keep it.
+        </p>
+
+        <h2>Asking what we hold, or asking us to delete it</h2>
+        <p>
+          You can ask what we hold about you, ask for it to be corrected, or ask for it to be
+          deleted. Use the form on the directory page and we will reply to the address you give
+          us. We may need to confirm you are who you say you are before acting on a request about
+          someone else's details.
+        </p>
+
+        <h2>Children</h2>
+        <p>
+          This site is meant for adults arranging or performing home inspections. It is not
+          directed at children, and we do not knowingly collect anything from them.
+        </p>
+
+        <h2>Changes</h2>
+        <p>
+          If this policy changes, the date at the top of the page changes with it. Material
+          changes will be described on the page rather than folded in silently.
+        </p>
+
+        <h2>Contact</h2>
+        <p>
+          Questions about this policy go through the same forms as everything else. Use the
+          <a href="/fl/pinellas/#claim">form on the directory page</a> and we will reply to the
+          address you give us.
+        </p>
+      </article>
+    </div>
+  </section>
+</Layout>

@@ -222,6 +222,21 @@ select, .search-bar input { font-family: 'IBM Plex Sans', sans-serif; padding: 1
 
 footer { border-top: 1px solid var(--line); padding: 28px 0; margin-top: 20px; }
 footer p { font-size: 0.8rem; color: var(--slate); margin: 4px 0; max-width: 70ch; }
+.footer-meta { display: flex; flex-wrap: wrap; gap: 4px 18px; align-items: baseline; }
+.footer-meta a { color: var(--slate); text-decoration: underline; text-underline-offset: 2px; }
+.footer-meta a:hover { color: var(--navy); }
+
+/* A single readable column. 68ch is the same measure the hero paragraph uses,
+   so a page of prose does not run the full 1120px of the wrap. */
+.legal { max-width: 68ch; }
+.legal h1 { font-size: 2rem; font-weight: 500; line-height: 1.2; }
+.legal h2 { font-size: 1.15rem; font-weight: 500; margin: 34px 0 8px; }
+.legal p, .legal li { color: var(--slate); font-size: 0.95rem; }
+.legal ul { padding-left: 20px; }
+.legal li { margin-bottom: 8px; }
+.legal strong { color: var(--navy); font-weight: 500; }
+.legal a { color: var(--mustard-deep); text-decoration: underline; text-underline-offset: 2px; }
+.legal-updated { font-size: 0.85rem; margin-top: 0; }
 
 /* Coming soon */
 .coming-soon-panel { flex-direction: column; align-items: flex-start; }
