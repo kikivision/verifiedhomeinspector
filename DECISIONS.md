@@ -140,8 +140,14 @@ running out.
 Get featured button and its `featured_inquiry` event disappear from the
 top of the page, and the only surviving pitch is one sentence in the
 claim panel below 316 listings. An inspector who has finally decided has
-no prominent way to say so. That button is not theoretical — a visitor
-fired `featured_inquiry` from it on 2026-09-10, the site's second day.
+no prominent way to say so.
+
+Do not cite the `featured_inquiry` count as evidence that button works.
+It fires when the dialog OPENS, not when anything is sent, so it counts
+curiosity rather than intent. As of 2026-09-11 the site has three form
+submissions in total and all three are founder tests ("karen test", "rmc
+test"). Nobody outside has submitted anything through any form, and no
+featured inquiry has ever been submitted at all.
 
 **A waitlist is also the pricing instrument we do not have.** Four
 inspectors waiting at $50/mo means the price is too low or the cap of 2
