@@ -14,6 +14,10 @@ create table listings (
   cert_badges jsonb not null default '[]'::jsonb,
   photo_urls jsonb not null default '[]'::jsonb,
   featured_position int check (featured_position between 1 and 6),
+  -- Years in business, as the inspector states it, rendered as "N+ years".
+  -- Not a cert_badge: it is not a certification, and putting it there would
+  -- have meant a card claiming a credential nobody issued.
+  years_experience int check (years_experience between 0 and 80),
   claimed_at timestamptz,
   -- Set when a license stops appearing in the DBPR extract. Null means current.
   -- The importer marks rows here and never deletes them, so a claimed listing

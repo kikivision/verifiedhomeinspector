@@ -29,6 +29,8 @@ export interface Listing {
   cert_badges: string[];
   photo_urls: string[];
   featured_position: number | null;
+  /** Years in business, as the inspector states it. Rendered as "N+ years". */
+  years_experience: number | null;
   claimed_at: string | null;
   created_at: string;
 }

@@ -84,21 +84,25 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
             {featured.map((l) => (
               <div class="card featured">
                 <div class="badge">Featured</div>
+                {/* "+ Add photo" and "+ Add certification" used to render here
+                    whenever these were empty. They read as prompts to the
+                    inspector, but this site has no login and no editing UI, so
+                    the only people who ever saw them were homeowners — an
+                    unfinished-looking card on a placement someone is paying
+                    for. Empty now means absent, not advertised. */}
                 <div class="photo-strip">
                   <div class="avatar-slot">
                     {l.licensee_name.split(' ').map((n) => n[0]).slice(0, 2).join('')}
                   </div>
-                  {l.photo_urls.length > 0 ? (
-                    l.photo_urls.slice(0, 2).map((url) => <img src={url} alt="" class="photo-slot" />)
-                  ) : (
-                    <>
-                      <div class="photo-slot">+ Add<br />photo</div>
-                      <div class="photo-slot">+ Add<br />photo</div>
-                    </>
-                  )}
+                  {l.photo_urls.slice(0, 2).map((url) => <img src={url} alt="" class="photo-slot" />)}
                 </div>
                 <h3>{l.business_name || l.licensee_name}</h3>
-                <div class="city">{l.licensee_name} · {l.city}, FL</div>
+                {/* The heading falls back to the licensee's name when there is
+                    no business name, so printing the name again here rendered
+                    it twice — "Robert W Martin / Robert W Martin · Largo, FL"
+                    on the first featured card the site ever had. The list rows
+                    below already guard this; the featured card did not. */}
+                <div class="city">{l.business_name ? `${l.licensee_name} · ` : ''}{l.city}, FL</div>
                 <div class="tags">
                   {l.specialties.length > 0 ? (
                     l.specialties.map((s) => <span class="tag">{s}</span>)
@@ -106,14 +110,30 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
                     <span class="tag">Licensed Home Inspector</span>
                   )}
                 </div>
-                <div class="cert-row">
-                  {l.cert_badges.length > 0 ? (
-                    l.cert_badges.map((c) => <span class="cert">{c}</span>)
-                  ) : (
-                    <span class="cert">+ Add certification</span>
-                  )}
-                </div>
+                {(l.cert_badges.length > 0 || l.years_experience) && (
+                  <div class="cert-row">
+                    {l.cert_badges.map((c) => <span class="cert">{c}</span>)}
+                    {/* Years in business is not a certification, so it is its
+                        own column rather than a badge stuffed into that list —
+                        but it belongs on the same row, which is where a reader
+                        is already looking for credentials. */}
+                    {l.years_experience && (
+                      <span class="cert">{l.years_experience}+ years in business</span>
+                    )}
+                  </div>
+                )}
                 <div class="lic"><span class="check">✓</span>FL Lic #{l.license_number} — DBPR verified, active</div>
+                {/* Deliberately the only way to reach an inspector: no phone
+                    number, no website link, on any tier. Every lead has to pass
+                    through here to be counted, because the offer is "free until
+                    we have passed you five requests" and a call placed straight
+                    from the card is a lead nobody can count — least of all the
+                    inspector deciding whether this is worth paying for.
+
+                    So the unused pieces are not an unfinished feature: the
+                    phone column, the click_phone event type and the .card .phone
+                    CSS all exist, and rendering any of them would quietly break
+                    the business model. If that changes, change it on purpose. */}
                 <div class="contact">
                   <button class="request-btn" data-listing-id={l.id} data-page-context={`county_${county.slug}_featured`}>
                     Request this inspector
