@@ -388,3 +388,13 @@ footer p { font-size: 0.8rem; color: var(--slate); margin: 4px 0; max-width: 70c
 .faq-sources { font-size: 0.82rem; color: var(--slate); margin-top: 10px; }
 .faq-sources a { color: var(--mustard-deep); text-decoration: underline; text-underline-offset: 2px; }
 .faq-sources a:hover { color: var(--navy); }
+
+/* The only action on an unclaimed row. Styled as the primary control it now
+   is, rather than as the quiet text link it replaced. */
+.claim-btn-row {
+  display: inline-block; text-align: center; background: var(--mustard);
+  color: var(--navy); border: 1px solid var(--mustard-deep); border-radius: 3px;
+  padding: 8px 14px; font-size: 0.85rem; font-weight: 600;
+}
+.claim-btn-row:hover { background: var(--mustard-deep); color: var(--paper-raised); }
+.unclaimed-mark { color: var(--mustard-deep); font-weight: 600; font-size: 0.85rem; }

@@ -327,23 +327,39 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
                   <span class="claimed-note">Responds to requests</span>
                 </div>
               ) : (
-                <div>
-                  <a href="#claim" class="claim-link" data-license={l.license_number} data-county={county.slug}>
-                    Unclaimed <span>Is this you? Claim it</span>
-                  </a>
+                <div class="claimed-status">
+                  <span class="unclaimed-mark">Unclaimed</span>
+                  <span class="claimed-note">Free to claim, $10/mo after five requests</span>
                 </div>
               )}
+              {/* An unclaimed listing has no contact path, and that is the point.
+                  Offering to pass a homeowner to an inspector we cannot reach
+                  promised something the site could not do, and a phone number
+                  on an unclaimed row would hand an inspector the one thing
+                  claiming is meant to buy. So the only action on an unclaimed
+                  row is the claim. */}
               <div>
-                <button
-                  class="request-btn-row"
-                  data-listing-id={l.id}
-                  data-license={l.license_number}
-                  data-name={l.business_name || l.licensee_name}
-                  data-page-context={`county_${county.slug}_table`}
-                  data-county={county.slug}
-                >
-                  Request this inspector
-                </button>
+                {l.tier !== 'unclaimed' ? (
+                  <button
+                    class="request-btn-row"
+                    data-listing-id={l.id}
+                    data-license={l.license_number}
+                    data-name={l.business_name || l.licensee_name}
+                    data-page-context={`county_${county.slug}_table`}
+                    data-county={county.slug}
+                  >
+                    Request this inspector
+                  </button>
+                ) : (
+                  <a
+                    href="#claim"
+                    class="claim-btn-row claim-link"
+                    data-license={l.license_number}
+                    data-county={county.slug}
+                  >
+                    Claim this listing
+                  </a>
+                )}
               </div>
             </div>
           ))}
