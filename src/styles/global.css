@@ -545,3 +545,28 @@ footer p { font-size: 0.8rem; color: var(--slate); margin: 4px 0; max-width: 70c
 .city-links a:hover { border-color: var(--mustard-deep); color: var(--navy); }
 .city-links a span { color: var(--slate); font-size: 0.8rem; margin-left: 4px; }
 .city-links-all { color: var(--mustard-deep) !important; font-weight: 600; border-color: transparent !important; background: transparent !important; }
+
+/* /brand/ — the logo set page */
+.brand-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 8px; }
+.brand-figure { margin: 0; padding: 26px; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.brand-figure img { max-width: 100%; height: auto; }
+.brand-figure figcaption { font-size: 0.82rem; color: var(--slate); text-align: center; }
+.brand-figure-navy { background: var(--navy); }
+.brand-figure-navy figcaption { color: #B9C4CC; }
+.brand-marks { display: flex; align-items: flex-end; gap: 22px; }
+.brand-h2 { font-size: 1.25rem; font-weight: 500; margin-top: 40px; margin-bottom: 12px; }
+.brand-colors { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 28px; }
+.brand-color { display: flex; gap: 14px; align-items: flex-start; }
+.brand-swatch { flex: none; width: 44px; height: 44px; border-radius: 4px; border: 1px solid var(--line); }
+.brand-color-name { font-weight: 500; color: var(--navy); }
+.brand-color-name code { font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace; font-size: 0.8rem; color: var(--slate); margin-left: 6px; }
+.brand-rules { color: var(--navy-soft); font-size: 0.95rem; padding-left: 20px; max-width: 68ch; }
+.brand-rules li { margin-bottom: 6px; }
+.brand-files { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px 28px; }
+.brand-files ul { list-style: none; padding: 0; margin: 6px 0 0; font-size: 0.88rem; }
+.brand-files li { margin-bottom: 3px; }
+.brand-files a { color: var(--mustard-deep); text-decoration: underline; text-underline-offset: 2px; }
+.brand-files-group { font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--slate); font-weight: 500; }
+@media (max-width: 820px) {
+  .brand-grid, .brand-colors, .brand-files { grid-template-columns: 1fr; }
+}

@@ -1,0 +1,109 @@
+---
+// The logo set and the rules that go with it, on one page, so the files can be
+// handed to anyone — Stripe's branding settings, a partner, a print shop —
+// with a link rather than an attachment. Everything here is built by
+// `npm run brand` from scripts/brand/build.mjs; nothing is edited by hand.
+import Layout from '../../layouts/Layout.astro';
+import { TILE } from '../../../scripts/brand/tokens.mjs';
+
+const colors = [
+  { name: 'Navy', hex: '#1D2B3A', role: 'Text, headings, the reverse ground' },
+  { name: 'Tile blue', hex: TILE, role: 'The mark’s tile. Only ever on paper or in a browser tab; on navy the house stands alone' },
+  { name: 'Mustard', hex: '#E8A93A', role: 'The house, the italic half of the wordmark on navy, buttons' },
+  { name: 'Mustard deep', hex: '#C6871E', role: 'The italic half of the wordmark on paper, links' },
+  { name: 'Paper', hex: '#F5F3EC', role: 'Page ground' },
+  { name: 'Paper raised', hex: '#FCFBF6', role: 'Cards, the header, text on navy' },
+  { name: 'Slate', hex: '#5B6B75', role: 'Secondary text' },
+];
+
+const files: [string, string[]][] = [
+  ['Mark', ['mark.svg', 'mark-512.png', 'mark-1024.png', 'mark-no-tile.svg', 'mark-mono-navy.svg', 'mark-mono-white.svg', 'mark-mono-white-512.png']],
+  ['Horizontal lockup', ['logo-horizontal.svg', 'logo-horizontal-1200.png', 'logo-horizontal-2400.png', 'logo-horizontal-reverse.svg', 'logo-horizontal-reverse-1200.png', 'logo-horizontal-mono-navy.svg', 'logo-horizontal-mono-white.svg']],
+  ['Stacked lockup', ['logo-stacked.svg', 'logo-stacked-800.png', 'logo-stacked-reverse.svg', 'logo-stacked-reverse-800.png']],
+  ['Wordmark', ['wordmark.svg', 'wordmark-1200.png', 'wordmark-reverse.svg']],
+  ['Square avatar', ['avatar-square.svg', 'avatar-1024.png']],
+  ['Share image', ['share-image.svg']],
+];
+---
+
+<Layout
+  title="Brand | Verified Home Inspector"
+  description="The Verified Home Inspector logo set — mark, lockups, wordmark, colors and type — as SVG and PNG."
+  noindex
+>
+  <section class="section">
+    <div class="wrap">
+      <div class="section-head">
+        <h1 class="dash-title">Brand</h1>
+        <div class="note">Every file is built from one source; nothing is edited by hand</div>
+      </div>
+
+      <div class="brand-grid">
+        <figure class="card brand-figure">
+          <img src="/brand/logo-horizontal.svg" alt="Verified Home Inspector, horizontal lockup" width="742" height="120" />
+          <figcaption>Horizontal — the default on paper</figcaption>
+        </figure>
+        <figure class="card brand-figure brand-figure-navy">
+          <img src="/brand/logo-horizontal-reverse.svg" alt="Verified Home Inspector, horizontal lockup on navy" width="742" height="120" />
+          <figcaption>On navy the house drops its tile</figcaption>
+        </figure>
+        <figure class="card brand-figure">
+          <img src="/brand/logo-stacked.svg" alt="Verified Home Inspector, stacked lockup" width="248" height="119" />
+          <figcaption>Stacked — print, badges, square spaces</figcaption>
+        </figure>
+        <figure class="card brand-figure">
+          <div class="brand-marks">
+            <img src="/brand/mark.svg" alt="The mark" width="96" height="96" />
+            <img src="/brand/mark.svg" alt="" width="48" height="48" />
+            <img src="/brand/mark.svg" alt="" width="24" height="24" />
+            <img src="/favicon.svg" alt="" width="16" height="16" />
+          </div>
+          <figcaption>The mark at 96 / 48 / 24 / 16. One shape, because at 16px nothing else survives</figcaption>
+        </figure>
+      </div>
+
+      <h2 class="brand-h2">Colors</h2>
+      <div class="brand-colors">
+        {colors.map((c) => (
+          <div class="brand-color">
+            <span class="brand-swatch" style={`background:${c.hex}`}></span>
+            <div>
+              <div class="brand-color-name">{c.name} <code>{c.hex}</code></div>
+              <div class="dash-muted">{c.role}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <h2 class="brand-h2">Type</h2>
+      <p class="dash-muted" style="max-width:68ch;">
+        Fraunces Medium for headings and the wordmark, with the italic for “Home Inspector”.
+        IBM Plex Sans for everything else. Both are on Google Fonts; the lockups above have the
+        letters outlined, so they need no font installed.
+      </p>
+
+      <h2 class="brand-h2">Rules</h2>
+      <ul class="brand-rules">
+        <li>The house is always mustard. The tile is always tile blue. Neither is recolored.</li>
+        <li>On navy or any dark ground, use the reverse lockup: no tile, paper wordmark.</li>
+        <li>Below 24px, use the mark alone. The favicon is the mark at 16px.</li>
+        <li>Leave clear space around the mark equal to the height of the house.</li>
+        <li>The wordmark is one word with a color change — no space before “Home”.</li>
+      </ul>
+
+      <h2 class="brand-h2">Files</h2>
+      <div class="brand-files">
+        {files.map(([group, names]) => (
+          <div>
+            <div class="brand-files-group">{group}</div>
+            <ul>
+              {names.map((n) => (
+                <li><a href={`/brand/${n}`} download>{n}</a></li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+</Layout>

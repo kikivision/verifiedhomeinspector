@@ -23,7 +23,7 @@ const CONFIRMATION_PAGE = /^\/[a-z-]+-received\/$/;
 
 // One person's private form. It also carries a noindex meta tag; the sitemap
 // exclusion is so the two never disagree.
-const PRIVATE_PAGES = new Set(['/dashboard/']);
+const PRIVATE_PAGES = new Set(['/dashboard/', '/brand/']);
 
 /** @param {string} url */
 function shouldIndex(url) {

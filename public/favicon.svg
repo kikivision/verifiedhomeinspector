@@ -2,16 +2,18 @@
   <!-- A house, because it is the one subject that means the same thing in
        every county this directory expands into.
 
-       The tile is #22456E rather than the navy token #1D2B3A. At 16px a
+       The tile is #203C5C rather than the navy token #1D2B3A. At 16px a
        browser averages a whole shape down to a few pixels and subtle hue goes
        with it: the token has so little blue in it that the icon rendered as a
-       black square. The page keeps its own navy for text, where the colour is
-       read at full size and needs no extra separation.
+       black square. It was #22456E until 2026-09-12, which read as blue but
+       fought the site; #203C5C is two thirds of the way back toward the
+       token, the closest that still reads blue in a tab. The same value is
+       the tile in public/brand/, the share image and the touch icon.
 
        One shape, not two. The hexagon behind the hero was tried here first,
        with the house inside it, and at 16px neither survived: big enough to
        read as a house left the hexagon a thin ring, and small enough to sit
        inside it flattened the roof into a dome. -->
-  <rect x="1" y="1" width="62" height="62" rx="13" fill="#22456E"/>
+  <rect x="1" y="1" width="62" height="62" rx="13" fill="#203C5C"/>
   <path d="M32,14 L51,31 L51,50 L13,50 L13,31 Z" fill="#E8A93A"/>
 </svg>
