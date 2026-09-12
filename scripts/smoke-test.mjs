@@ -229,6 +229,33 @@ if (insurance) {
       const rendered = (insurance.match(/class="faq-item"/g) ?? []).length;
       check(rendered === schemaCount,
         `FAQ accordion renders ${rendered} items but the schema has ${schemaCount}.`);
+
+      // The schema carries answers as plain text for answer engines. A citation
+      // rendered into the answer string rather than beside it would put markup
+      // in the structured data, where it is meaningless.
+      const withMarkup = schema.mainEntity.filter((q) => /<[a-z/]/i.test(q.acceptedAnswer?.text ?? ''));
+      check(withMarkup.length === 0,
+        `${withMarkup.length} FAQ schema answer(s) contain HTML.`);
+
+      // Every source link must reach a statute, a regulator, or the licensing
+      // authority. The whole point of the pass that added them was to stop
+      // citing insurance blogs, and nothing enforces that but this.
+      const allowed = ['flsenate.gov', 'floir.gov', 'www.myfloridalicense.com'];
+      const faqLinks = [...insurance.matchAll(/class="faq-sources"[\s\S]*?<\/p>/g)]
+        .flatMap((m) => [...m[0].matchAll(/href="(https?:\/\/[^"]+)"/g)].map((h) => h[1]));
+      check(faqLinks.length > 0, 'No FAQ answer carries a source link.');
+
+      // A citation that replaces the page the reader was on costs a lead to
+      // prove a point. They open in a new tab, and nothing else enforces it.
+      const citations = [...insurance.matchAll(/<a [^>]*href="https:\/\/(?:flsenate|floir|www\.myfloridalicense)[^"]*"[^>]*>/g)];
+      const sameTab = citations.filter((m) => !m[0].includes('target="_blank"'));
+      check(sameTab.length === 0,
+        `${sameTab.length} citation link(s) would navigate away from the page.`);
+      for (const url of faqLinks) {
+        const host = new URL(url).host;
+        check(allowed.includes(host),
+          `FAQ cites ${host}, which is not a statute, a regulator, or DBPR.`);
+      }
     }
   }
 

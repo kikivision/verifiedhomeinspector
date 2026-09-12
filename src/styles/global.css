@@ -359,6 +359,12 @@ footer p { font-size: 0.8rem; color: var(--slate); margin: 4px 0; max-width: 70c
    asks. Sized as a primary control rather than a form field, because choosing
    a county is the action the page is asking for. The homepage links every
    county in its own browse section, so nothing crawlable is lost here. */
+/* A link in the hero paragraph inherits the paragraph's colour and loses its
+   underline, so a citation rendered as plain text — which defeats the point of
+   citing anything. These are the only links in a hero on the site. */
+.hero p a { color: var(--mustard-deep); text-decoration: underline; text-underline-offset: 2px; }
+.hero p a:hover { color: var(--navy); }
+
 .county-picker { margin-top: 18px; }
 .county-picker select {
   font-size: 1rem; padding: 13px 16px; min-width: 280px; max-width: 100%;
@@ -376,3 +382,9 @@ footer p { font-size: 0.8rem; color: var(--slate); margin: 4px 0; max-width: 70c
 .inspector-qa { margin-top: 26px; padding-top: 20px; border-top: 1px solid rgba(232,169,58,0.28); }
 .inspector-qa h3 { color: var(--mustard); font-size: 1rem; font-weight: 600; margin-bottom: 8px; }
 .inspector-qa p { color: #B9C4CC; margin-top: 8px; max-width: 60ch; font-size: 0.95rem; }
+
+/* Citations under an FAQ answer. Small and quiet — they are there to be
+   checked, not read. */
+.faq-sources { font-size: 0.82rem; color: var(--slate); margin-top: 10px; }
+.faq-sources a { color: var(--mustard-deep); text-decoration: underline; text-underline-offset: 2px; }
+.faq-sources a:hover { color: var(--navy); }

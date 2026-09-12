@@ -28,15 +28,30 @@ const schema = {
          inspector. It says what the questions below answer, so it earns its
          space here and costs nothing at the top of the page. -->
     <p class="faq-lead">
-      Insurers want their own reports, so a carrier will usually ask for a 4-point on an older
-      home before it will write a policy, and for a wind mitigation to apply the storm-resistance
-      discounts.
+      A 4-point decides whether a carrier will write the policy. A wind mitigation records the
+      features a premium can be credited for. Both are performed by a licensed Florida home
+      inspector.
     </p>
     <div class="faq">
       {faqItems.map((item, i) => (
         <details class="faq-item" open={i === 0}>
           <summary>{item.question}</summary>
           <p>{item.answer}</p>
+          {/* The schema above carries the answer as plain text, which is what
+              an answer engine wants. The links live here instead, so a reader
+              can check a claim without the citation ending up inside the
+              structured data as markup. */}
+          {item.sources && (
+            <p class="faq-sources">
+              Source:{' '}
+              {item.sources.map((src, n) => (
+                <>
+                  {n > 0 && <span>, </span>}
+                  <a href={src.url} target="_blank" rel="noopener noreferrer">{src.label}</a>
+                </>
+              ))}
+            </p>
+          )}
         </details>
       ))}
     </div>
