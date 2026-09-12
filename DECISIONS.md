@@ -5,6 +5,59 @@ until you know why. Newest first.
 
 ---
 
+## 2026-09-12 — One page per inspector, with the URL built from the state record
+
+**Built.** Every live listing has a page at
+`/fl/<county>/<city>/<hi####-licensee-name>/`, claimed or not, and every
+claimed one has a badge at `/badge/HI####.svg`.
+
+### Why every listing, not just claimed ones
+
+An inspector who has never heard of this site finds it by searching their
+own name. The county page put them in a row 20,000px down a 316-row table;
+a page with their name as the H1 is what ranks for that search, and an
+unclaimed page's whole right-hand column is the ask to claim. For a
+homeowner the unclaimed page is thin, and it says so — "hasn't claimed their
+page yet" — and points at the claimed inspectors in the same city.
+
+### Why the URL uses the licensee name, not the business name
+
+The business name is the better keyword and it is what the H1 shows. It is
+not in the URL because it changes: it is empty until a claim, edited on the
+dashboard, and cleared on release. A URL that changed with it would turn
+every link to the page into a dead one — including the badge on the
+inspector's own website, which is the one link we most want to keep. The
+licensee name comes from the DBPR extract and does not change. The license
+number in front makes the segment unique and lets the page find its own
+data. `lib/slug.ts` is the only place the rule lives; the build and the
+dashboard's snippet both call it.
+
+### The city segment is a promise about the next step
+
+`/fl/pinellas/largo/` does not exist yet. The inspector URL carries the city
+anyway, so that when city pages are built (the next step: two featured
+spots per city, "featured where you work"), no inspector URL has to move.
+Until then the breadcrumb's city link goes to the county page with the city
+filter preset (`?city=Largo`), which is what a city page would show.
+
+### The badge is the backlink
+
+A claimed inspector gets a snippet that puts a "Verified on Verified Home
+Inspector" image on their own site, linking to their page. Inspectors like
+credentials on their sites; each one is a link from a relevant Florida
+local-business site to a page here. That is how Avvo, Houzz and
+Healthgrades built domain authority, and it costs nothing. Only claimed
+listings get one — an unclaimed inspector has nobody to paste it.
+
+### Not built
+
+Per-city pages, and the wind-mitigation-authorization fact the mock showed.
+The DBPR extract does not carry whether an inspector may sign form
+OIR-B1-1802, so it would have to come from the inspector on claim, and a
+self-reported credential needs a decision about how it is worded first.
+
+---
+
 ## 2026-09-12 — Claims are self-serve, free, and show contact details
 
 **Built.** Supersedes the 2026-09-11 entry below on both stages: the site

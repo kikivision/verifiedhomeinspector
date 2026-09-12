@@ -1,0 +1,322 @@
+---
+// One page per licensed inspector: /fl/pinellas/largo/hi7816-robert-w-martin/
+//
+// Two jobs. For a homeowner, it is the page Google can rank for an inspector's
+// name and the one place everything about them sits together. For an
+// inspector, it is the page they find when they search their own name, and an
+// unclaimed one is the strongest ask to claim the site has: their license,
+// their city, and a panel saying it takes two minutes.
+//
+// Built for every live listing, claimed or not. The path segment comes from
+// the licensee name in the state record (see lib/slug.ts), so the URL never
+// changes when a business name is added or edited.
+import Layout from '../../../../../layouts/Layout.astro';
+import RequestDialog from '../../../../../components/RequestDialog.astro';
+import { counties, getCounty, searchName } from '../../../../../lib/counties';
+import { getAllListings, isClaimed, websiteLabel, type Listing, type Tier } from '../../../../../lib/supabase';
+import { slugify, inspectorSlug, inspectorPath } from '../../../../../lib/slug';
+
+export async function getStaticPaths() {
+  const live = counties.filter((c) => c.status === 'live').map((c) => c.slug);
+  const all = await getAllListings(live);
+
+  // Neighbors are the other inspectors in the same city, claimed first, so
+  // an unclaimed page still sends a homeowner somewhere useful. Grouped once
+  // here rather than filtered per page: 1,274 filters over 1,274 rows is a
+  // million and a half comparisons for a list that is the same for every
+  // inspector in a city.
+  const tierRank: Record<Tier, number> = { featured: 0, claimed: 1, unclaimed: 2 };
+  const byCity = new Map<string, Listing[]>();
+  for (const l of all) {
+    const key = `${l.county}/${l.city}`;
+    byCity.set(key, [...(byCity.get(key) ?? []), l]);
+  }
+  for (const group of byCity.values()) {
+    group.sort((a, b) =>
+      a.tier !== b.tier ? tierRank[a.tier] - tierRank[b.tier] : a.licensee_name.localeCompare(b.licensee_name),
+    );
+  }
+
+  return all.map((listing) => ({
+    params: {
+      county: listing.county,
+      city: slugify(listing.city),
+      slug: inspectorSlug(listing.license_number, listing.licensee_name),
+    },
+    props: {
+      listing,
+      neighbors: (byCity.get(`${listing.county}/${listing.city}`) ?? [])
+        .filter((n) => n.id !== listing.id)
+        .slice(0, 6),
+    },
+  }));
+}
+
+interface Props {
+  listing: Listing;
+  neighbors: Listing[];
+}
+
+const { listing: l, neighbors } = Astro.props;
+const county = getCounty(l.county)!;
+const claimed = isClaimed(l);
+const name = l.business_name || l.licensee_name;
+const pageContext = `inspector_${county.slug}`;
+const countyCityUrl = `/fl/${county.slug}/?city=${encodeURIComponent(l.city)}`;
+const pagePath = inspectorPath(l.county, l.city, l.license_number, l.licensee_name);
+const badgeSnippet =
+  `<a href="https://verifiedhomeinspector.com${pagePath}">` +
+  `<img src="https://verifiedhomeinspector.com/badge/${l.license_number}.svg" ` +
+  `alt="Verified on Verified Home Inspector" width="230" height="64"></a>`;
+
+// Titles carry the name and the city, which is what a search for either
+// should land on. Descriptions are cut at the smoke test's 160-character
+// limit rather than trusted to stay under it: a long business name plus a
+// long city plus three services is over.
+const title = `${name} — Home Inspector in ${l.city}, FL | Verified Home Inspector`;
+const descriptionParts = [
+  `${name} is a licensed Florida home inspector in ${l.city} (${county.name}), FL Lic #${l.license_number}.`,
+  claimed
+    ? l.specialties.length > 0
+      ? `Services: ${l.specialties.slice(0, 3).join(', ')}. Phone and website on the page.`
+      : 'Phone and website on the page.'
+    : 'Verified against the DBPR record; this listing has not been claimed yet.',
+];
+let description = descriptionParts.join(' ');
+if (description.length > 160) description = `${description.slice(0, 157).trimEnd()}…`;
+
+const serves = l.service_cities.length > 0 ? l.service_cities : [l.city];
+
+// Structured data for a claimed business only. An unclaimed row is a license
+// record, not a business with a phone number, and telling a search engine
+// otherwise would be inventing a business on someone's behalf.
+const schema = claimed
+  ? {
+      '@context': 'https://schema.org',
+      '@type': 'HomeAndConstructionBusiness',
+      name,
+      url: `https://verifiedhomeinspector.com${pagePath}`,
+      ...(l.phone ? { telephone: l.phone } : {}),
+      ...(l.website ? { sameAs: [l.website] } : {}),
+      address: { '@type': 'PostalAddress', addressLocality: l.city, addressRegion: 'FL', addressCountry: 'US' },
+      areaServed: serves.map((c) => ({ '@type': 'City', name: c })),
+      identifier: { '@type': 'PropertyValue', propertyID: 'Florida DBPR license', value: l.license_number },
+    }
+  : null;
+---
+
+<Layout title={title} description={description} currentCountySlug={county.slug}>
+  {schema && <script type="application/ld+json" set:html={JSON.stringify(schema)} />}
+
+  <div class="wrap">
+    <nav class="crumbs" aria-label="Breadcrumb">
+      <a href="/">Florida</a><span>›</span>
+      <a href={`/fl/${county.slug}/`}>{searchName(county)}</a><span>›</span>
+      <a href={countyCityUrl}>{l.city}</a><span>›</span>
+      <span class="crumb-current">{name}</span>
+    </nav>
+  </div>
+
+  <section class="section profile">
+    <div class="wrap profile-grid">
+      <div class="profile-main">
+        <div class="profile-tags">
+          <span class="county-tag">{l.city}, FL · {county.name}</span>
+          {l.tier === 'featured' && <span class="profile-featured">Featured in {searchName(county)}</span>}
+        </div>
+        <h1>{name}</h1>
+        <p class="profile-sub">
+          {l.business_name ? `${l.licensee_name} · ` : ''}Licensed Florida home inspector
+          {l.years_experience ? ` · ${l.years_experience}+ years in business` : ''}
+        </p>
+        <p class="profile-lic">
+          <span class="check">✓</span>FL Lic #{l.license_number} — DBPR verified, active.
+          <a href="https://www.myfloridalicense.com/wl11.asp?mode=0" target="_blank" rel="noopener noreferrer">Check the state record</a>
+        </p>
+
+        <div class="profile-facts">
+          <div class="fact">
+            <span class="k">Services</span>
+            <span class:list={['v', { muted: l.specialties.length === 0 }]}>
+              {l.specialties.length > 0 ? l.specialties.join(' · ') : 'Not yet listed'}
+            </span>
+          </div>
+          <div class="fact">
+            <span class="k">Serves</span>
+            <span class:list={['v', { muted: l.service_cities.length === 0 }]}>
+              {l.service_cities.length > 0 ? l.service_cities.join(', ') : `${l.city} (from the license record)`}
+            </span>
+          </div>
+          <div class="fact">
+            <span class="k">Years in business</span>
+            <span class:list={['v', { muted: !l.years_experience }]}>
+              {l.years_experience ? `${l.years_experience}+` : 'Not yet listed'}
+            </span>
+          </div>
+        </div>
+
+        {claimed && l.specialties.length > 0 && (
+          <>
+            <h2>Services</h2>
+            <div class="tags">
+              {l.specialties.map((s) => <span class="tag">{s}</span>)}
+            </div>
+          </>
+        )}
+
+        {claimed && l.about && (
+          <>
+            <h2>About</h2>
+            <p class="profile-about">{l.about}</p>
+          </>
+        )}
+
+        {!claimed && (
+          <div class="card profile-unclaimed">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 8v4M12 16h.01"></path></svg>
+            <div>
+              <div class="profile-unclaimed-head">This inspector hasn't claimed their page yet</div>
+              <p>
+                Everything shown here comes straight from the state license record. There is no
+                phone number or website on file because {l.licensee_name} has not added one. You
+                can still verify the license with the DBPR, or choose from inspectors in
+                {' '}{l.city} who have claimed theirs.
+              </p>
+            </div>
+          </div>
+        )}
+
+        <h2>Insurance inspections in {searchName(county)}</h2>
+        <p class="profile-about">
+          A carrier will usually ask for a 4-point inspection on an older home before it writes
+          a policy, and a wind mitigation is what earns the storm-resistance discounts. Both are
+          done by licensed home inspectors like the ones listed here.
+          <a href="/insurance-inspections/">What Florida insurers ask for</a>
+        </p>
+
+        {claimed && (
+          <div class="card badge-card">
+            <img src={`/badge/${l.license_number}.svg`} alt="Verified on Verified Home Inspector badge" width="230" height="64" />
+            <div>
+              <div class="badge-card-head">Put this badge on your website</div>
+              <p>
+                Shows visitors the license is current and links back to this page. Copy the
+                snippet from your dashboard, or from here.
+              </p>
+              <code class="snippet">{badgeSnippet}</code>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <aside class="profile-side">
+        {claimed ? (
+          <div class:list={['card', 'profile-card', { featured: l.tier === 'featured' }]}>
+            {l.tier === 'featured' && <div class="badge">Featured</div>}
+            {l.logo_path && (
+              <div class="logo-plate">
+                <img src={l.logo_path} alt={`${name} logo`} />
+              </div>
+            )}
+            <div class="contact-lines">
+              {l.phone && (
+                <a
+                  class="row-phone phone-link profile-phone"
+                  href={`tel:${l.phone.replace(/[^\d+]/g, '')}`}
+                  data-listing-id={l.id}
+                  data-page-context={pageContext}
+                >
+                  {l.phone}
+                </a>
+              )}
+              {l.website && (
+                <a class="row-web" href={l.website} target="_blank" rel={l.tier === 'featured' ? 'sponsored noopener' : 'noopener'}>
+                  {websiteLabel(l.website)} ↗
+                </a>
+              )}
+              {!l.phone && !l.website && <span class="dash-muted">Responds to requests</span>}
+            </div>
+            <div class="profile-request">
+              <button
+                class="btn-primary request-btn"
+                data-listing-id={l.id}
+                data-license={l.license_number}
+                data-name={name}
+                data-page-context={pageContext}
+                data-county={county.slug}
+              >
+                Request an inspection
+              </button>
+              <p class="dash-muted">Goes to {name} only. Never shared with other inspectors.</p>
+            </div>
+            {(l.cert_badges.length > 0 || l.years_experience) && (
+              <div class="cert-row">
+                {l.cert_badges.map((c) => <span class="cert">{c}</span>)}
+                {l.years_experience && <span class="cert">{l.years_experience}+ years in business</span>}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div class="claim profile-claim">
+            <div><span class="claim-eyebrow">Is this you?</span></div>
+            <h2>Claim this page. It's free.</h2>
+            <p>
+              Add your phone number, website and services, and they show here and on the
+              {' '}{searchName(county)} page. Homeowners in {l.city} can call you directly.
+            </p>
+            <ul class="profile-claim-list">
+              <li><span>✓</span>Phone, website and services on your page</li>
+              <li><span>✓</span>Above every unclaimed inspector in {county.name}</li>
+              <li><span>✓</span>Requests go to you and nobody else — never sold per lead</li>
+              <li><span>✓</span>About two minutes. No card, no contract.</li>
+            </ul>
+            <a
+              href={`/claim/?license=${l.license_number}`}
+              class="btn-primary claim-link"
+              data-license={l.license_number}
+              data-county={county.slug}
+            >
+              Claim this listing
+            </a>
+          </div>
+        )}
+      </aside>
+    </div>
+  </section>
+
+  {neighbors.length > 0 && (
+    <section class="section" style="padding-top:0;">
+      <div class="wrap">
+        <div class="section-head">
+          <h2>Other licensed inspectors in {l.city}</h2>
+          <a class="note" href={countyCityUrl}>All inspectors in {l.city} →</a>
+        </div>
+        <div class="neighbor-grid">
+          {neighbors.map((n) => (
+            <a class="card neighbor" href={inspectorPath(n.county, n.city, n.license_number, n.licensee_name)}>
+              <div class="name">{n.business_name || n.licensee_name}</div>
+              <div class="dash-muted">{n.city} · {n.license_number}</div>
+              {isClaimed(n) ? (
+                <div class="neighbor-status">
+                  <span class="claimed-mark">Claimed</span>
+                  {n.phone && <span class="row-phone">{n.phone}</span>}
+                </div>
+              ) : (
+                <div class="neighbor-status">
+                  <span class="unclaimed-mark">Unclaimed</span>
+                  <span class="claimed-note">No contact on file</span>
+                </div>
+              )}
+            </a>
+          ))}
+        </div>
+        <p class="disclosure">
+          Featured is a paid placement. Every inspector on this site is verified against the
+          Florida DBPR record, paid or not.
+        </p>
+      </div>
+    </section>
+  )}
+
+  <RequestDialog county={county} />
+</Layout>

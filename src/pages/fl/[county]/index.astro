@@ -1,5 +1,7 @@
 ---
 import Layout from '../../../layouts/Layout.astro';
+import RequestDialog from '../../../components/RequestDialog.astro';
+import { inspectorPath } from '../../../lib/slug';
 import { counties, getCounty, searchName } from '../../../lib/counties';
 import { getListingsForCounty, isClaimed, websiteLabel, type Listing } from '../../../lib/supabase';
 
@@ -113,7 +115,7 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
                   </div>
                 )}
                 {/* No initials tile. A navy square reading "RW" is not a
-                    brand, it is a placeholder wearing the colours of one, and
+                    brand, it is a placeholder wearing the colors of one, and
                     with the photo slots gone it was the largest element on a
                     paid card while carrying no information the heading below
                     it did not already give. The strip appears only when there
@@ -125,7 +127,7 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
                     ))}
                   </div>
                 )}
-                <h3>{l.business_name || l.licensee_name}</h3>
+                <h3><a href={inspectorPath(l.county, l.city, l.license_number, l.licensee_name)}>{l.business_name || l.licensee_name}</a></h3>
                 {/* The heading falls back to the licensee's name when there is
                     no business name, so printing the name again here rendered
                     it twice — "Robert W Martin / Robert W Martin · Largo, FL"
@@ -156,7 +158,7 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
                     while the offer was "free until five counted requests"; that
                     offer is retired and a claimed listing is free outright, so
                     the count no longer has anything to bill against. A tap on
-                    the number logs click_phone before dialling, which is the
+                    the number logs click_phone before dialing, which is the
                     measure that replaced it. See DECISIONS.md. */}
                 <div class="contact">
                   <div class="contact-lines">
@@ -317,7 +319,7 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
               data-search={`${l.licensee_name} ${l.business_name ?? ''} ${l.city} ${l.license_number}`.toLowerCase()}
             >
               <div>
-                <div class="name">{l.business_name || l.licensee_name}</div>
+                <a class="name" href={inspectorPath(l.county, l.city, l.license_number, l.licensee_name)}>{l.business_name || l.licensee_name}</a>
                 <div class="role">
                   {l.business_name ? `${l.licensee_name} · ` : ''}Licensed home inspector
                 </div>
@@ -415,72 +417,7 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
         </div>
       </section>
 
-      <!-- One dialog serves all 317 rows: the inspector's identity is written into
-           the hidden fields when a row's Request button is pressed. Netlify reads
-           this form out of the built HTML the same way it reads the claim form,
-           so an inquiry needs no mailbox on this domain either. -->
-      <dialog id="requestDialog" class="request-dialog">
-        <!-- The action carries the county slug through so the confirmation
-             page can send them back where they came from. The hidden county
-             field below is the county NAME, for the notification email to
-             read; the slug is what builds a URL. -->
-        <form
-          name="inspector-request"
-          method="POST"
-          data-netlify="true"
-          netlify-honeypot="referral-code"
-          action={`/request-received/?from=${county.slug}`}
-        >
-          <input type="hidden" name="form-name" value="inspector-request" />
-          <input type="hidden" name="county" value={county.name} />
-          <input type="hidden" name="inspector-license" id="requestLicense" />
-          <input type="hidden" name="inspector-name" id="requestName" />
-          <p class="visually-hidden">
-            <label>Leave this field empty: <input name="referral-code" /></label>
-          </p>
-
-          <div class="request-head">
-            <h2>Request an inspection</h2>
-            <button type="button" class="request-close" id="requestClose" aria-label="Close">×</button>
-          </div>
-          <p class="request-who">
-            Going to <strong id="requestWho"></strong>. This goes to that inspector only — your
-            details are never sent to anyone else.
-          </p>
-
-          <label>
-            Your name
-            <input type="text" name="homeowner-name" required />
-          </label>
-          <label>
-            Email
-            <input type="email" name="homeowner-email" required />
-          </label>
-          <label>
-            Phone
-            <input type="tel" name="homeowner-phone" />
-          </label>
-          <label>
-            Property city or ZIP
-            <input type="text" name="property-location" />
-          </label>
-          <label>
-            What you need
-            <select name="inspection-type">
-              <option value="Full home inspection">Full home inspection</option>
-              <option value="4-point inspection">4-point inspection</option>
-              <option value="Wind mitigation">Wind mitigation</option>
-              <option value="Wind mitigation + 4-point">Wind mitigation and 4-point</option>
-              <option value="Not sure yet">Not sure yet</option>
-            </select>
-          </label>
-          <label>
-            Anything else
-            <textarea name="message" rows="3"></textarea>
-          </label>
-          <button type="submit" class="btn-primary">Send request</button>
-        </form>
-      </dialog>
+      <RequestDialog county={county} />
 
       <section class="section" id="claim">
         <div class="wrap">
@@ -522,7 +459,6 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
   )}
 
   <script>
-    import { logListingEvent } from '../../../lib/analytics';
     import { trackEvent } from '../../../lib/gtag';
 
     // Client-side filtering: all 317 rows are already in the HTML, so narrowing
@@ -561,43 +497,15 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
     search?.addEventListener('input', applyFilters);
     citySelect?.addEventListener('change', applyFilters);
 
-    // Opening the request dialog is the moment a homeowner shows intent in a
-    // specific inspector, so it is logged here rather than on submit: it counts
-    // interest even when someone abandons the form, which is the number worth
-    // showing an inspector. The inquiry they actually receive is the paid
-    // milestone, and that arrives by email, not from this table.
-    const dialog = document.querySelector<HTMLDialogElement>('#requestDialog');
-    const requestLicense = document.querySelector<HTMLInputElement>('#requestLicense');
-    const requestName = document.querySelector<HTMLInputElement>('#requestName');
-    const requestWho = document.querySelector<HTMLElement>('#requestWho');
-
-    // Both the featured card's button and every row's button, bound together
-    // on purpose. They were two handlers for one user action, and only the row
-    // one opened the dialog — so the single button on the PAID card logged an
-    // analytics event and did nothing else, while all 316 free listings below
-    // it worked. Splitting them again is how that returns.
-    document.querySelectorAll<HTMLButtonElement>('.request-btn, .request-btn-row').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const { listingId, license, name, pageContext, county } = btn.dataset;
-        if (!dialog || !requestLicense || !requestName || !requestWho) return;
-
-        requestLicense.value = license ?? '';
-        requestName.value = name ?? '';
-        requestWho.textContent = `${name ?? 'this inspector'} (FL Lic #${license ?? ''})`;
-
-        if (listingId) {
-          logListingEvent(listingId, 'click_request', pageContext ?? 'unknown');
-        }
-        // Sent alongside the Supabase event rather than instead of it: Supabase
-        // is the billing record tied to a listing id, GA4 is the traffic story.
-        trackEvent('request_inspector', {
-          license_number: license,
-          inspector_name: name,
-          county,
-        });
-        dialog.showModal();
-      });
-    });
+    // An inspector's page links to its city as /fl/<county>/?city=<City>.
+    // Only a city the select already offers is honored: the value comes
+    // from the URL, and anything else would leave the filter claiming a city
+    // with no rows.
+    const preset = new URLSearchParams(location.search).get('city');
+    if (preset && citySelect && Array.from(citySelect.options).some((o) => o.value === preset)) {
+      citySelect.value = preset;
+      applyFilters();
+    }
 
     // The card's Get featured button opens its own dialog. Logged on open for
     // the same reason as the request dialog: it counts an inspector who asked,
@@ -616,31 +524,5 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
       if (event.target === featuredDialog) featuredDialog.close();
     });
 
-    document.querySelector('#requestClose')?.addEventListener('click', () => dialog?.close());
-    // Clicking the backdrop closes too: the dialog element itself is the click
-    // target when the press lands outside the form.
-    dialog?.addEventListener('click', (event) => {
-      if (event.target === dialog) dialog.close();
-    });
-
-    // A tap on a phone number is the click that replaced the counted request as
-    // the measure of a listing's value. Logged before the dial, which the
-    // browser handles on its own; nothing here can block it.
-    document.querySelectorAll<HTMLAnchorElement>('.phone-link').forEach((link) => {
-      link.addEventListener('click', () => {
-        const { listingId, pageContext } = link.dataset;
-        if (listingId) logListingEvent(listingId, 'click_phone', pageContext ?? 'unknown');
-        trackEvent('click_phone', { county: link.dataset.pageContext });
-      });
-    });
-
-    // The row's claim link goes to sign-in with the license in the URL; this
-    // only records that it was clicked, so the county page can still report
-    // how many inspectors found their own row.
-    document.querySelectorAll<HTMLAnchorElement>('.claim-link').forEach((link) => {
-      link.addEventListener('click', () => {
-        trackEvent('claim_listing', { license_number: link.dataset.license, county: link.dataset.county });
-      });
-    });
   </script>
 </Layout>

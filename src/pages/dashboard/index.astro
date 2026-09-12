@@ -125,7 +125,7 @@ import { counties } from '../../lib/counties';
 
             <label>
               About your business
-              <textarea name="about" rows="4" maxlength="800" placeholder="A few sentences in your own words. Shown on your listing once it has somewhere to go."></textarea>
+              <textarea name="about" rows="4" maxlength="800" placeholder="A few sentences in your own words, shown on your page."></textarea>
             </label>
 
             <div class="dash-actions">
@@ -164,6 +164,19 @@ import { counties } from '../../lib/counties';
               </form>
             </div>
 
+            <div class="card dash-help" id="badgeCard" hidden>
+              <h3>Your badge</h3>
+              <p class="dash-muted">
+                Paste this on your own website. It shows your license is current and links to
+                your page here. The image appears after the next rebuild.
+              </p>
+              <div class="dash-badge">
+                <img id="badgeImg" alt="Verified on Verified Home Inspector badge" width="230" height="64" />
+                <textarea id="badgeSnippet" rows="4" readonly></textarea>
+                <button type="button" class="request-btn-row" id="copySnippet">Copy snippet</button>
+              </div>
+            </div>
+
             <div class="card dash-help">
               <h3>How it goes live</h3>
               <p class="dash-muted">
@@ -179,7 +192,7 @@ import { counties } from '../../lib/counties';
             </div>
 
             <div class="dash-links">
-              <a href="#" id="viewListing">View the county page</a>
+              <a href="#" id="viewListing">View your page</a>
               <button type="button" class="dash-linkbtn" id="signOutBtn">Sign out</button>
               <button type="button" class="dash-linkbtn dash-danger" id="releaseBtn">Release this listing</button>
             </div>
@@ -210,6 +223,7 @@ import { counties } from '../../lib/counties';
     import type { Session } from '@supabase/supabase-js';
     import { supabase, getCitiesForCounty, type Listing } from '../../lib/supabase';
     import { getCounty } from '../../lib/counties';
+    import { inspectorPath } from '../../lib/slug';
     import { submitNetlifyForm } from '../../lib/netlify-forms';
     import { trackEvent } from '../../lib/gtag';
 
@@ -313,7 +327,14 @@ import { counties } from '../../lib/counties';
       $('#editLicense').textContent = listing.license_number;
       $('#editTier').textContent = listing.tier === 'featured' ? 'Featured' : 'Claimed';
       $('#featuredCounty').textContent = county?.name ?? listing.county;
-      $<HTMLAnchorElement>('#viewListing').href = `/fl/${listing.county}/#all-inspectors`;
+      const pagePath = inspectorPath(listing.county, listing.city, listing.license_number, listing.licensee_name);
+      $<HTMLAnchorElement>('#viewListing').href = pagePath;
+      $<HTMLImageElement>('#badgeImg').src = `/badge/${listing.license_number}.svg`;
+      $<HTMLTextAreaElement>('#badgeSnippet').value =
+        `<a href="https://verifiedhomeinspector.com${pagePath}">` +
+        `<img src="https://verifiedhomeinspector.com/badge/${listing.license_number}.svg" ` +
+        `alt="Verified on Verified Home Inspector" width="230" height="64"></a>`;
+      $('#badgeCard').hidden = false;
       // A featured listing already has the spot; the ask makes no sense.
       $('.dash-featured').hidden = listing.tier === 'featured';
 
@@ -401,6 +422,17 @@ import { counties } from '../../lib/counties';
       }
     });
 
+    $('#copySnippet').addEventListener('click', async () => {
+      const box = $<HTMLTextAreaElement>('#badgeSnippet');
+      try {
+        await navigator.clipboard.writeText(box.value);
+        $('#copySnippet').textContent = 'Copied';
+      } catch {
+        // No clipboard permission: leave it selected so Ctrl+C works.
+        box.select();
+      }
+    });
+
     // ----- release / sign out ----------------------------------------------
     $('#releaseBtn').addEventListener('click', async () => {
       if (!listing) return;
@@ -415,6 +447,7 @@ import { counties } from '../../lib/counties';
       }
       trackEvent('listing_released', { license_number: listing.license_number });
       listing = null;
+      $('#badgeCard').hidden = true;
       say('Released. The listing returns to unclaimed after the next rebuild.');
       show('claim');
     });

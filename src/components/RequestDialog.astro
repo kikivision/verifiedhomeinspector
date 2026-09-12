@@ -1,0 +1,155 @@
+---
+// The homeowner request dialog and the click logging that goes with it.
+//
+// One dialog serves every request button on the page: the inspector's
+// identity is written into the hidden fields when a button is pressed. Used
+// by the county page (one dialog for 317 rows) and by each inspector's own
+// page (one dialog for one button). Netlify reads the form out of the built
+// HTML the same way it reads the others, so an inquiry needs no mailbox on
+// this domain; the same form name on many pages registers as one form.
+//
+// The script also binds the two other listing-level clicks — a tap on a phone
+// number and a click on an unclaimed row's claim link — because every page
+// that has a request button has those too, and binding them in one place is
+// how the paid card and the free rows stay wired the same way.
+import type { County } from '../lib/counties';
+
+interface Props {
+  county: County;
+}
+
+const { county } = Astro.props;
+---
+
+<dialog id="requestDialog" class="request-dialog">
+  <!-- The action carries the county slug through so the confirmation page can
+       send them back where they came from. The hidden county field below is
+       the county NAME, for the notification email to read; the slug is what
+       builds a URL. -->
+  <form
+    name="inspector-request"
+    method="POST"
+    data-netlify="true"
+    netlify-honeypot="referral-code"
+    action={`/request-received/?from=${county.slug}`}
+  >
+    <input type="hidden" name="form-name" value="inspector-request" />
+    <input type="hidden" name="county" value={county.name} />
+    <input type="hidden" name="inspector-license" id="requestLicense" />
+    <input type="hidden" name="inspector-name" id="requestName" />
+    <p class="visually-hidden">
+      <label>Leave this field empty: <input name="referral-code" /></label>
+    </p>
+
+    <div class="request-head">
+      <h2>Request an inspection</h2>
+      <button type="button" class="request-close" id="requestClose" aria-label="Close">×</button>
+    </div>
+    <p class="request-who">
+      Going to <strong id="requestWho"></strong>. This goes to that inspector only — your
+      details are never sent to anyone else.
+    </p>
+
+    <label>
+      Your name
+      <input type="text" name="homeowner-name" required />
+    </label>
+    <label>
+      Email
+      <input type="email" name="homeowner-email" required />
+    </label>
+    <label>
+      Phone
+      <input type="tel" name="homeowner-phone" />
+    </label>
+    <label>
+      Property city or ZIP
+      <input type="text" name="property-location" />
+    </label>
+    <label>
+      What you need
+      <select name="inspection-type">
+        <option value="Full home inspection">Full home inspection</option>
+        <option value="4-point inspection">4-point inspection</option>
+        <option value="Wind mitigation">Wind mitigation</option>
+        <option value="Wind mitigation + 4-point">Wind mitigation and 4-point</option>
+        <option value="Not sure yet">Not sure yet</option>
+      </select>
+    </label>
+    <label>
+      Anything else
+      <textarea name="message" rows="3"></textarea>
+    </label>
+    <button type="submit" class="btn-primary">Send request</button>
+  </form>
+</dialog>
+
+<script>
+  import { logListingEvent } from '../lib/analytics';
+  import { trackEvent } from '../lib/gtag';
+
+  // Opening the request dialog is the moment a homeowner shows intent in a
+  // specific inspector, so it is logged here rather than on submit: it counts
+  // interest even when someone abandons the form, which is the number worth
+  // showing an inspector. The inquiry they actually receive arrives by email,
+  // not from this table.
+  const dialog = document.querySelector<HTMLDialogElement>('#requestDialog');
+  const requestLicense = document.querySelector<HTMLInputElement>('#requestLicense');
+  const requestName = document.querySelector<HTMLInputElement>('#requestName');
+  const requestWho = document.querySelector<HTMLElement>('#requestWho');
+
+  // Both the featured card's button and every row's button, bound together on
+  // purpose. They were two handlers for one user action, and only the row one
+  // opened the dialog — so the single button on the PAID card logged an
+  // analytics event and did nothing else, while all 316 free listings below
+  // it worked. Splitting them again is how that returns.
+  document.querySelectorAll<HTMLButtonElement>('.request-btn, .request-btn-row').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const { listingId, license, name, pageContext, county } = btn.dataset;
+      if (!dialog || !requestLicense || !requestName || !requestWho) return;
+
+      requestLicense.value = license ?? '';
+      requestName.value = name ?? '';
+      requestWho.textContent = `${name ?? 'this inspector'} (FL Lic #${license ?? ''})`;
+
+      if (listingId) {
+        logListingEvent(listingId, 'click_request', pageContext ?? 'unknown');
+      }
+      // Sent alongside the Supabase event rather than instead of it: Supabase
+      // is the record tied to a listing id, GA4 is the traffic story.
+      trackEvent('request_inspector', {
+        license_number: license,
+        inspector_name: name,
+        county,
+      });
+      dialog.showModal();
+    });
+  });
+
+  document.querySelector('#requestClose')?.addEventListener('click', () => dialog?.close());
+  // Clicking the backdrop closes too: the dialog element itself is the click
+  // target when the press lands outside the form.
+  dialog?.addEventListener('click', (event) => {
+    if (event.target === dialog) dialog.close();
+  });
+
+  // A tap on a phone number is the click that replaced the counted request as
+  // the measure of a listing's value. Logged before the dial, which the
+  // browser handles on its own; nothing here can block it.
+  document.querySelectorAll<HTMLAnchorElement>('.phone-link').forEach((link) => {
+    link.addEventListener('click', () => {
+      const { listingId, pageContext } = link.dataset;
+      if (listingId) logListingEvent(listingId, 'click_phone', pageContext ?? 'unknown');
+      trackEvent('click_phone', { page_context: pageContext });
+    });
+  });
+
+  // A claim link goes to sign-in with the license in the URL; this only
+  // records that it was clicked, so the site can still report how many
+  // inspectors found their own row or page.
+  document.querySelectorAll<HTMLAnchorElement>('.claim-link').forEach((link) => {
+    link.addEventListener('click', () => {
+      trackEvent('claim_listing', { license_number: link.dataset.license, county: link.dataset.county });
+    });
+  });
+</script>

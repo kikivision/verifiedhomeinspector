@@ -495,6 +495,52 @@ for (const path of pages) {
     `${page}: ${unclaimed.length - claimable.length} unclaimed row(s) do not link to /claim/ with their license.`);
 }
 
+// Per-inspector pages: one for every live listing, at
+// /fl/<county>/<city>/<hi####-licensee-name>/. The build reads listings per
+// county because PostgREST caps a query at 1,000 rows, so a page count near
+// that number is the sign the cap was hit and a county's tail went unbuilt.
+const inspectorPages = pages.filter((p) => /^\/fl\/[a-z-]+\/[a-z0-9-]+\/hi\d+-[a-z0-9-]+\/$/.test(pagePath(p)));
+check(inspectorPages.length > 1000,
+  `Only ${inspectorPages.length} inspector pages were built; four counties hold more than 1,000 listings.`,
+  'A per-county read that silently returned fewer rows builds fewer pages with no error.');
+let claimedPages = 0;
+for (const path of inspectorPages) {
+  const html = faqHtml.get(path);
+  const page = pagePath(path);
+  const license = page.match(/\/hi(\d+)-/)[1];
+  check(html.includes(`FL Lic #HI${license}`), `${page} does not show its own license number.`);
+  check(/<form[^>]*name=['"]inspector-request['"]/.test(html), `${page} has no request form.`,
+    'RequestDialog renders it; without it the request button opens nothing.');
+  const isClaimed = html.includes('class="card profile-card');
+  if (isClaimed) {
+    claimedPages += 1;
+    check(/href="tel:/.test(html) || /class="row-web"/.test(html) || /Responds to requests/.test(html),
+      `${page} is claimed but shows no contact and no fallback.`);
+    check(html.includes(`/badge/HI${license}.svg`), `${page} is claimed but has no badge.`);
+    check(html.includes('"@type":"HomeAndConstructionBusiness"'), `${page} is claimed but has no LocalBusiness schema.`);
+  } else {
+    // The same rule the county rows follow: nothing on file, so no contact
+    // path, and the claim is the only action.
+    check(!/href="tel:/.test(html) && !/request-btn/.test(html),
+      `${page} is unclaimed but offers a contact path.`);
+    check(html.includes(`/claim/?license=HI${license}`), `${page} is unclaimed but has no claim link.`);
+    check(!html.includes('"@type":"HomeAndConstructionBusiness"'),
+      `${page} is unclaimed but carries business schema.`, 'That would be inventing a business on someone\'s behalf.');
+  }
+}
+check(claimedPages >= 1, 'No inspector page rendered as claimed; RMC (HI7816) should.');
+
+// One badge per claimed listing, and it has to be a real SVG: an endpoint that
+// returned an empty body or an HTML error page would still produce a file.
+const badges = (await readdir(join(DIST, 'badge')).catch(() => [])).filter((f) => f.endsWith('.svg'));
+check(badges.length === claimedPages,
+  `${badges.length} badge SVG(s) built for ${claimedPages} claimed page(s).`);
+for (const file of badges) {
+  const svg = await readFile(join(DIST, 'badge', file), 'utf8');
+  check(/^\s*<svg[\s>]/.test(svg) && /<\/svg>\s*$/.test(svg.trim()), `badge/${file} is not a well-formed SVG.`);
+  check(svg.includes(file.replace('.svg', '')), `badge/${file} does not carry its own license number.`);
+}
+
 // The sitemap is the one file nobody looks at after it is generated. Its
 // failure mode is silent and slow: Google crawls what it lists, so a wrong
 // host, a missing trailing slash, or a URL that 404s costs crawl budget on a
