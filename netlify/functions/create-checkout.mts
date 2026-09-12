@@ -13,6 +13,25 @@ import {
   admin, stripe, siteUrl, json, errorResponse, callerListing, assertCitiesAvailable, HttpError, TRIAL_DAYS,
 } from '../lib/featured.mts';
 
+/** `{ customer }` when the stored customer is this inspector, else `{ customer_email }`. */
+async function reusableCustomer(
+  s: ReturnType<typeof stripe>,
+  customerId: string | null,
+  email: string,
+): Promise<{ customer: string } | { customer_email: string }> {
+  if (customerId) {
+    try {
+      const customer = await s.customers.retrieve(customerId);
+      if (!customer.deleted && customer.email?.toLowerCase() === email.toLowerCase()) {
+        return { customer: customerId };
+      }
+    } catch (err) {
+      console.warn(`Stored customer ${customerId} could not be retrieved; creating a new one.`, err);
+    }
+  }
+  return { customer_email: email };
+}
+
 export default async (req: Request, _context: Context) => {
   if (req.method !== 'POST') return json({ error: 'POST only.' }, 405);
   try {
@@ -41,8 +60,13 @@ export default async (req: Request, _context: Context) => {
         metadata: { listing_id: listing.id, license: listing.license_number, county: listing.county },
       },
       // Reused on a second purchase (e.g. after a cancellation) so one
-      // inspector is one customer in Stripe, not one per attempt.
-      ...(listing.stripe_customer_id ? { customer: listing.stripe_customer_id } : { customer_email: email }),
+      // inspector is one customer in Stripe, not one per attempt — but only
+      // when it is the same person. A row released and claimed by someone
+      // else could carry the previous claimant's customer id (release clears
+      // it now; rows from before that fix may not be), and checking the new
+      // inspector out against it would put their card on a stranger's Stripe
+      // customer.
+      ...(await reusableCustomer(s, listing.stripe_customer_id, email)),
       client_reference_id: listing.id,
       metadata: {
         listing_id: listing.id,

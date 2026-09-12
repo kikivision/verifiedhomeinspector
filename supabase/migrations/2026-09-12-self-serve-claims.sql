@@ -248,7 +248,15 @@ begin
          specialties = '[]'::jsonb,
          service_cities = '[]'::jsonb,
          years_experience = null,
-         logo_path = null
+         logo_path = null,
+         -- Billing ids belong to the person who released, not to the row.
+         -- Left behind, the next person to claim this license would check
+         -- out against the previous claimant's Stripe customer. Found on the
+         -- first sandbox test, 2026-09-12; re-run this function definition.
+         stripe_customer_id = null,
+         stripe_subscription_id = null,
+         featured_since = null,
+         featured_cities = '[]'::jsonb
    where id = v_row.id;
 end
 $$;

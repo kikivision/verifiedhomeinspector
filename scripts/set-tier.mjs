@@ -205,6 +205,11 @@ async function main() {
     update.logo_path = null;
     update.claimed_at = null;
     update.claimed_by = null;
+    // Billing ids go with the person, not the row: the next claimant must
+    // not check out against this one's Stripe customer.
+    update.stripe_customer_id = null;
+    update.stripe_subscription_id = null;
+    update.featured_since = null;
   } else {
     update.claimed_at = listing.claimed_at ?? new Date().toISOString();
     if (flags.business !== undefined) update.business_name = flags.business;
