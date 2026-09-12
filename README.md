@@ -57,9 +57,13 @@ node --env-file=.env scripts/set-tier.mjs HI7816 unclaimed --deploy
 **Supabase configuration the code assumes** (Authentication settings in
 the Supabase dashboard; none of it is in the repo):
 
-- Email provider enabled and "Allow new users to sign up" left ON. The
-  **Magic Link** email template must contain `{{ .Token }}` so the email
-  carries the code rather than a link, and the email OTP length must be
+- Email provider enabled and "Allow new users to sign up" left ON. **Two**
+  email templates must carry `{{ .Token }}` so the email is a code rather
+  than a link: **Confirm sign up**, which is what a first-time email
+  receives (Supabase treats an unknown address as a sign-up even through
+  signInWithOtp), and **Magic link or OTP**, which every later sign-in
+  receives. Missing the first one means the very first inspector gets a
+  "confirm your email" link and no code. The email OTP length must be
   **6** — the page's input accepts six digits and nothing else. (This
   drifted to 8 on SuperReports once and every sign-in failed; check the
   live setting, not the runbook.) Sign-ups are gated in the database instead: the
