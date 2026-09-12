@@ -50,6 +50,30 @@ export function siteUrl(): string {
   return (process.env.URL || 'https://verifiedhomeinspector.com').replace(/\/$/, '');
 }
 
+/**
+ * Turns whatever a function caught into a response. HttpErrors carry their
+ * own status and message. A Stripe error's message is written for
+ * developers and names the actual problem ("No such price", "Invalid API
+ * Key") — shown as-is, because a dashboard that says "something went wrong"
+ * for a mis-pasted price id costs an hour of guessing. Anything else is
+ * logged and reported generically.
+ */
+export function errorResponse(err: unknown, fallback: string): Response {
+  if (err instanceof HttpError) return json({ error: err.message }, err.status);
+  if (err instanceof Stripe.errors.StripeError) {
+    console.error('Stripe error:', err.type, err.code, err.message);
+    return json({ error: `Stripe: ${err.message}` }, 502);
+  }
+  if (err && typeof err === 'object' && 'message' in err && 'code' in err) {
+    // Supabase/PostgREST errors have a message and a code.
+    const e = err as { message: string; code: string };
+    console.error('Database error:', e.code, e.message);
+    return json({ error: `Database: ${e.message}` }, 500);
+  }
+  console.error(err);
+  return json({ error: fallback }, 500);
+}
+
 export function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,

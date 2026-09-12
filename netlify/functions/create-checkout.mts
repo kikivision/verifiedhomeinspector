@@ -10,7 +10,7 @@
 // before anyone types a card number. Fulfilment is the webhook's job.
 import type { Context } from '@netlify/functions';
 import {
-  admin, stripe, siteUrl, json, callerListing, assertCitiesAvailable, HttpError, TRIAL_DAYS,
+  admin, stripe, siteUrl, json, errorResponse, callerListing, assertCitiesAvailable, HttpError, TRIAL_DAYS,
 } from '../lib/featured.mts';
 
 export default async (req: Request, _context: Context) => {
@@ -58,8 +58,6 @@ export default async (req: Request, _context: Context) => {
     if (!session.url) throw new HttpError(500, 'Stripe did not return a checkout URL.');
     return json({ url: session.url });
   } catch (err) {
-    if (err instanceof HttpError) return json({ error: err.message }, err.status);
-    console.error(err);
-    return json({ error: 'Something went wrong starting checkout.' }, 500);
+    return errorResponse(err, 'Something went wrong starting checkout.');
   }
 };

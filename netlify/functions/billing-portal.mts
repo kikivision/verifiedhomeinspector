@@ -5,7 +5,7 @@
 // cancel. Canceling there ends the subscription; the webhook takes the card
 // down. Nothing about billing is handled on this site's own pages.
 import type { Context } from '@netlify/functions';
-import { admin, stripe, siteUrl, json, callerListing, HttpError } from '../lib/featured.mts';
+import { admin, stripe, siteUrl, json, errorResponse, callerListing, HttpError } from '../lib/featured.mts';
 
 export default async (req: Request, _context: Context) => {
   if (req.method !== 'POST') return json({ error: 'POST only.' }, 405);
@@ -20,8 +20,6 @@ export default async (req: Request, _context: Context) => {
     });
     return json({ url: session.url });
   } catch (err) {
-    if (err instanceof HttpError) return json({ error: err.message }, err.status);
-    console.error(err);
-    return json({ error: 'Something went wrong opening billing.' }, 500);
+    return errorResponse(err, 'Something went wrong opening billing.');
   }
 };
