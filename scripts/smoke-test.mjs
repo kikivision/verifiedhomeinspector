@@ -415,6 +415,35 @@ for (const path of pages) {
   }
 }
 
+// An unclaimed listing must offer no way to contact the inspector. Not a
+// request button, not a phone number, not a link out. The whole model rests on
+// it: claiming is what buys an inspector a contact path, so any contact path
+// on an unclaimed row hands them that for free and there is no reason left to
+// claim. It is also the only thing keeping the site from promising to pass a
+// request to someone it has no way to reach.
+for (const path of pages) {
+  const html = faqHtml.get(path);
+  if (!html) continue;
+  const page = '/' + relative(DIST, path).replace(/index\.html$/, '');
+  if (!/^\/fl\/[a-z-]+\/$/.test(page)) continue;
+
+  // Each chunk runs from one row's class attribute to the next row's, which is
+  // the whole row. An earlier version truncated at the first </div></div>,
+  // which cut every row off before the button it was meant to look for — so it
+  // passed while 316 rows carried one.
+  const rows = html.split('class="list-row').slice(1);
+  const unclaimed = rows
+    .filter((r) => !r.startsWith(' is-claimed') && !r.startsWith(' head'))
+    .map((r) => r.split('</section>')[0]);
+  check(unclaimed.length > 0, `${page} has no unclaimed rows to check.`);
+  const contactable = unclaimed.filter((r) => /request-btn-row/.test(r));
+  check(contactable.length === 0,
+    `${page} offers a request button on ${contactable.length} unclaimed listing(s).`);
+
+  check(!/tel:/.test(html), `${page} contains a tel: link.`);
+  check(!/\b\(?\d{3}\)?[ .-]\d{3}[ .-]\d{4}\b/.test(html), `${page} contains a phone number.`);
+}
+
 // The sitemap is the one file nobody looks at after it is generated. Its
 // failure mode is silent and slow: Google crawls what it lists, so a wrong
 // host, a missing trailing slash, or a URL that 404s costs crawl budget on a
