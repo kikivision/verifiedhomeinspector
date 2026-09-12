@@ -108,28 +108,72 @@ export async function getCitiesForCounty(countySlug: string): Promise<string[]> 
  * then unclaimed — matching the tier ladder, not just an alphabetical dump.
  */
 export async function getListingsForCounty(countySlug: string): Promise<Listing[]> {
-  const { data, error } = await supabase
-    .from('listings')
-    .select('*')
-    // Delisted rows stopped appearing in the DBPR extract, so the license is no
-    // longer current. They stay in the table — deleting them would destroy a
-    // claimed listing over what might be a bad upstream file — but a site whose
-    // promise is verified licensure must not show them.
-    .is('delisted_at', null)
-    .eq('county', countySlug)
-    .order('featured_position', { ascending: true, nullsFirst: false });
-
-  if (error) {
-    console.error('Error fetching listings:', error.message);
-    return [];
+  // One read per county per build. The county page, every inspector page and
+  // every badge all need the same rows, and before this each asked for them
+  // separately — twelve full-county selects fired at once, Supabase's free
+  // tier answered some with Gateway Timeout, and the build carried on with an
+  // empty county and 400 fewer pages, no error. The smoke test caught the page
+  // count; this is the fix. Dev is not cached, so a change in the table shows
+  // on the next reload.
+  if (import.meta.env.PROD) {
+    const cached = listingsCache.get(countySlug);
+    if (cached) return cached;
+    const pending = fetchListingsForCounty(countySlug);
+    listingsCache.set(countySlug, pending);
+    return pending;
   }
+  return fetchListingsForCounty(countySlug);
+}
 
+const listingsCache = new Map<string, Promise<Listing[]>>();
+
+async function fetchListingsForCounty(countySlug: string): Promise<Listing[]> {
+  // A timeout on a shared read would still empty a county for the whole
+  // build, so one retry after a pause. A second failure is logged and returns
+  // nothing, which the smoke test turns into a failed build rather than a
+  // deployed site with a county missing.
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    const { data, error } = await supabase
+      .from('listings')
+      .select('*')
+      // Delisted rows stopped appearing in the DBPR extract, so the license is no
+      // longer current. They stay in the table — deleting them would destroy a
+      // claimed listing over what might be a bad upstream file — but a site whose
+      // promise is verified licensure must not show them.
+      .is('delisted_at', null)
+      .eq('county', countySlug)
+      .order('featured_position', { ascending: true, nullsFirst: false });
+
+    if (!error) return sortListings(data as Listing[]);
+    console.error(`Error fetching listings for ${countySlug} (attempt ${attempt}):`, error.message);
+    if (attempt === 1) await new Promise((r) => setTimeout(r, 1500));
+  }
+  return [];
+}
+
+function sortListings(rows: Listing[]): Listing[] {
   const tierRank: Record<Tier, number> = { featured: 0, claimed: 1, unclaimed: 2 };
-  return (data as Listing[]).sort((a, b) => {
+  return rows.sort((a, b) => {
     if (a.tier !== b.tier) return tierRank[a.tier] - tierRank[b.tier];
     if (a.tier === 'featured') return (a.featured_position ?? 99) - (b.featured_position ?? 99);
     return a.licensee_name.localeCompare(b.licensee_name);
   });
+}
+
+/**
+ * Every live listing in every live county, for building the per-inspector
+ * pages. One query per county rather than one for the table: PostgREST caps a
+ * select at 1,000 rows and there are more listings than that in total, so a
+ * single query would silently drop the tail and build no page for those
+ * inspectors, with no error. Sorted the same way the county page is.
+ */
+export async function getAllListings(countySlugs: string[]): Promise<Listing[]> {
+  // Sequential on purpose: four full-county reads fired together is what
+  // produced the timeouts the cache above exists for, and a build is not in a
+  // hurry.
+  const all: Listing[] = [];
+  for (const slug of countySlugs) all.push(...(await getListingsForCounty(slug)));
+  return all;
 }
 
 /**

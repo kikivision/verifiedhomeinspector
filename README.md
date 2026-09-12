@@ -85,6 +85,22 @@ the Supabase dashboard; none of it is in the repo):
   inspector does is visible until someone deploys. See "Rebuild required
   for new data" below.
 
+## Per-inspector pages
+
+Every live listing builds a page at
+`/fl/<county>/<city>/<hi####-licensee-name>/` (about 1,300 pages), and
+every claimed listing builds a badge at `/badge/HI####.svg` that the
+inspector embeds on their own site, linking back. The path segment comes
+from the licensee name in the state record — never the business name,
+which changes on claim — so a page's URL never moves; `src/lib/slug.ts`
+is the one place that rule lives and the dashboard's badge snippet uses
+it too. See [DECISIONS.md](DECISIONS.md) for why.
+
+The build reads listings per county (`getAllListings`) because PostgREST
+caps a query at 1,000 rows and one query for the table would silently
+build no page for the tail. The smoke test fails if fewer than 1,000
+inspector pages come out.
+
 ## How data gets in
 
 `scripts/import-dbpr.mjs` pulls the official DBPR public-records extract

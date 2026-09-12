@@ -64,7 +64,7 @@ export function trackEvent(name: string, params: Record<string, unknown> = {}): 
 
   // Astro bundles each page's script separately from the layout's, and does not
   // guarantee which runs first. A page that fires an event on load could
-  // therefore run before the layout had initialised gtag, and the event was
+  // therefore run before the layout had initialized gtag, and the event was
   // lost to the catch below. initAnalytics returns immediately if it has
   // already run, so calling it here makes trackEvent work whatever the order.
   initAnalytics();
