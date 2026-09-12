@@ -5,6 +5,99 @@ until you know why. Newest first.
 
 ---
 
+## 2026-09-12 — Claims are self-serve, free, and show contact details
+
+**Built.** Supersedes the 2026-09-11 entry below on both stages: the site
+left beta and shows contact details in one step, three days in.
+
+### What changed
+
+- A claimed listing is **free, outright**. The "free until five counted
+  requests, then $10/month" offer is retired. Nobody had claimed under it.
+- A claimed listing **shows the inspector's phone number and website**, on the
+  county page row and on a featured card. A tap on the number logs
+  `click_phone`; the request button and `click_request` stay.
+- Claiming is **self-serve**: `/claim/` emails a 6-digit code (the same
+  flow as SuperReports and Sunstate Trades — a magic link opens in whatever
+  browser the mail app picks, which on a phone is often the wrong one), the
+  inspector enters their license number on `/dashboard/`, and
+  `claim_listing()` attaches the row to their account and moves it to
+  `claimed` at once. They edit business name, phone, website, services, years,
+  cities served and an about paragraph there, through `update_my_listing()`.
+  No UPDATE policy exists on `listings`; the functions are the only write path.
+- `/for-inspectors/` states the offer and both prices on one page. The nav's
+  "List your business" goes there.
+- The featured product is unchanged: $50/month founding rate, county-level,
+  `FEATURED_CAP` still 2. Asking for a spot from the dashboard posts the
+  existing `featured-inquiry` form.
+
+### Why the sequence collapsed
+
+The 2026-09-11 entry was right that counting requests and showing a phone
+number are incompatible, and right that the count only existed to prove value
+to inspectors deciding whether to pay $10. Once the claim costs nothing there
+is nothing to prove and nothing to bill, and the form-only contact path was
+costing homeowners the thing they came for while proving value to nobody. The
+ordering problem went away by removing the thing that needed ordering.
+
+What is lost: an exact per-listing request count as a sales instrument. What
+replaces it: `click_phone` plus `click_request`, in the same
+`listing_request_counts` view, which an inspector can be shown but is not
+billed against.
+
+### Why a claim goes live at once
+
+The DBPR extract carries a mailing address and nothing else — no email, no
+phone — so there is no way to prove the person signing in as HI7816 is HI7816
+without mailing them something. The options were instant-and-revocable,
+pending-until-a-person-approves, and a postcard code. Pending means every
+claim waits on one person, including the ones made at 9pm; a postcard means a
+week and postage per claim.
+
+Instant is safe enough because a false claim gains little: the licensee's name
+and license number come from the state record and cannot be edited, so a
+squatter is advertising their own phone number under someone else's name,
+which that someone will notice. Every claim emails the inbox (the dashboard
+posts the `claim-listing` Netlify form after `claim_listing` succeeds), one
+account can hold one listing, and `set-tier.mjs HI#### unclaimed` revokes a
+claim in one line. RMC, set up by hand before this existed, is refused by
+`claim_listing` and is attached to an account with a one-off UPDATE.
+
+### No cold sign-ups
+
+An account exists to claim a listing and for nothing else. `/claim/` requires
+a license number, checks it is an unclaimed listing before sending a link, and
+sends it as user metadata on the sign-in request; a `before insert` trigger on
+`auth.users` (`require_claimable_license`) refuses to create an account whose
+metadata names no such listing. The page's check is for a readable message;
+the trigger is the rule, and it holds against a direct call to the auth API
+with the anon key. Sunstate Trades has the mess of accounts that belong to
+nobody; this site does not get one. An existing account is not inserted, so
+it is not checked: it signs in with any license and is judged at claim time.
+
+### What is deliberately not built yet
+
+- **Per-inspector pages and per-city pages.** The dashboard already collects
+  `service_cities` and `about` for them. Until they exist, `about` is stored
+  and not rendered anywhere.
+- **Stripe for featured.** Still an email and a hand-run `set-tier.mjs`.
+- **Rebuild on save.** The dashboard tells the inspector the county page
+  updates "after the next rebuild". That rebuild has to be wired as a Supabase
+  database webhook on `listings` UPDATE pointing at the Netlify build hook, in
+  the Supabase dashboard; nothing in the repo triggers it. Until it is wired,
+  a claim is invisible on the county page until someone deploys.
+- **Column-level hiding of `claimed_by`.** The anon role can read the uuid on
+  every row. It is an auth user id and resolves to nothing outside
+  `auth.users`, and hiding it would mean the site's `select('*')` fails on
+  column privileges. Left as is, knowingly.
+
+### What would reverse this
+
+A claim made in bad faith that the inbox notice and the real licensee did not
+catch quickly. One of those and claims go to pending.
+
+---
+
 ## 2026-09-11 — Leaving beta and showing contact details are one sequence
 
 **Direction set. Not built. Triggers deliberately unset — see below.**

@@ -6,9 +6,11 @@ interface Props {
   title: string;
   description?: string;
   currentCountySlug?: string;
+  /** For pages that only make sense to one signed-in person, like the dashboard. */
+  noindex?: boolean;
 }
 
-const { title, description, currentCountySlug } = Astro.props;
+const { title, description, currentCountySlug, noindex = false } = Astro.props;
 
 // The nav used bare fragments, which only work on a county page. On /privacy/,
 // /terms/ and the confirmation pages they resolved against the current URL —
@@ -19,7 +21,10 @@ const { title, description, currentCountySlug } = Astro.props;
 // them would be a guess. The homepage's own county selector is the honest
 // destination, so that is where the two county-shaped links point instead.
 const inspectors = currentCountySlug ? `/fl/${currentCountySlug}/#all-inspectors` : '/#browse';
-const listYours = currentCountySlug ? `/fl/${currentCountySlug}/#claim` : '/#claim';
+// One page explains the offer and its price for every county, so the nav goes
+// there rather than to a county's claim panel. The panel still exists on each
+// county page for an inspector who is already looking at their own row.
+const listYours = '/for-inspectors/';
 
 // Absolute URLs, because og:image and og:url are read by crawlers that have no
 // page to resolve a relative path against. Astro.site comes from `site` in
@@ -38,6 +43,7 @@ const ogImage = new URL('/og-image.png', Astro.site);
        silently, so every page shipped without one and Google wrote its own
        from whatever text it found first. -->
   {description && <meta name="description" content={description} />}
+  {noindex && <meta name="robots" content="noindex" />}
   <!-- The site shipped with Astro's default logo, and with no icon link at
        all: browsers were finding /favicon.ico only by convention. Three
        entries is the whole modern set — .ico for browsers that still ask for

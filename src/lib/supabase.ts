@@ -48,7 +48,58 @@ export interface Listing {
   /** Years in business, as the inspector states it. Rendered as "N+ years". */
   years_experience: number | null;
   claimed_at: string | null;
+  /**
+   * The auth user who claimed this listing through the dashboard, or null for
+   * an unclaimed row and for the listings set up by hand before self-serve
+   * claims existed. Public reads see the uuid; it identifies nothing outside
+   * auth.users.
+   */
+  claimed_by: string | null;
+  /** Stored with its scheme, validated by update_my_listing. */
+  website: string | null;
+  /** Written by the inspector on their dashboard. Nothing is generated for them. */
+  about: string | null;
+  /** Cities the inspector serves, chosen from the cities in their county. */
+  service_cities: string[];
   created_at: string;
+}
+
+/**
+ * A listing that shows contact details. Both claimed and featured do; the
+ * name is here so the page reads "if it is claimed" rather than repeating the
+ * tier comparison in four places, each of which could drift.
+ */
+export function isClaimed(l: Pick<Listing, 'tier'>): boolean {
+  return l.tier !== 'unclaimed';
+}
+
+/** "rmcinspections.com" for a stored "https://rmcinspections.com/". */
+export function websiteLabel(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return url;
+  }
+}
+
+/**
+ * Every city with at least one live listing in a county. The dashboard offers
+ * these as the cities an inspector can say they serve, so the list can never
+ * name a place the county page has nothing for.
+ */
+export async function getCitiesForCounty(countySlug: string): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('listings')
+    .select('city')
+    .is('delisted_at', null)
+    .eq('county', countySlug);
+  if (error) {
+    console.error('Error fetching cities:', error.message);
+    return [];
+  }
+  return [...new Set((data as { city: string }[]).map((r) => r.city))].sort((a, b) =>
+    a.localeCompare(b),
+  );
 }
 
 /**

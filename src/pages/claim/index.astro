@@ -1,0 +1,226 @@
+---
+// Sign-in for inspectors: email plus a 6-digit code, the same flow as
+// SuperReports and Sunstate Trades. Supabase emails the code; the inspector
+// types it here and is signed in without leaving the page. No password, and
+// no magic link — a link opens in whatever browser the mail app chooses,
+// which on a phone is often not the one they started in, and the session
+// lands somewhere they are not looking.
+//
+// There are no cold sign-ups. The license number is required and checked
+// against the listings before a code is sent, and it travels with the sign-in
+// request as user metadata, where a database trigger on auth.users refuses to
+// create an account for a license that is not an unclaimed listing here. The
+// check on this page gives a readable message; the trigger is the rule.
+//
+// The number is also kept in localStorage so the dashboard can offer the
+// claim with it filled in.
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout
+  title="Claim your listing | Verified Home Inspector"
+  description="Sign in with your email to claim your home inspector listing. Free, no password."
+>
+  <section class="section">
+    <div class="wrap">
+      <div class="claim dash-panel">
+        <div>
+          <div class="claim-eyebrow">For home inspectors</div>
+          <h1>Claim your listing</h1>
+          <p>
+            Your Florida license number and the email you want to sign in with. We email you a
+            6-digit code; no password, nothing to install. Claiming is free.
+          </p>
+          <p>
+            Not sure what a claimed listing shows? <a href="/for-inspectors/">See what you get.</a>
+          </p>
+          <p>
+            Don't see your business on the site?
+            <a href="/for-inspectors/#contact">Let us know</a> and we will add your county.
+          </p>
+        </div>
+
+        <form class="claim-form" id="signinForm" novalidate>
+          <label>
+            License number
+            <input type="text" name="license" id="license" placeholder="HI12345" autocomplete="off" required />
+          </label>
+          <label>
+            Email
+            <input type="email" name="email" id="email" required autocomplete="email" />
+          </label>
+          <button type="submit" class="btn-primary" id="signinBtn">Email me a code</button>
+          <p class="dash-msg" id="msg" role="status" aria-live="polite"></p>
+        </form>
+
+        <form class="claim-form" id="codeForm" novalidate hidden>
+          <label>
+            The 6-digit code we emailed to <span id="codeEmail"></span>
+            <input
+              type="text"
+              name="code"
+              id="code"
+              inputmode="numeric"
+              autocomplete="one-time-code"
+              pattern="[0-9]{6}"
+              maxlength="6"
+              placeholder="123456"
+              required
+            />
+          </label>
+          <button type="submit" class="btn-primary" id="codeBtn">Sign in</button>
+          <p class="dash-msg" id="codeMsg" role="status" aria-live="polite"></p>
+          <p class="dash-msg">
+            <a href="#" id="resend" style="color:var(--mustard);text-decoration:underline;text-underline-offset:2px;">Send a new code</a>
+          </p>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    import { supabase } from '../../lib/supabase';
+    import { trackEvent } from '../../lib/gtag';
+
+    const $ = <T extends HTMLElement>(sel: string) => document.querySelector<T>(sel)!;
+    const signinForm = $<HTMLFormElement>('#signinForm');
+    const codeForm = $<HTMLFormElement>('#codeForm');
+    const licenseInput = $<HTMLInputElement>('#license');
+    const emailInput = $<HTMLInputElement>('#email');
+    const codeInput = $<HTMLInputElement>('#code');
+    const signinBtn = $<HTMLButtonElement>('#signinBtn');
+    const codeBtn = $<HTMLButtonElement>('#codeBtn');
+    const msg = $('#msg');
+    const codeMsg = $('#codeMsg');
+
+    let email = '';
+
+    // Carried from the row the inspector clicked on the county page.
+    const fromUrl = new URLSearchParams(location.search).get('license');
+    if (fromUrl) licenseInput.value = fromUrl.toUpperCase();
+
+    // Already signed in: the dashboard is where they want to be.
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) location.replace('/dashboard/');
+    });
+
+    function say(el: HTMLElement, text: string, isError = false) {
+      el.textContent = text;
+      el.classList.toggle('is-error', isError);
+    }
+
+    /**
+     * Mirrors the trigger's rule so the inspector reads why in their own words
+     * rather than "Database error saving new user". Same public read the
+     * county page is built from.
+     */
+    async function whyNotClaimable(license: string): Promise<string | null> {
+      const { data, error } = await supabase
+        .from('listings')
+        .select('license_number, licensee_name, tier, claimed_by, delisted_at')
+        .eq('license_number', license)
+        .maybeSingle();
+      if (error) return `Could not check that license right now: ${error.message}`;
+      if (!data) {
+        return `No listing with license ${license} yet. We list counties one at a time; if yours is not on the site, use the contact form and we will add it.`;
+      }
+      if (data.delisted_at) {
+        return `License ${license} no longer appears in the DBPR extract, so it cannot be claimed. If the state shows it as current, use the contact form.`;
+      }
+      if (data.claimed_by) {
+        return `License ${license} has already been claimed. If that was not you, use the contact form and we will sort it out.`;
+      }
+      return null;
+    }
+
+    async function sendCode(license: string): Promise<boolean> {
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          // Read by the require_claimable_license trigger when this email has
+          // no account yet. Ignored for an existing account.
+          data: { license },
+        },
+      });
+      if (error) {
+        const refused = /database error/i.test(error.message);
+        say(
+          msg,
+          refused
+            ? `License ${license} is not an unclaimed listing on this site, so no account was created.`
+            : `Could not send the code: ${error.message}`,
+          true,
+        );
+        return false;
+      }
+      return true;
+    }
+
+    signinForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      say(msg, '');
+      email = emailInput.value.trim();
+      const license = licenseInput.value.trim().toUpperCase().replace(/\s/g, '');
+      if (!/^HI\d{1,6}$/.test(license)) {
+        say(msg, 'Enter the HI number on your Florida home inspector license, like HI3532.', true);
+        return;
+      }
+      if (!email || !emailInput.checkValidity()) {
+        say(msg, 'Enter the email address you want to sign in with.', true);
+        return;
+      }
+
+      signinBtn.disabled = true;
+      say(msg, 'Checking the license…');
+      const reason = await whyNotClaimable(license);
+      if (reason) {
+        signinBtn.disabled = false;
+        say(msg, reason, true);
+        return;
+      }
+      try {
+        localStorage.setItem('vhi.pendingLicense', license);
+      } catch {
+        // Private mode or storage disabled: the dashboard asks for it again.
+      }
+
+      say(msg, 'Sending…');
+      const sent = await sendCode(license);
+      signinBtn.disabled = false;
+      if (!sent) return;
+      trackEvent('claim_code_sent');
+      say(msg, '');
+      $('#codeEmail').textContent = email;
+      signinForm.hidden = true;
+      codeForm.hidden = false;
+      codeInput.focus();
+    });
+
+    codeForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const token = codeInput.value.trim();
+      if (!/^\d{6}$/.test(token)) {
+        say(codeMsg, 'The code is six digits.', true);
+        return;
+      }
+      codeBtn.disabled = true;
+      say(codeMsg, 'Checking…');
+      const { error } = await supabase.auth.verifyOtp({ email, token, type: 'email' });
+      if (error) {
+        codeBtn.disabled = false;
+        say(codeMsg, `That code did not work: ${error.message}. Check for a newer email, or send a new code.`, true);
+        return;
+      }
+      trackEvent('claim_signed_in');
+      location.href = '/dashboard/';
+    });
+
+    $('#resend').addEventListener('click', async (event) => {
+      event.preventDefault();
+      const license = licenseInput.value.trim().toUpperCase().replace(/\s/g, '');
+      say(codeMsg, 'Sending a new code…');
+      const sent = await sendCode(license);
+      say(codeMsg, sent ? `A new code is on its way to ${email}.` : msg.textContent ?? '', !sent);
+    });
+  </script>
+</Layout>

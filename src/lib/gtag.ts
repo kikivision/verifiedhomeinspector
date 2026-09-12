@@ -19,7 +19,9 @@ const PRODUCTION_HOSTS = new Set([
 declare global {
   interface Window {
     dataLayer: unknown[];
-    gtag: (...args: unknown[]) => void;
+    // Optional, because it is: nothing defines it until initAnalytics runs,
+    // and the guard on the first line of initAnalytics reads it to find out.
+    gtag?: (...args: unknown[]) => void;
   }
 }
 
@@ -68,7 +70,7 @@ export function trackEvent(name: string, params: Record<string, unknown> = {}): 
   initAnalytics();
 
   try {
-    window.gtag('event', name, params);
+    window.gtag?.('event', name, params);
   } catch (err) {
     console.error('Failed to send GA4 event:', err);
   }
