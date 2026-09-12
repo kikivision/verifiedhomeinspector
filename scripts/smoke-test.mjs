@@ -543,7 +543,7 @@ for (const file of badges) {
 }
 
 // City pages: one per city with MIN_CITY_LISTINGS or more inspectors, at
-// /fl/<county>/<city>/. Each carries two featured positions of its own, the
+// /fl/<county>/<city>/. Each carries four featured positions of its own, the
 // rows for that city, and a link to every other city page in the county.
 const cityPages = pages.filter((p) => /^\/fl\/[a-z-]+\/[a-z0-9-]+\/$/.test(pagePath(p)));
 check(cityPages.length >= 40,
