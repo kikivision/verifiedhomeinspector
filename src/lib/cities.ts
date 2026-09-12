@@ -21,6 +21,14 @@ export const MIN_CITY_LISTINGS = 3;
 export const CITY_FEATURED_CAP = 2;
 
 /**
+ * The most a city page will ever hold. Stated in the copy so an inspector
+ * buying one of two today knows they will never be one of twenty; the
+ * value of the spot is that number. Raising CITY_FEATURED_CAP past this
+ * is a promise taken back and needs a DECISIONS entry, not an edit.
+ */
+export const CITY_FEATURED_TARGET = 4;
+
+/**
  * How many city pages one featured listing may name. Decided 2026-09-12:
  * $50/month buys the county page plus up to three city pages the inspector
  * chooses, which is a home base and the two or three towns next to it. More

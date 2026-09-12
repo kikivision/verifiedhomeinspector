@@ -15,7 +15,7 @@ import ListingRows from '../../../../components/ListingRows.astro';
 import RequestDialog from '../../../../components/RequestDialog.astro';
 import { counties, getCounty, searchName } from '../../../../lib/counties';
 import { getAllListings, isClaimed, type Listing } from '../../../../lib/supabase';
-import { cityPagesFor, cityPath, featuredCities, CITY_FEATURED_CAP, type CityPage } from '../../../../lib/cities';
+import { cityPagesFor, cityPath, featuredCities, CITY_FEATURED_CAP, CITY_FEATURED_TARGET, type CityPage } from '../../../../lib/cities';
 import { inspectorPath } from '../../../../lib/slug';
 
 export async function getStaticPaths() {
@@ -95,7 +95,7 @@ if (description.length > 160) description = `${description.slice(0, 157).trimEnd
     <div class="wrap">
       <div class="section-head">
         <h2>Featured in {city}</h2>
-        <div class="note">{CITY_FEATURED_CAP} spots per city while we build out</div>
+        <div class="note">{CITY_FEATURED_CAP} spots per city while we build out, never more than {CITY_FEATURED_TARGET}</div>
       </div>
       <div class="featured-grid">
         {featured.map((l) => (
@@ -112,7 +112,7 @@ if (description.length > 160) description = `${description.slice(0, 157).trimEnd
               {page.listings.length} licensed inspectors are listed for {city}. Featured puts a
               card with your logo at the top of this page, up to two more city pages you choose,
               and the {county.name} page, above all of them. Two spots per city while we build
-              out Florida.
+              out Florida, and never more than {CITY_FEATURED_TARGET}.
             </p>
             <button type="button" class="btn-primary featured-btn" data-county={county.slug} data-city={city} style="font-size:0.85rem;padding:8px 16px;">
               Get featured in {city}

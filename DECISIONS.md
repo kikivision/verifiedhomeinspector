@@ -41,8 +41,12 @@ the county, which lets one Largo inspector occupy a St. Petersburg slot he
 never works. Cross-county is not possible: a listing lives in one county.
 
 Two cards per city is the build-out number, like `FEATURED_CAP` on the
-county page against its target of four. The copy says "two while we build
-out" so raising it later is a number change, not a promise taken back.
+county page against its target of four, and four is the ceiling for city
+pages too (`CITY_FEATURED_TARGET`). The copy says both: "two while we
+build out, never more than four." The first half makes raising it a
+number change rather than a promise taken back; the second is what the
+spot is worth — an inspector buying one of two has to know they will not
+be one of twenty.
 
 ### Why three listings is the threshold
 
