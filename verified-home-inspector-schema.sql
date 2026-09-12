@@ -26,6 +26,15 @@ create table listings (
   -- have meant a card claiming a credential nobody issued.
   years_experience int check (years_experience between 0 and 80),
   claimed_at timestamptz,
+  -- The auth user who claimed the listing through the dashboard. Null for an
+  -- unclaimed row and for listings set up by hand before self-serve claims
+  -- existed; those are attached with a one-off update.
+  claimed_by uuid references auth.users(id) on delete set null,
+  -- Filled in by the inspector on their dashboard, validated by
+  -- update_my_listing. website is stored with its scheme.
+  website text,
+  about text,
+  service_cities jsonb not null default '[]'::jsonb,
   -- Set when a license stops appearing in the DBPR extract. Null means current.
   -- The importer marks rows here and never deletes them, so a claimed listing
   -- survives a bad upstream file and can be restored by clearing this.
@@ -54,6 +63,12 @@ create index idx_listings_tier on listings(tier);
 create unique index uniq_featured_slot_per_county
   on listings (county, featured_position)
   where tier = 'featured' and featured_position is not null;
+create index idx_listings_claimed_by on listings(claimed_by);
+-- One live claim per account: an inspector holds one license, and an account
+-- that could claim several would be the obvious way to squat on competitors.
+create unique index uniq_listing_per_claimant
+  on listings (claimed_by)
+  where claimed_by is not null;
 create index idx_events_listing on listing_events(listing_id);
 create index idx_events_type_context on listing_events(event_type, page_context);
 
@@ -122,3 +137,8 @@ select
 from listings l
 left join listing_events e on e.listing_id = l.id
 group by l.id;
+
+-- Self-serve claims: the functions the dashboard calls. Defined in
+-- supabase/migrations/2026-09-12-self-serve-claims.sql, which is the delta for
+-- the existing project; a fresh project runs this file and then that one.
+-- Deliberately not duplicated here so there is one definition to keep right.

@@ -1,0 +1,159 @@
+---
+// The offer, on one page, with the price on it.
+//
+// Before this the price lived in a county page's claim panel and in a dialog,
+// and the nav's "List your business" went to whichever county the reader was
+// on. An inspector deciding whether to bother now has one page that says what
+// a claimed listing shows, what it costs (nothing), and what featured costs.
+import Layout from '../../layouts/Layout.astro';
+import { counties, searchName } from '../../lib/counties';
+
+const live = counties.filter((c) => c.status === 'live');
+---
+
+<Layout
+  title="List your home inspection business | Verified Home Inspector"
+  description="Claim your listing free. Your phone, website and services shown to homeowners in your county. Featured spots are $50 a month at the founding rate."
+>
+  <section class="hero">
+    <div class="wrap">
+      <div class="county-tag">For home inspectors</div>
+      <h1>Your license is already listed. Claim it and homeowners can reach you.</h1>
+      <p>
+        Every active Florida home inspector license in {live.map(searchName).join(', ')} is on
+        this site, straight from the DBPR record. An unclaimed listing shows a name and a license
+        number and nothing else. A claimed one shows your business, and it is free.
+      </p>
+      <p>
+        <a href="/claim/" class="btn-primary">Claim your listing</a>
+      </p>
+    </div>
+  </section>
+
+  <section class="section" id="plans">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>What you get</h2>
+        <div class="note">Two options. One of them costs nothing.</div>
+      </div>
+      <div class="plan-grid">
+        <div class="card plan">
+          <h3>Claimed listing</h3>
+          <div class="plan-price">Free<span>no card, no contract</span></div>
+          <ul class="plan-list">
+            <li><span class="check">✓</span>Your business name on the listing</li>
+            <li><span class="check">✓</span>Your phone number, as a tap-to-call link</li>
+            <li><span class="check">✓</span>A link to your website</li>
+            <li><span class="check">✓</span>The services you offer, and years in business</li>
+            <li><span class="check">✓</span>Listed above every unclaimed inspector in your county</li>
+            <li><span class="check">✓</span>Homeowner requests forwarded to you, and to nobody else</li>
+          </ul>
+          <a href="/claim/" class="btn-primary">Claim your listing</a>
+        </div>
+        <div class="card plan featured">
+          <div class="badge">Featured</div>
+          <h3>Featured spot</h3>
+          <div class="plan-price">$50<span>a month, founding rate</span></div>
+          <ul class="plan-list">
+            <li><span class="check">✓</span>Everything in a claimed listing</li>
+            <li><span class="check">✓</span>A card with your logo at the top of the county page, above every listing</li>
+            <li><span class="check">✓</span>One of a small number of spots per county, so it means something</li>
+            <li><span class="check">✓</span>The founding rate stays yours for as long as you keep the spot</li>
+            <li><span class="check">✓</span>Nothing is charged until the card is live and you have seen it</li>
+          </ul>
+          <a href="/claim/" class="btn-primary">Claim first, then ask for a spot</a>
+        </div>
+      </div>
+      <p class="disclosure">
+        A claimed listing is free for as long as the license stays current with the DBPR. We
+        do not charge per lead, and we never send the same homeowner to several inspectors.
+      </p>
+    </div>
+  </section>
+
+  <section class="section" style="padding-top:0;">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>How claiming works</h2>
+      </div>
+      <ol class="steps">
+        <li>
+          <strong>Sign in with your email.</strong> We send a link; there is no password to
+          make up.
+        </li>
+        <li>
+          <strong>Enter your license number.</strong> The HI number on your DBPR license. We match
+          it to the state record on this site and attach the listing to your account.
+        </li>
+        <li>
+          <strong>Fill in your details.</strong> Business name, phone, website, services, years
+          in business. They show on the county page after the next rebuild, usually within a
+          few minutes.
+        </li>
+      </ol>
+      <p class="disclosure">
+        Claim a listing only if you hold that license or are authorized by the person who
+        does. The licensee's name and license number come from the state record and cannot be
+        changed here. A listing claimed by someone who has no right to it is removed.
+      </p>
+    </div>
+  </section>
+
+  <!-- The one place an inspector can write to us. There is no mailbox on this
+       domain by design; Netlify reads this form out of the built HTML and emails
+       each submission on, the same as the request and featured forms. -->
+  <section class="section" id="contact" style="padding-top:0;">
+    <div class="wrap">
+      <div class="claim">
+        <div>
+          <div class="claim-eyebrow">Questions</div>
+          <h2>Ask us anything first</h2>
+          <p>
+            A county you want added, a listing that should not be yours, a claim that will not
+            go through. We reply to the address you give us, usually the same business day.
+          </p>
+          <p class="dash-msg" id="contactSent" hidden>Sent. We will reply to the address you gave us.</p>
+        </div>
+        <form
+          name="inspector-question"
+          method="POST"
+          data-netlify="true"
+          netlify-honeypot="company-website"
+          action="/for-inspectors/?sent=1#contact"
+          class="claim-form"
+        >
+          <input type="hidden" name="form-name" value="inspector-question" />
+          <p class="visually-hidden">
+            <label>Leave this field empty: <input name="company-website" /></label>
+          </p>
+          <label>
+            Your name
+            <input type="text" name="name" required />
+          </label>
+          <label>
+            Email
+            <input type="email" name="email" required />
+          </label>
+          <label>
+            License number, if you have one
+            <input type="text" name="license-number" placeholder="HI12345" />
+          </label>
+          <label>
+            What can we help with?
+            <textarea name="message" rows="3" required></textarea>
+          </label>
+          <button type="submit" class="btn-primary">Send</button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    // Netlify posts the form back to this page with ?sent=1; the note is the
+    // only thing that says it worked.
+    if (new URLSearchParams(location.search).get('sent') === '1') {
+      const note = document.querySelector<HTMLElement>('#contactSent');
+      if (note) note.hidden = false;
+    }
+  </script>
+</Layout>

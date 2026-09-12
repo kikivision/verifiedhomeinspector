@@ -1,7 +1,7 @@
 ---
 import Layout from '../../../layouts/Layout.astro';
 import { counties, getCounty, searchName } from '../../../lib/counties';
-import { getListingsForCounty, type Listing } from '../../../lib/supabase';
+import { getListingsForCounty, isClaimed, websiteLabel, type Listing } from '../../../lib/supabase';
 
 export function getStaticPaths() {
   return counties.map((c) => ({ params: { county: c.slug } }));
@@ -152,18 +152,30 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
                   </div>
                 )}
                 <div class="lic"><span class="check">✓</span>FL Lic #{l.license_number} — DBPR verified, active</div>
-                {/* Deliberately the only way to reach an inspector: no phone
-                    number, no website link, on any tier. Every lead has to pass
-                    through here to be counted, because the offer is "free until
-                    we have passed you five requests" and a call placed straight
-                    from the card is a lead nobody can count — least of all the
-                    inspector deciding whether this is worth paying for.
-
-                    So the unused pieces are not an unfinished feature: the
-                    phone column, the click_phone event type and the .card .phone
-                    CSS all exist, and rendering any of them would quietly break
-                    the business model. If that changes, change it on purpose. */}
+                {/* Phone and website, shown since 2026-09-12. They were withheld
+                    while the offer was "free until five counted requests"; that
+                    offer is retired and a claimed listing is free outright, so
+                    the count no longer has anything to bill against. A tap on
+                    the number logs click_phone before dialling, which is the
+                    measure that replaced it. See DECISIONS.md. */}
                 <div class="contact">
+                  <div class="contact-lines">
+                    {l.phone && (
+                      <a
+                        class="row-phone phone-link"
+                        href={`tel:${l.phone.replace(/[^\d+]/g, '')}`}
+                        data-listing-id={l.id}
+                        data-page-context={`county_${county.slug}_featured`}
+                      >
+                        {l.phone}
+                      </a>
+                    )}
+                    {l.website && (
+                      <a class="row-web" href={l.website} target="_blank" rel="sponsored noopener">
+                        {websiteLabel(l.website)} ↗
+                      </a>
+                    )}
+                  </div>
                   <button
                     class="request-btn"
                     data-listing-id={l.id}
@@ -289,20 +301,18 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
           </div>
           <div class="search-count" id="searchCount" aria-live="polite"></div>
           <div class="list-row head">
-            <div>Inspector</div><div>City</div><div>License</div><div>Specialties</div><div>Listing status</div><div>Hire</div>
+            <div>Inspector</div><div>City</div><div>License</div><div>Specialties</div><div>Contact</div><div>Hire</div>
           </div>
-          <!-- Each unclaimed row's status cell links to the claim form. An
-               inspector arrives looking for their own name and finds it here,
-               ~20,000px above that form, so offering the claim on the row itself
-               means they never go hunting for it, and the license number they
-               just recognized is carried into the form for them. Without JS the
-               link still jumps to #claim.
+          <!-- Each unclaimed row links straight to sign-in with its license
+               number in the URL. An inspector arrives looking for their own name
+               and finds it here, so the claim is offered on the row itself and
+               the number they just recognized is carried along for them.
 
                This comment lives outside the map on purpose: inside it, Astro
                emitted it once per listing — 123KB on a 253KB page. -->
           {nonFeatured.map((l) => (
             <div
-              class:list={['list-row', { 'is-claimed': l.tier !== 'unclaimed' }]}
+              class:list={['list-row', { 'is-claimed': isClaimed(l) }]}
               data-city={l.city}
               data-search={`${l.licensee_name} ${l.business_name ?? ''} ${l.city} ${l.license_number}`.toLowerCase()}
             >
@@ -321,25 +331,39 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
                   <span class="tag tag-empty">—</span>
                 )}
               </div>
-              {l.tier !== 'unclaimed' ? (
-                <div class="claimed-status">
+              {isClaimed(l) ? (
+                <div class="row-contact">
                   <span class="claimed-mark">Claimed</span>
-                  <span class="claimed-note">Responds to requests</span>
+                  {l.phone && (
+                    <a
+                      class="row-phone phone-link"
+                      href={`tel:${l.phone.replace(/[^\d+]/g, '')}`}
+                      data-listing-id={l.id}
+                      data-page-context={`county_${county.slug}_table`}
+                    >
+                      {l.phone}
+                    </a>
+                  )}
+                  {l.website && (
+                    <a class="row-web" href={l.website} target="_blank" rel="noopener">
+                      {websiteLabel(l.website)} ↗
+                    </a>
+                  )}
+                  {!l.phone && !l.website && <span class="claimed-note">Responds to requests</span>}
                 </div>
               ) : (
                 <div class="claimed-status">
                   <span class="unclaimed-mark">Unclaimed</span>
-                  <span class="claimed-note">Free to claim, $10/mo after five requests</span>
+                  <span class="claimed-note">No contact on file. Free to claim.</span>
                 </div>
               )}
               {/* An unclaimed listing has no contact path, and that is the point.
                   Offering to pass a homeowner to an inspector we cannot reach
-                  promised something the site could not do, and a phone number
-                  on an unclaimed row would hand an inspector the one thing
-                  claiming is meant to buy. So the only action on an unclaimed
-                  row is the claim. */}
+                  promised something the site could not do. So the only action on
+                  an unclaimed row is the claim, which goes straight to sign-in
+                  with the license number carried along. */}
               <div>
-                {l.tier !== 'unclaimed' ? (
+                {isClaimed(l) ? (
                   <button
                     class="request-btn-row"
                     data-listing-id={l.id}
@@ -352,7 +376,7 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
                   </button>
                 ) : (
                   <a
-                    href="#claim"
+                    href={`/claim/?license=${l.license_number}`}
                     class="claim-btn-row claim-link"
                     data-license={l.license_number}
                     data-county={county.slug}
@@ -396,15 +420,15 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
            this form out of the built HTML the same way it reads the claim form,
            so an inquiry needs no mailbox on this domain either. -->
       <dialog id="requestDialog" class="request-dialog">
+        <!-- The action carries the county slug through so the confirmation
+             page can send them back where they came from. The hidden county
+             field below is the county NAME, for the notification email to
+             read; the slug is what builds a URL. -->
         <form
           name="inspector-request"
           method="POST"
           data-netlify="true"
           netlify-honeypot="referral-code"
-          {/* Carries the county through so the confirmation page can send them
-              back where they came from. The hidden county field below is the
-              county NAME, for the notification email to read; this is the slug,
-              because it has to build a URL. */}
           action={`/request-received/?from=${county.slug}`}
         >
           <input type="hidden" name="form-name" value="inspector-request" />
@@ -466,91 +490,31 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
               <h2>Own a home inspection business in {county.name}?</h2>
               <p>
                 Your license is already listed here, straight from the DBPR record. Claiming it
-                puts your business name on the listing and moves you above every unclaimed
-                inspector in the county, and while we're building out Florida it costs nothing
-                until we have passed you five homeowner requests, which arrive in your inbox as
-                they come in. After that it is $10/month, or $50/month for a
-                featured spot above every free listing, and the first inspectors to take one keep
-                that rate for as long as they stay. Every request goes to you and nobody else:
-                we never send one homeowner to several inspectors, and we never charge per lead.
+                is free: it puts your business name, phone number, website and services on the
+                listing, and moves you above every unclaimed inspector in the county. A featured
+                spot above every listing is $50 a month at the founding rate, which the first
+                inspectors to take one keep for as long as they stay.
               </p>
               {/* Deliberately NOT in faqItems. That array feeds the FAQPage
-                  JSON-LD on every county page, and it is homeowner-intent
-                  content aimed at search — 4-point, wind mitigation, roof
-                  age. Inspector questions in the same array would enter the
-                  structured data and surface for queries we do not want.
-                  This sits where inspectors already are instead. */}
+                  JSON-LD on the insurance page, and it is homeowner-intent
+                  content aimed at search. Inspector questions in the same array
+                  would enter the structured data and surface for queries we do
+                  not want. This sits where inspectors already are instead. */}
               <div class="inspector-qa">
                 <h3>How do homeowners contact me?</h3>
                 <p>
-                  A request comes to us first, and we forward it to you the same business
-                  day. It goes to you and nobody else.
-                </p>
-                <p>
-                  We do it this way while we're building out Florida so that every lead is
-                  counted. That is what makes your first five genuinely free rather than
-                  something you take our word for: they arrive in your inbox, so you can
-                  count them yourself.
+                  Straight from your listing: your phone number dials and your website opens.
+                  A homeowner who would rather write uses the request button, and that goes
+                  to you and nobody else. We never send one homeowner to several inspectors,
+                  and we never charge per lead.
                 </p>
               </div>
             </div>
-            <!-- Netlify picks this form up from the built HTML at deploy time and
-                 emails each submission on, so claiming needs no mailbox on this
-                 domain and no mail plan. A mailto would also have failed for any
-                 inspector reading on a phone without a configured mail client,
-                 which is most of them. -->
-            <form
-              name="claim-listing"
-              method="POST"
-              data-netlify="true"
-              netlify-honeypot="company-website"
-              action="/claim-received/"
-              class="claim-form"
-            >
-              <input type="hidden" name="form-name" value="claim-listing" />
-              <input type="hidden" name="county" value={county.name} />
-              <!-- Named to look like a field a bot should fill and a person never
-                   sees, so submissions that fill it can be discarded as spam. -->
-              <p class="visually-hidden">
-                <label>Leave this field empty: <input name="company-website" /></label>
-              </p>
-
-              <label>
-                License number
-                <input type="text" name="license-number" required placeholder="HI12345" />
-              </label>
-              <label>
-                Your name
-                <input type="text" name="licensee-name" required />
-              </label>
-              <label>
-                Business name
-                <input type="text" name="business-name" />
-              </label>
-              <label>
-                Phone (so we can reach you)
-                <input type="tel" name="phone" />
-              </label>
-              <label>
-                Email
-                <input type="email" name="email" required />
-              </label>
-              <label>
-                What you want
-                <!-- The value, not the label, is what lands in the notification
-                     email and the CSV export, so each carries its price rather
-                     than a bare slug like "featured". Plain hyphens and no em
-                     dashes, since these are read in an inbox, not on the page. -->
-                <select name="plan">
-                  <option value="Claim - free until 5 requests, then $10/mo">
-                    Claim my listing — free until 5 requests
-                  </option>
-                  <option value="Featured - $50/mo (founding rate)">Featured spot — $50/mo</option>
-                  <option value="Not sure yet">Not sure yet, send me details</option>
-                </select>
-              </label>
-              <button type="submit" class="btn-primary">Send</button>
-            </form>
+            <div class="claim-cta">
+              <a href="/claim/" class="btn-primary">Claim your listing — free</a>
+              <a href="/for-inspectors/" class="claim-more">What a claimed listing shows</a>
+              <a href="/for-inspectors/#contact" class="claim-more">Don't see your business? Let us know.</a>
+            </div>
           </div>
         </div>
       </section>
@@ -659,23 +623,23 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
       if (event.target === dialog) dialog.close();
     });
 
-    // Carry the license number from the row an inspector recognized into the
-    // claim form, so they are not asked to re-type what they just clicked.
+    // A tap on a phone number is the click that replaced the counted request as
+    // the measure of a listing's value. Logged before the dial, which the
+    // browser handles on its own; nothing here can block it.
+    document.querySelectorAll<HTMLAnchorElement>('.phone-link').forEach((link) => {
+      link.addEventListener('click', () => {
+        const { listingId, pageContext } = link.dataset;
+        if (listingId) logListingEvent(listingId, 'click_phone', pageContext ?? 'unknown');
+        trackEvent('click_phone', { county: link.dataset.pageContext });
+      });
+    });
+
+    // The row's claim link goes to sign-in with the license in the URL; this
+    // only records that it was clicked, so the county page can still report
+    // how many inspectors found their own row.
     document.querySelectorAll<HTMLAnchorElement>('.claim-link').forEach((link) => {
       link.addEventListener('click', () => {
-        const license = link.dataset.license;
-        const field = document.querySelector<HTMLInputElement>('input[name="license-number"]');
-        if (!license || !field) return;
-        field.value = license;
-        trackEvent('claim_listing', { license_number: license, county: link.dataset.county });
-        // Focus has to wait out the current task: the browser is still resolving
-        // the #claim jump as this handler runs, and focusing inside it gets reset
-        // to body. A timer rather than requestAnimationFrame, because rAF is
-        // suspended while a tab is in the background and would never fire.
-        setTimeout(() => {
-          const name = document.querySelector<HTMLInputElement>('input[name="licensee-name"]');
-          name?.focus({ preventScroll: true });
-        }, 0);
+        trackEvent('claim_listing', { license_number: link.dataset.license, county: link.dataset.county });
       });
     });
   </script>

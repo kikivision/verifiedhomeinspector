@@ -10,7 +10,7 @@
  *   node scripts/set-tier.mjs HI3532 claimed \
  *     --business "Inspect Florida LLC" --phone "(727) 222-5955"
  *   node scripts/set-tier.mjs HI3532 featured --position 3
- *   node scripts/set-tier.mjs HI3532 unclaimed        # they cancelled
+ *   node scripts/set-tier.mjs HI3532 unclaimed        # they cancelled, or revoke a claim
  *   node scripts/set-tier.mjs HI3532 claimed --dry-run
  *
  * Flags:
@@ -141,9 +141,21 @@ async function main() {
     // Cancelling returns the row to what an import would produce, so the next
     // import has nothing to disagree with. Their details go rather than linger
     // on a listing they no longer pay for.
+    //
+    // This is also how a self-serve claim is revoked: clearing claimed_by
+    // detaches the account, so the same person cannot simply reload their
+    // dashboard and find the listing still theirs. They can claim again, which
+    // is fine for an honest mistake and visible in the inbox for anything else.
     update.business_name = null;
     update.phone = null;
+    update.website = null;
+    update.about = null;
+    update.specialties = [];
+    update.service_cities = [];
+    update.years_experience = null;
+    update.logo_path = null;
     update.claimed_at = null;
+    update.claimed_by = null;
   } else {
     update.claimed_at = listing.claimed_at ?? new Date().toISOString();
     if (flags.business !== undefined) update.business_name = flags.business;

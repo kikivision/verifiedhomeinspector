@@ -18,7 +18,14 @@
  */
 
 import { readFile, readdir, stat } from 'node:fs/promises';
-import { join, relative } from 'node:path';
+import { join, relative, sep } from 'node:path';
+
+// dist paths as the site would serve them: forward slashes on every platform.
+// path.relative returns backslashes on Windows, and every check that compared
+// a built path to a URL failed there while passing in CI.
+function pagePath(file) {
+  return '/' + relative(DIST, file).split(sep).join('/').replace(/index\.html$/, '');
+}
 
 const DIST = 'dist';
 
@@ -54,7 +61,7 @@ check(pages.length > 0, 'No HTML was built at all.');
 
 for (const path of pages) {
   const html = await readFile(path, 'utf8');
-  const page = '/' + relative(DIST, path).replace(/index\.html$/, '');
+  const page = pagePath(path);
   const { size } = await stat(path);
 
   // A redirect stub has no head worth checking.
@@ -166,29 +173,69 @@ if (cap !== null) {
   );
 }
 
-// The forms are the site's only conversion paths, and Netlify only registers a
+// The forms are the site's conversion paths, and Netlify only registers a
 // form it can find in the built HTML. A missing hidden field means the
 // submission arrives with no idea who it was for.
-const forms = {
-  'claim-listing': ['form-name', 'county', 'license-number', 'licensee-name', 'email', 'plan'],
-  'featured-inquiry': ['form-name', 'county', 'plan', 'license-number', 'licensee-name', 'email'],
-  'inspector-request': [
-    'form-name', 'county', 'inspector-license', 'inspector-name',
-    'homeowner-name', 'homeowner-email',
-  ],
-};
-for (const [name, fields] of Object.entries(forms)) {
-  const present = new RegExp(`<form[^>]*name=['"]${name}['"]`).test(county);
-  check(present, `Form "${name}" is missing from the built page.`,
+//
+// Each form is checked on the page that carries it. claim-listing moved from
+// the county page to the dashboard when claims became self-serve: the
+// dashboard posts to it from script after claim_listing succeeds, and if the
+// form is not in the built HTML that post is silently dropped by Netlify.
+const dashboard = await readFile(join(DIST, 'dashboard', 'index.html'), 'utf8').catch(() => null);
+const forInspectors = await readFile(join(DIST, 'for-inspectors', 'index.html'), 'utf8').catch(() => null);
+check(dashboard !== null, 'The dashboard page was not built.');
+check(forInspectors !== null, 'The for-inspectors page was not built.');
+const forms = [
+  ['/fl/pinellas/', county, 'featured-inquiry',
+    ['form-name', 'county', 'plan', 'license-number', 'licensee-name', 'email']],
+  ['/fl/pinellas/', county, 'inspector-request',
+    ['form-name', 'county', 'inspector-license', 'inspector-name', 'homeowner-name', 'homeowner-email']],
+  ['/dashboard/', dashboard, 'claim-listing',
+    ['form-name', 'county', 'license-number', 'licensee-name', 'email', 'plan']],
+  ['/dashboard/', dashboard, 'featured-inquiry',
+    ['form-name', 'county', 'plan', 'license-number', 'licensee-name', 'email']],
+  ['/for-inspectors/', forInspectors, 'inspector-question',
+    ['form-name', 'name', 'email', 'message']],
+];
+for (const [page, html, name, fields] of forms) {
+  if (html === null) continue;
+  const present = new RegExp(`<form[^>]*name=['"]${name}['"]`).test(html);
+  check(present, `Form "${name}" is missing from ${page}.`,
     'Netlify reads forms out of the HTML at deploy time; if it is not here it does not exist.');
   if (!present) continue;
   for (const field of fields) {
     check(
-      new RegExp(`name=['"]${field}['"]`).test(county),
-      `Form "${name}" is missing the field "${field}".`,
+      new RegExp(`name=['"]${field}['"]`).test(html),
+      `Form "${name}" on ${page} is missing the field "${field}".`,
     );
   }
 }
+
+// The dashboard is one person's private form. It carries noindex and is kept
+// out of the sitemap; both are checked because they are set in different files
+// and the first time they disagreed nobody would have noticed.
+if (dashboard !== null) {
+  check(/<meta name="robots" content="noindex"/.test(dashboard),
+    '/dashboard/ has no noindex tag.');
+  const sitemap = await readFile(join(DIST, 'sitemap-0.xml'), 'utf8').catch(() => '');
+  check(!sitemap.includes('/dashboard/'), '/dashboard/ is in the sitemap.');
+}
+
+// The "free until five requests, then $10 a month" offer was retired on
+// 2026-09-12 and every page that carried it was rewritten. It appeared in six
+// places, so a stale copy is likely to survive somewhere it should not.
+for (const [path, html] of faqHtml) {
+  const page = pagePath(path);
+  check(!/\$10/.test(html), `${page} still quotes $10.`,
+    'A claimed listing is free; the $10/month tier no longer exists.');
+  check(!/five (homeowner )?requests/i.test(html), `${page} still mentions the five-requests offer.`);
+}
+
+// A claimed listing exists to show contact details. The Pinellas page has at
+// least one claimed row or card (RMC), so if no tel: link is anywhere on it,
+// contact rendering is broken rather than merely empty.
+check(/href="tel:/.test(county), 'No tel: link on the Pinellas page.',
+  'Claimed and featured listings render their phone number as a tel: link.');
 
 // The FAQ answers questions people type into search engines, and the schema is
 // what answer engines read. The two render from one array and must not drift.
@@ -203,7 +250,7 @@ const faqPages = pages.filter((p) => {
 });
 check(faqPages.length === 1,
   `${faqPages.length} pages carry FAQPage schema; exactly one should.`,
-  faqPages.map((p) => '/' + relative(DIST, p).replace(/index\.html$/, '')).join(', '));
+  faqPages.map((p) => pagePath(p)).join(', '));
 
 const insurance = await readFile(join(DIST, 'insurance-inspections/index.html'), 'utf8')
   .catch(() => null);
@@ -295,7 +342,7 @@ if (insurance) {
 for (const path of pages) {
   const html = faqHtml.get(path);
   if (!html) continue;
-  const page = '/' + relative(DIST, path).replace(/index\.html$/, '');
+  const page = pagePath(path);
   if (page === '/insurance-inspections/' || !/^\/(fl\/[a-z-]+\/)?$/.test(page)) continue;
   check(html.includes('href="/insurance-inspections/"'),
     `${page} does not link to /insurance-inspections/.`);
@@ -361,7 +408,7 @@ if (ico) {
 for (const path of pages) {
   const html = await readFile(path, 'utf8');
   if (/<meta http-equiv="refresh"/i.test(html) && html.length < 2000) continue;
-  const page = '/' + relative(DIST, path).replace(/index\.html$/, '');
+  const page = pagePath(path);
   check(/<link[^>]+rel="icon"[^>]+href="\/favicon\.svg"/.test(html),
     `${page} has no <link rel="icon"> for the SVG.`,
     'Without a link tag the browser only finds /favicon.ico, and only by convention.');
@@ -375,13 +422,13 @@ for (const path of pages) {
 // Every header link must be absolute, and its target id must actually exist.
 const idsFor = new Map();
 for (const [p, html] of faqHtml) {
-  const page = '/' + relative(DIST, p).replace(/index\.html$/, '');
+  const page = pagePath(p);
   idsFor.set(page, new Set([...html.matchAll(/\sid="([a-z-]+)"/g)].map((m) => m[1])));
 }
 for (const path of pages) {
   const html = await readFile(path, 'utf8');
   if (/<meta http-equiv="refresh"/i.test(html) && html.length < 2000) continue;
-  const page = '/' + relative(DIST, path).replace(/index\.html$/, '');
+  const page = pagePath(path);
   const nav = html.match(/<nav[^>]*>([\s\S]*?)<\/nav>/)?.[1] ?? '';
   const hrefs = [...nav.matchAll(/href="([^"]+)"/g)].map((m) => m[1]);
   check(hrefs.length > 0, `${page} has no nav links.`);
@@ -408,7 +455,7 @@ for (const path of pages) {
 for (const path of pages) {
   const html = await readFile(path, 'utf8');
   if (/<meta http-equiv="refresh"/i.test(html) && html.length < 2000) continue;
-  const page = '/' + relative(DIST, path).replace(/index\.html$/, '');
+  const page = pagePath(path);
   for (const legal of ['/privacy/', '/terms/']) {
     check(html.includes(`href="${legal}"`),
       `${page} does not link to ${legal} in its footer.`);
@@ -416,15 +463,18 @@ for (const path of pages) {
 }
 
 // An unclaimed listing must offer no way to contact the inspector. Not a
-// request button, not a phone number, not a link out. The whole model rests on
-// it: claiming is what buys an inspector a contact path, so any contact path
-// on an unclaimed row hands them that for free and there is no reason left to
-// claim. It is also the only thing keeping the site from promising to pass a
-// request to someone it has no way to reach.
+// request button, not a phone number, not a link out. There is nothing on file
+// for one — the DBPR extract carries no phone or email — so any contact path
+// on an unclaimed row would be invented, and a request button would promise to
+// pass a request to someone the site has no way to reach. Claiming is what
+// puts contact on a listing, and every unclaimed row has to offer the claim.
+//
+// Until 2026-09-12 this check also forbade a tel: link anywhere on the page.
+// Claimed listings show their phone number now, so the rule is per row.
 for (const path of pages) {
   const html = faqHtml.get(path);
   if (!html) continue;
-  const page = '/' + relative(DIST, path).replace(/index\.html$/, '');
+  const page = pagePath(path);
   if (!/^\/fl\/[a-z-]+\/$/.test(page)) continue;
 
   // Each chunk runs from one row's class attribute to the next row's, which is
@@ -436,12 +486,13 @@ for (const path of pages) {
     .filter((r) => !r.startsWith(' is-claimed') && !r.startsWith(' head'))
     .map((r) => r.split('</section>')[0]);
   check(unclaimed.length > 0, `${page} has no unclaimed rows to check.`);
-  const contactable = unclaimed.filter((r) => /request-btn-row/.test(r));
+  const contactable = unclaimed.filter((r) =>
+    /request-btn-row|href="tel:|\b\(?\d{3}\)?[ .-]\d{3}[ .-]\d{4}\b|target="_blank"/.test(r));
   check(contactable.length === 0,
-    `${page} offers a request button on ${contactable.length} unclaimed listing(s).`);
-
-  check(!/tel:/.test(html), `${page} contains a tel: link.`);
-  check(!/\b\(?\d{3}\)?[ .-]\d{3}[ .-]\d{4}\b/.test(html), `${page} contains a phone number.`);
+    `${page} shows a contact path on ${contactable.length} unclaimed listing(s).`);
+  const claimable = unclaimed.filter((r) => /href="\/claim\/\?license=HI\d+"/.test(r));
+  check(claimable.length === unclaimed.length,
+    `${page}: ${unclaimed.length - claimable.length} unclaimed row(s) do not link to /claim/ with their license.`);
 }
 
 // The sitemap is the one file nobody looks at after it is generated. Its
@@ -465,7 +516,7 @@ if (sitemapIndex && robots) {
     `robots.txt points at ${declared ?? 'no sitemap'}, which is not the file the build wrote.`);
 
   const parts = [...sitemapIndex.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
-  const built = new Set(pages.map((p) => '/' + relative(DIST, p).replace(/index\.html$/, '')));
+  const built = new Set(pages.map((p) => pagePath(p)));
   const listed = [];
 
   for (const part of parts) {
@@ -501,9 +552,11 @@ if (sitemapIndex && robots) {
   // Discovered from the build rather than listed, because the list went stale
   // the moment a third confirmation page was added: it named two, and the new
   // one would have been offered to Google with nothing to stop it.
+  // Two since 2026-09-12: the claim confirmation page went with the claim form,
+  // which the dashboard now posts from script with nowhere to redirect to.
   const confirmationPages = [...built].filter((p) => /^\/[a-z-]+-received\/$/.test(p));
-  check(confirmationPages.length >= 3,
-    `Found ${confirmationPages.length} confirmation page(s); claim, request and featured are expected.`);
+  check(confirmationPages.length >= 2,
+    `Found ${confirmationPages.length} confirmation page(s); request and featured are expected.`);
   for (const path of confirmationPages) {
     check(!listed.includes(`${SITE_ORIGIN}${path}`),
       `Sitemap lists ${path}, a form confirmation page.`);

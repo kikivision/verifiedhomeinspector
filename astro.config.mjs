@@ -21,10 +21,16 @@ const comingSoon = new Set(
 // two.
 const CONFIRMATION_PAGE = /^\/[a-z-]+-received\/$/;
 
+// One person's private form. It also carries a noindex meta tag; the sitemap
+// exclusion is so the two never disagree.
+const PRIVATE_PAGES = new Set(['/dashboard/']);
+
+/** @param {string} url */
 function shouldIndex(url) {
   const path = new URL(url).pathname;
   if (CONFIRMATION_PAGE.test(path)) return false;
   if (comingSoon.has(path)) return false;
+  if (PRIVATE_PAGES.has(path)) return false;
   return true;
 }
 

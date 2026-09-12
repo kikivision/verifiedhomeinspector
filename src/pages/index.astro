@@ -100,20 +100,14 @@ const total = Object.values(counts).reduce((sum, n) => sum + n, 0);
         <div class="claim-eyebrow">For home inspectors</div>
         <h2>Own a home inspection business in Florida?</h2>
         <p style="max-width:52ch;">
-          Your license is already listed here, straight from the DBPR record. Claiming it puts
-          your business name on the listing and moves you above every unclaimed inspector in
-          your county, and while we're building out Florida it costs nothing until we have
-          passed you five homeowner requests.
-          Open your county to claim it.
+          Your license is already listed here, straight from the DBPR record. Claiming it is
+          free: it puts your business name, phone number, website and services on the listing
+          and moves you above every unclaimed inspector in your county. Featured spots are $50
+          a month at the founding rate.
         </p>
-        <!-- Links rather than a second copy of the claim form. The form carries
-             the county it was submitted from, so it belongs on a county page;
-             duplicating it here would mean two forms to keep in step and a
-             county field with nothing to fill it. -->
         <div class="claim-counties">
-          {live.map((county) => (
-            <a href={`/fl/${county.slug}/#claim`}>{searchName(county)}</a>
-          ))}
+          <a href="/claim/">Claim your listing</a>
+          <a href="/for-inspectors/">What you get</a>
         </div>
       </div>
     </div>

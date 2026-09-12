@@ -13,9 +13,11 @@ Hillsborough (shown as Tampa), Pasco, and Orange (shown as Orlando).
 2. `cp .env.example .env` and fill in the values — see **Environment**
    below for what each one is and which are optional.
 3. Run `verified-home-inspector-schema.sql` (repo root) in the Supabase
-   SQL Editor if you haven't already. That file is the source of truth
-   for the schema; there is no migration tooling, so a column added
-   there has to be applied by hand.
+   SQL Editor if you haven't already, then everything in
+   `supabase/migrations/` in date order. The schema file is the source
+   of truth for tables; the migrations carry the functions the dashboard
+   calls and the deltas for a project that already existed. There is no
+   migration tooling, so each is applied by hand, once.
 4. Optionally run `supabase/seed.sql` in the SQL Editor to load ~11
    real, DBPR-verified Pinellas records to develop against.
 5. `npm run dev`
@@ -33,6 +35,48 @@ See [CLAUDE.md](CLAUDE.md) for why every assertion in that file exists.
 | `SUPABASE_SERVICE_ROLE_KEY` | writing — `import-dbpr.mjs` and `set-tier.mjs`. Not needed for a dry run |
 | `PUBLIC_GA_MEASUREMENT_ID` | optional; unset means the site runs without analytics rather than breaking |
 | `NETLIFY_BUILD_HOOK` | optional; lets `set-tier.mjs --deploy` publish a change. Secret — anyone holding it can trigger a build |
+
+## Self-serve claims
+
+An inspector claims their own listing without anyone at Sunstate in the
+loop. `/for-inspectors/` states the offer and the prices; `/claim/` sends
+a Supabase magic link; `/dashboard/` is where they enter their license
+number and fill in what the listing shows. Every write goes through a
+database function (`claim_listing`, `update_my_listing`,
+`release_my_listing` in `supabase/migrations/`); there is no UPDATE
+policy on `listings`, on purpose.
+
+A claim goes live at once and emails the inbox through the
+`claim-listing` Netlify form. To revoke one:
+
+```
+node --env-file=.env scripts/set-tier.mjs HI7816 unclaimed --deploy
+```
+
+**Supabase configuration the code assumes** (Authentication settings in
+the Supabase dashboard; none of it is in the repo):
+
+- Email provider enabled, with magic links, and "Allow new users to sign
+  up" left ON. Sign-ups are gated in the database instead: the
+  `require_claimable_license` trigger refuses an account whose sign-in
+  request did not carry an unclaimed license number, which is what
+  `/claim/` sends. There are no cold sign-ups and no accounts that belong
+  to nobody. The default "magic link" template is what the inspector
+  receives.
+- Site URL `https://verifiedhomeinspector.com`, and
+  `https://verifiedhomeinspector.com/dashboard/` plus
+  `http://localhost:4321/dashboard/` in the redirect allowlist. A link
+  that redirects somewhere not on the list lands on the site root with
+  no session.
+- Custom SMTP. Supabase's built-in sender is rate-limited to a handful of
+  emails an hour and only delivers to project members, which is fine for
+  testing and useless for a real inspector. Resend with a
+  `mail.verifiedhomeinspector.com` sending domain is the known-good setup
+  from SuperReports.
+- A database webhook on `listings` (UPDATE) pointing at the Netlify build
+  hook, so a claim or a save rebuilds the site. Without it, nothing an
+  inspector does is visible until someone deploys. See "Rebuild required
+  for new data" below.
 
 ## How data gets in
 
@@ -76,7 +120,9 @@ Import before flipping to `live`, or the county goes live empty.
 
 ## Changing a listing
 
-`scripts/set-tier.mjs` — never hand-written SQL against the live table.
+`scripts/set-tier.mjs` — for featured spots and revoking claims; an
+inspector's own details are theirs to change on `/dashboard/`. Never
+hand-written SQL against the live table.
 It checks what it is about to do, reports what changed, and refuses what
 it cannot verify.
 
@@ -106,22 +152,14 @@ data at build time.
 Either pass `--deploy`, or merge anything to `main`, which rebuilds and
 re-reads Supabase on the way.
 
-## Contact is deliberately not shown
+## Contact is shown on claimed listings
 
-No listing shows a phone number or a website, on any tier. Every lead
-passes through the request form so it can be counted — the offer to
-inspectors is "free until we have passed you five requests", and a call
-placed straight from a card is a lead nobody can count.
-
-The `phone` column, the `click_phone` event type and the `.card .phone`
-CSS all exist and are unused. That is not an unfinished feature, and
-wiring them up today would quietly break the model.
-
-This is current policy rather than a permanent rule. The plan is to show
-contact details eventually, but leaving beta has to happen first — the
-"free until five requests" offer is denominated in counted requests, and
-showing contact ends counting. See [DECISIONS.md](DECISIONS.md) before
-touching either.
+A claimed or featured listing shows its phone number as a `tel:` link and
+its website as a link; an unclaimed one shows neither, because there is
+nothing on file. A tap on the number logs `click_phone` before the dial.
+Until 2026-09-12 no listing showed contact on any tier, so that requests
+could be counted against a "free until five requests" offer; that offer
+is retired and the reasoning is in [DECISIONS.md](DECISIONS.md).
 
 ## Analytics scope
 
@@ -129,12 +167,14 @@ touching either.
 tagged with `page_context`. Raw impression logging remains deliberately
 out of scope; read the comments in that file before adding it.
 
-Three Netlify forms carry the real conversions, read out of the built
+Four Netlify forms carry the real conversions, read out of the built
 HTML so none of them needs a mailbox on this domain:
 `inspector-request` (a homeowner asking for an inspection),
-`claim-listing` (an inspector claiming their row) and `featured-inquiry`
-(an inspector asking about a paid spot). GA4 mirrors these as
-`request_inspector` and `featured_inquiry`.
+`claim-listing` (posted from the dashboard after a self-serve claim),
+`featured-inquiry` (an inspector asking about a paid spot, from the
+county page or the dashboard) and `inspector-question` (the contact form
+on `/for-inspectors/`). GA4 mirrors these as `request_inspector`,
+`claim_completed` and `featured_inquiry`.
 
 ## Brand tokens
 

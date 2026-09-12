@@ -1,0 +1,463 @@
+---
+// The inspector's dashboard: claim a listing, then edit what it shows.
+//
+// Rendered entirely in the browser against Supabase with the public anon key
+// plus the inspector's own session. Nothing here is fetched at build time — the
+// page is the same static HTML for everyone and decides what to show once it
+// knows who is signed in. Every write goes through a database function
+// (claim_listing, update_my_listing, release_my_listing) that checks the
+// session server-side; there is no UPDATE policy on listings, so the anon key
+// on its own can change nothing.
+//
+// noindex: a page whose content is one person's private form has no business
+// in search results, and it is also excluded from the sitemap in
+// astro.config.mjs.
+import Layout from '../../layouts/Layout.astro';
+import { SPECIALTIES } from '../../lib/specialties';
+import { counties } from '../../lib/counties';
+---
+
+<Layout
+  title="Your listing | Verified Home Inspector"
+  description="Manage your Verified Home Inspector listing: business name, phone, website and services."
+  noindex
+>
+  <section class="section">
+    <div class="wrap">
+      <div class="section-head">
+        <h1 class="dash-title">Your listing</h1>
+        <div class="note" id="whoami"></div>
+      </div>
+
+      <p class="dash-msg dash-msg-top" id="msg" role="status" aria-live="polite"></p>
+
+      <div id="stateLoading" class="dash-state">
+        <p class="dash-muted">Checking your sign-in…</p>
+      </div>
+
+      <div id="stateSignedOut" class="dash-state" hidden>
+        <div class="claim dash-panel">
+          <div>
+            <div class="claim-eyebrow">For home inspectors</div>
+            <h2>You are not signed in</h2>
+            <p>Sign in with your email to claim a listing or edit the one you have.</p>
+          </div>
+          <a href="/claim/" class="btn-primary">Sign in</a>
+        </div>
+      </div>
+
+      <div id="stateClaim" class="dash-state" hidden>
+        <div class="claim dash-panel">
+          <div>
+            <div class="claim-eyebrow">Step 2 of 3</div>
+            <h2>Which listing is yours?</h2>
+            <p>
+              Enter the HI number on your Florida home inspector license. It has to match a
+              listing already on this site, which covers
+              {counties.filter((c) => c.status === 'live').map((c) => c.name).join(', ')}.
+            </p>
+            <p>
+              Claiming is free. Your name and license number stay as the state records them;
+              everything else you fill in on the next step.
+            </p>
+          </div>
+          <form class="claim-form" id="claimForm" novalidate>
+            <label>
+              License number
+              <input type="text" name="license" id="claimLicense" placeholder="HI12345" autocomplete="off" required />
+            </label>
+            <button type="submit" class="btn-primary" id="claimBtn">Claim this listing</button>
+          </form>
+        </div>
+      </div>
+
+      <div id="stateEdit" class="dash-state" hidden>
+        <div class="dash-grid">
+          <form class="card dash-form" id="editForm" novalidate>
+            <div class="dash-listing-head">
+              <div>
+                <div class="dash-eyebrow" id="editCounty"></div>
+                <h2 id="editName"></h2>
+                <div class="lic"><span class="check">✓</span>FL Lic #<span id="editLicense"></span> — DBPR verified, active</div>
+              </div>
+              <span class="dash-tier" id="editTier"></span>
+            </div>
+
+            <label>
+              Business name
+              <input type="text" name="business_name" maxlength="80" placeholder="As it should appear on the listing" />
+            </label>
+            <div class="dash-two">
+              <label>
+                Phone
+                <input type="tel" name="phone" maxlength="25" placeholder="(727) 555-0100" autocomplete="tel" />
+              </label>
+              <label>
+                Website
+                <input type="text" name="website" maxlength="200" placeholder="yourcompany.com" autocomplete="url" />
+              </label>
+            </div>
+            <div class="dash-two">
+              <label>
+                Years in business
+                <input type="number" name="years_experience" min="0" max="80" inputmode="numeric" placeholder="e.g. 12" />
+              </label>
+              <div></div>
+            </div>
+
+            <fieldset class="dash-fieldset">
+              <legend>Services you offer</legend>
+              <div class="dash-checks">
+                {SPECIALTIES.map((s) => (
+                  <label class="dash-check">
+                    <input type="checkbox" name="specialties" value={s} />
+                    {s}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+
+            <fieldset class="dash-fieldset">
+              <legend>Cities you serve</legend>
+              <p class="dash-muted">Cities with inspectors listed in your county. Pick up to twelve.</p>
+              <div class="dash-checks" id="cityChecks"></div>
+            </fieldset>
+
+            <label>
+              About your business
+              <textarea name="about" rows="4" maxlength="800" placeholder="A few sentences in your own words. Shown on your listing once it has somewhere to go."></textarea>
+            </label>
+
+            <div class="dash-actions">
+              <button type="submit" class="btn-primary" id="saveBtn">Save listing</button>
+              <span class="dash-muted" id="saveNote"></span>
+            </div>
+          </form>
+
+          <aside class="dash-side">
+            <div class="card featured dash-featured">
+              <div class="badge">Featured</div>
+              <h3>Get a featured spot</h3>
+              <p class="dash-muted">
+                $50 a month at the founding rate, kept for as long as you stay. A card with
+                your logo at the top of the <span id="featuredCounty"></span> page, above every
+                listing. Nothing is charged until it is live and you have seen it.
+              </p>
+              <button type="button" class="btn-primary" id="featuredBtn">Ask for a featured spot</button>
+              <p class="dash-muted" id="featuredNote" hidden>
+                Sent. We will email you within one business day to confirm the spot and set up
+                billing.
+              </p>
+              <!-- Present in the HTML so Netlify registers it; submitted from
+                   script with the inspector's details already filled in. -->
+              <form name="featured-inquiry" data-netlify="true" netlify-honeypot="company-website" hidden>
+                <input type="hidden" name="form-name" value="featured-inquiry" />
+                <input type="hidden" name="county" />
+                <input type="hidden" name="plan" value="Featured - $50/mo (founding rate)" />
+                <input type="hidden" name="license-number" />
+                <input type="hidden" name="licensee-name" />
+                <input type="hidden" name="business-name" />
+                <input type="hidden" name="email" />
+                <input type="hidden" name="phone" />
+                <input type="hidden" name="message" />
+                <input name="company-website" />
+              </form>
+            </div>
+
+            <div class="card dash-help">
+              <h3>How it goes live</h3>
+              <p class="dash-muted">
+                The site is rebuilt after a save and your details appear on the county page
+                within a few minutes. Homeowner requests come to us and are forwarded to the
+                email you signed in with, and to nobody else.
+              </p>
+              <p class="dash-muted">
+                Questions, or a listing that should not be yours?
+                <a href="/for-inspectors/#contact">Send us a note</a> and we will reply to the
+                address you signed in with.
+              </p>
+            </div>
+
+            <div class="dash-links">
+              <a href="#" id="viewListing">View the county page</a>
+              <button type="button" class="dash-linkbtn" id="signOutBtn">Sign out</button>
+              <button type="button" class="dash-linkbtn dash-danger" id="releaseBtn">Release this listing</button>
+            </div>
+          </aside>
+        </div>
+      </div>
+
+      <!-- The claim notification. Netlify registers this form because it is in
+           the HTML; the dashboard posts to it from script after claim_listing
+           succeeds, so a self-serve claim lands in the same inbox the claim
+           form always fed. The county page used to carry this form; it now
+           lives here, and the smoke test looks for it here. -->
+      <form name="claim-listing" data-netlify="true" netlify-honeypot="company-website" hidden>
+        <input type="hidden" name="form-name" value="claim-listing" />
+        <input type="hidden" name="county" />
+        <input type="hidden" name="license-number" />
+        <input type="hidden" name="licensee-name" />
+        <input type="hidden" name="business-name" />
+        <input type="hidden" name="phone" />
+        <input type="hidden" name="email" />
+        <input type="hidden" name="plan" value="Claimed via dashboard (free)" />
+        <input name="company-website" />
+      </form>
+    </div>
+  </section>
+
+  <script>
+    import type { Session } from '@supabase/supabase-js';
+    import { supabase, getCitiesForCounty, type Listing } from '../../lib/supabase';
+    import { getCounty } from '../../lib/counties';
+    import { submitNetlifyForm } from '../../lib/netlify-forms';
+    import { trackEvent } from '../../lib/gtag';
+
+    const $ = <T extends HTMLElement>(sel: string) => document.querySelector<T>(sel)!;
+    const states = {
+      loading: $('#stateLoading'),
+      signedOut: $('#stateSignedOut'),
+      claim: $('#stateClaim'),
+      edit: $('#stateEdit'),
+    };
+    const msg = $('#msg');
+    const whoami = $('#whoami');
+
+    function show(which: keyof typeof states) {
+      for (const [name, el] of Object.entries(states)) el.hidden = name !== which;
+    }
+    function say(text: string, isError = false) {
+      msg.textContent = text;
+      msg.classList.toggle('is-error', isError);
+    }
+
+    let session: Session | null = null;
+    let listing: Listing | null = null;
+
+    async function loadListing(): Promise<Listing | null> {
+      if (!session) return null;
+      const { data, error } = await supabase
+        .from('listings')
+        .select('*')
+        .eq('claimed_by', session.user.id)
+        .maybeSingle();
+      if (error) {
+        say(`Could not load your listing: ${error.message}`, true);
+        return null;
+      }
+      return (data as Listing | null) ?? null;
+    }
+
+    // ----- claim ------------------------------------------------------------
+    const claimForm = $<HTMLFormElement>('#claimForm');
+    const claimLicense = $<HTMLInputElement>('#claimLicense');
+    const claimBtn = $<HTMLButtonElement>('#claimBtn');
+
+    claimForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const license = claimLicense.value.trim().toUpperCase();
+      if (!license) {
+        say('Enter your license number.', true);
+        return;
+      }
+      claimBtn.disabled = true;
+      say('Checking the license…');
+      const { data, error } = await supabase.rpc('claim_listing', { p_license: license });
+      claimBtn.disabled = false;
+      if (error) {
+        say(error.message, true);
+        return;
+      }
+      listing = data as Listing;
+      try {
+        localStorage.removeItem('vhi.pendingLicense');
+      } catch {
+        // nothing to clear
+      }
+      trackEvent('claim_completed', { license_number: listing.license_number, county: listing.county });
+      // The notification is best-effort and after the fact: the claim is saved
+      // whether or not the inbox hears about it.
+      void submitNetlifyForm('claim-listing', {
+        county: getCounty(listing.county)?.name ?? listing.county,
+        'license-number': listing.license_number,
+        'licensee-name': listing.licensee_name,
+        'business-name': listing.business_name ?? '',
+        phone: listing.phone ?? '',
+        email: session?.user.email ?? '',
+        plan: 'Claimed via dashboard (free)',
+      });
+      say('Claimed. Fill in what homeowners should see, then save.');
+      await showEdit();
+    });
+
+    // ----- edit -------------------------------------------------------------
+    const editForm = $<HTMLFormElement>('#editForm');
+    const saveBtn = $<HTMLButtonElement>('#saveBtn');
+    const saveNote = $('#saveNote');
+    const cityChecks = $('#cityChecks');
+
+    function field(name: string) {
+      return editForm.elements.namedItem(name) as HTMLInputElement | HTMLTextAreaElement;
+    }
+    function checked(name: string): string[] {
+      return Array.from(
+        editForm.querySelectorAll<HTMLInputElement>(`input[name="${name}"]:checked`),
+      ).map((i) => i.value);
+    }
+
+    async function showEdit() {
+      if (!listing) return;
+      const county = getCounty(listing.county);
+      $('#editCounty').textContent = `${listing.city}, FL · ${county?.name ?? listing.county}`;
+      $('#editName').textContent = listing.business_name || listing.licensee_name;
+      $('#editLicense').textContent = listing.license_number;
+      $('#editTier').textContent = listing.tier === 'featured' ? 'Featured' : 'Claimed';
+      $('#featuredCounty').textContent = county?.name ?? listing.county;
+      $<HTMLAnchorElement>('#viewListing').href = `/fl/${listing.county}/#all-inspectors`;
+      // A featured listing already has the spot; the ask makes no sense.
+      $('.dash-featured').hidden = listing.tier === 'featured';
+
+      field('business_name').value = listing.business_name ?? '';
+      field('phone').value = listing.phone ?? '';
+      field('website').value = listing.website ?? '';
+      field('years_experience').value =
+        listing.years_experience === null ? '' : String(listing.years_experience);
+      field('about').value = listing.about ?? '';
+      const specialties = new Set(listing.specialties);
+      editForm
+        .querySelectorAll<HTMLInputElement>('input[name="specialties"]')
+        .forEach((i) => (i.checked = specialties.has(i.value)));
+
+      const cities = await getCitiesForCounty(listing.county);
+      const serves = new Set(listing.service_cities ?? []);
+      cityChecks.replaceChildren(
+        ...cities.map((city) => {
+          const label = document.createElement('label');
+          label.className = 'dash-check';
+          const input = document.createElement('input');
+          input.type = 'checkbox';
+          input.name = 'service_cities';
+          input.value = city;
+          input.checked = serves.has(city);
+          label.append(input, ` ${city}`);
+          return label;
+        }),
+      );
+      show('edit');
+    }
+
+    editForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      if (!listing) return;
+      const years = field('years_experience').value.trim();
+      saveBtn.disabled = true;
+      saveNote.textContent = 'Saving…';
+      const { data, error } = await supabase.rpc('update_my_listing', {
+        p_business_name: field('business_name').value,
+        p_phone: field('phone').value,
+        p_website: field('website').value,
+        p_specialties: checked('specialties'),
+        p_years_experience: years === '' ? null : Number(years),
+        p_about: field('about').value,
+        p_service_cities: checked('service_cities'),
+      });
+      saveBtn.disabled = false;
+      if (error) {
+        saveNote.textContent = '';
+        say(error.message, true);
+        return;
+      }
+      listing = data as Listing;
+      $('#editName').textContent = listing.business_name || listing.licensee_name;
+      field('website').value = listing.website ?? '';
+      saveNote.textContent = 'Saved. The county page updates after the next rebuild.';
+      say('');
+      trackEvent('listing_saved', { license_number: listing.license_number });
+    });
+
+    // ----- featured ask -----------------------------------------------------
+    const featuredBtn = $<HTMLButtonElement>('#featuredBtn');
+    featuredBtn.addEventListener('click', async () => {
+      if (!listing) return;
+      featuredBtn.disabled = true;
+      trackEvent('featured_inquiry', { county: listing.county, source: 'dashboard' });
+      const ok = await submitNetlifyForm('featured-inquiry', {
+        county: getCounty(listing.county)?.name ?? listing.county,
+        plan: 'Featured - $50/mo (founding rate)',
+        'license-number': listing.license_number,
+        'licensee-name': listing.licensee_name,
+        'business-name': listing.business_name ?? '',
+        email: session?.user.email ?? '',
+        phone: listing.phone ?? '',
+        message: 'Asked from the dashboard',
+      });
+      if (ok) {
+        trackEvent('featured_submitted', { county: listing.county, source: 'dashboard' });
+        featuredBtn.hidden = true;
+        $('#featuredNote').hidden = false;
+      } else {
+        featuredBtn.disabled = false;
+        say('Could not send that. Use the contact form on the "List your business" page and we will set it up.', true);
+      }
+    });
+
+    // ----- release / sign out ----------------------------------------------
+    $('#releaseBtn').addEventListener('click', async () => {
+      if (!listing) return;
+      const sure = confirm(
+        'Release this listing? It goes back to unclaimed and your business name, phone, website and services are removed from the site.',
+      );
+      if (!sure) return;
+      const { error } = await supabase.rpc('release_my_listing');
+      if (error) {
+        say(error.message, true);
+        return;
+      }
+      trackEvent('listing_released', { license_number: listing.license_number });
+      listing = null;
+      say('Released. The listing returns to unclaimed after the next rebuild.');
+      show('claim');
+    });
+
+    $('#signOutBtn').addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      location.href = '/';
+    });
+
+    // ----- boot -------------------------------------------------------------
+    async function boot() {
+      // The magic link lands here with the token in the URL; supabase-js reads
+      // it and establishes the session before getSession resolves.
+      const { data } = await supabase.auth.getSession();
+      session = data.session;
+      if (!session) {
+        show('signedOut');
+        return;
+      }
+      whoami.textContent = session.user.email ?? '';
+      listing = await loadListing();
+      if (listing) {
+        await showEdit();
+        return;
+      }
+      try {
+        const pending = localStorage.getItem('vhi.pendingLicense');
+        if (pending) claimLicense.value = pending;
+      } catch {
+        // storage unavailable; they type it
+      }
+      show('claim');
+    }
+
+    supabase.auth.onAuthStateChange((_event, next) => {
+      // Covers the redirect-with-token case where the session arrives after
+      // the first getSession call, and sign-out from another tab.
+      if (!!next !== !!session) {
+        session = next;
+        void boot();
+      }
+    });
+
+    void boot();
+  </script>
+</Layout>

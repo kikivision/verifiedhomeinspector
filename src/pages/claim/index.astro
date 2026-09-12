@@ -1,0 +1,155 @@
+---
+// Sign-in for inspectors. Email only: Supabase sends a magic link, which
+// avoids passwords entirely for people who will sign in perhaps twice a year.
+//
+// There are no cold sign-ups. The license number is required and checked
+// against the listings before a link is sent, and it travels with the sign-in
+// request as user metadata, where a database trigger on auth.users refuses to
+// create an account for a license that is not an unclaimed listing here. The
+// check on this page gives a readable message; the trigger is the rule.
+//
+// The number is also kept in localStorage across the email round trip so the
+// dashboard can offer the claim with it filled in.
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout
+  title="Claim your listing | Verified Home Inspector"
+  description="Sign in with your email to claim your home inspector listing. Free, no password."
+>
+  <section class="section">
+    <div class="wrap">
+      <div class="claim dash-panel">
+        <div>
+          <div class="claim-eyebrow">For home inspectors</div>
+          <h1>Claim your listing</h1>
+          <p>
+            Your Florida license number and the email you want to sign in with. We send you a
+            link; no password, nothing to install. Claiming is free.
+          </p>
+          <p>
+            Not sure what a claimed listing shows? <a href="/for-inspectors/">See what you get.</a>
+          </p>
+          <p>
+            Don't see your business on the site?
+            <a href="/for-inspectors/#contact">Let us know</a> and we will add your county.
+          </p>
+        </div>
+        <form class="claim-form" id="signinForm" novalidate>
+          <label>
+            License number
+            <input type="text" name="license" id="license" placeholder="HI12345" autocomplete="off" required />
+          </label>
+          <label>
+            Email
+            <input type="email" name="email" id="email" required autocomplete="email" />
+          </label>
+          <button type="submit" class="btn-primary" id="signinBtn">Send me a sign-in link</button>
+          <p class="dash-msg" id="msg" role="status" aria-live="polite"></p>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    import { supabase } from '../../lib/supabase';
+    import { trackEvent } from '../../lib/gtag';
+
+    const form = document.querySelector<HTMLFormElement>('#signinForm')!;
+    const licenseInput = document.querySelector<HTMLInputElement>('#license')!;
+    const emailInput = document.querySelector<HTMLInputElement>('#email')!;
+    const button = document.querySelector<HTMLButtonElement>('#signinBtn')!;
+    const msg = document.querySelector<HTMLElement>('#msg')!;
+
+    // Carried from the row the inspector clicked on the county page.
+    const fromUrl = new URLSearchParams(location.search).get('license');
+    if (fromUrl) licenseInput.value = fromUrl.toUpperCase();
+
+    // Already signed in: the dashboard is where they want to be.
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) location.replace('/dashboard/');
+    });
+
+    function fail(text: string) {
+      button.disabled = false;
+      msg.classList.add('is-error');
+      msg.textContent = text;
+    }
+
+    /**
+     * Mirrors the trigger's rule so the inspector reads why in their own words
+     * rather than "Database error saving new user". Same public read the
+     * county page is built from.
+     */
+    async function whyNotClaimable(license: string): Promise<string | null> {
+      const { data, error } = await supabase
+        .from('listings')
+        .select('license_number, licensee_name, tier, claimed_by, delisted_at')
+        .eq('license_number', license)
+        .maybeSingle();
+      if (error) return `Could not check that license right now: ${error.message}`;
+      if (!data) {
+        return `No listing with license ${license} yet. We list counties one at a time; if yours is not on the site, use the contact form and we will add it.`;
+      }
+      if (data.delisted_at) {
+        return `License ${license} no longer appears in the DBPR extract, so it cannot be claimed. If the state shows it as current, use the contact form.`;
+      }
+      if (data.claimed_by) {
+        return `License ${license} has already been claimed. If that was not you, use the contact form and we will sort it out.`;
+      }
+      return null;
+    }
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      msg.classList.remove('is-error');
+      const email = emailInput.value.trim();
+      const license = licenseInput.value.trim().toUpperCase().replace(/\s/g, '');
+      if (!/^HI\d{1,6}$/.test(license)) {
+        fail('Enter the HI number on your Florida home inspector license, like HI3532.');
+        return;
+      }
+      if (!email || !emailInput.checkValidity()) {
+        fail('Enter the email address you want to sign in with.');
+        return;
+      }
+
+      button.disabled = true;
+      msg.textContent = 'Checking the license…';
+      const reason = await whyNotClaimable(license);
+      if (reason) {
+        fail(reason);
+        return;
+      }
+      try {
+        localStorage.setItem('vhi.pendingLicense', license);
+      } catch {
+        // Private mode or storage disabled: the dashboard asks for it again.
+      }
+
+      msg.textContent = 'Sending…';
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: `${location.origin}/dashboard/`,
+          // Read by the require_claimable_license trigger when this email has
+          // no account yet. Ignored for an existing account.
+          data: { license },
+        },
+      });
+      if (error) {
+        const refused = /database error/i.test(error.message);
+        fail(
+          refused
+            ? `License ${license} is not an unclaimed listing on this site, so no account was created.`
+            : `Could not send the link: ${error.message}`,
+        );
+        return;
+      }
+      trackEvent('claim_signin_link_sent');
+      form.querySelectorAll('label').forEach((l) => (l.hidden = true));
+      button.hidden = true;
+      msg.textContent = `Check ${email} for a link from Verified Home Inspector. It signs you in and takes you to your listing. If it is not there in a minute, check spam.`;
+    });
+  </script>
+</Layout>
