@@ -362,6 +362,27 @@ risked, and a single report of it outweighs any volume number.
 **Decided. Not built.** Build it when a second county sells its first
 featured spot, or when either county fills both — whichever comes first.
 
+*Update 2026-09-12, after city pages and Stripe:* the unit is now a city
+page with four spots, and the entry below still holds with "city" for
+"county". How it will work when built:
+
+- **City page, all four taken:** the ad-slot card does not vanish (today
+  it does — `openSpots` is zero and nothing renders). It becomes "All four
+  featured spots in St. Petersburg are taken. Join the waitlist," same
+  button, same dialog, `plan` = `Waitlist - St. Petersburg`. Lands in the
+  inbox like every other form.
+- **Dashboard, a full city:** the checkbox shows "(full — join waitlist)"
+  and is still clickable; checking it posts the same form with the
+  inspector's details and buys nothing. They can still check out for the
+  cities that are open.
+- **A spot frees** (the webhook's `reconcile` moves someone to claimed):
+  the inbox has the list; the first on it gets an email and buys from
+  the dashboard like anyone else. Automating that email is a later step
+  — the list needs a table before it needs a robot.
+- **The number is the pricing instrument.** Four waiting on Miami at $50
+  is the evidence that Miami's next price for new buyers is not $50.
+  Founding-rate holders keep theirs.
+
 ### The question
 
 The featured row holds two spots (`FEATURED_CAP`). While one is empty it
