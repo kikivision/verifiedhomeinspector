@@ -259,8 +259,30 @@ HTML so none of them needs a mailbox on this domain:
 `claim-listing` (posted from the dashboard after a self-serve claim),
 `featured-inquiry` (an inspector asking about a paid spot, from the
 county page or the dashboard) and `inspector-question` (the contact form
-on `/for-inspectors/`). GA4 mirrors these as `request_inspector`,
-`claim_completed` and `featured_inquiry`.
+on `/for-inspectors/`).
+
+GA4 events, all sent through `trackEvent` and only from the live host.
+Key events (conversions) are the four marked; everything else is a
+funnel step for reading drop-off.
+
+| Event | Fires when | Key |
+|---|---|---|
+| `request_inspector` | request dialog opened (intent, including abandons) | |
+| `request_submitted` | homeowner request form sent (`/request-received/`) | **yes** |
+| `click_phone` | tap on a claimed listing's phone number | **yes** |
+| `claim_listing` | claim link clicked on a row or an inspector page | |
+| `claim_code_sent` | sign-in code emailed from `/claim/` | |
+| `claim_signed_in` | code accepted | |
+| `claim_completed` | listing attached to the account | **yes** |
+| `listing_saved` | dashboard save | |
+| `listing_released` | inspector released their listing | |
+| `featured_inquiry` | ad-slot "Get featured" dialog opened (curiosity, not intent) | |
+| `featured_submitted` | featured inquiry form sent (`/featured-received/`) | |
+| `featured_checkout_started` | "Start featured" pressed on the dashboard | |
+| `featured_purchased` | back from Stripe with `?featured=success` | **yes** |
+
+`claim_submitted` no longer exists: it fired from the claim confirmation
+page, which went with the county claim form.
 
 ## Brand tokens
 
