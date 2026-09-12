@@ -2,7 +2,7 @@
 // Header: Authorization: Bearer <supabase token>
 //
 // Sends a featured inspector to Stripe's customer portal to update a card or
-// cancel. Cancelling there ends the subscription; the webhook takes the card
+// cancel. Canceling there ends the subscription; the webhook takes the card
 // down. Nothing about billing is handled on this site's own pages.
 import type { Context } from '@netlify/functions';
 import { admin, stripe, siteUrl, json, callerListing, HttpError } from '../lib/featured.mts';
