@@ -3,6 +3,11 @@
 # Runs in Actions rather than on a laptop so it does not depend on which machine
 # is switched on, and so a failure is emailed by GitHub rather than going unseen
 # in a terminal nobody is watching.
+#
+# Statewide since 2026-09-12: the extract is downloaded once and every county
+# in scripts/import-dbpr.mjs is imported from that one file, then the site is
+# rebuilt once. Fifty-six downloads and fifty-six deploys would be the
+# alternative. A single county can still be run by hand from the Actions tab.
 name: Monthly DBPR import
 
 on:
@@ -14,9 +19,9 @@ on:
   workflow_dispatch:
     inputs:
       county:
-        description: County slug to import
+        description: County slug to import, or "all"
         required: false
-        default: pinellas
+        default: all
       force:
         description: Allow an unusually large shrink in the extract
         type: boolean
@@ -31,6 +36,12 @@ concurrency:
 jobs:
   import:
     runs-on: ubuntu-latest
+    env:
+      PUBLIC_SUPABASE_URL: ${{ secrets.PUBLIC_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      NETLIFY_BUILD_HOOK: ${{ secrets.NETLIFY_BUILD_HOOK }}
+      COUNTY: ${{ inputs.county || 'all' }}
+      FORCE: ${{ inputs.force && '--force' || '' }}
     steps:
       - uses: actions/checkout@v5
 
@@ -40,29 +51,50 @@ jobs:
 
       - run: npm ci
 
+      # One download for the whole run. The importer accepts --csv so every
+      # county reads the same file; that also means every county sees the same
+      # snapshot, which a per-county download over an hour would not guarantee.
+      - name: Download the DBPR extract
+        run: |
+          curl -fsSL -o /tmp/lic04home.csv \
+            https://www2.myfloridalicense.com/sto/file_download/extracts/lic04home.csv
+          ls -la /tmp/lic04home.csv
+
+      - name: Resolve the county list
+        id: counties
+        run: |
+          if [ "$COUNTY" = "all" ]; then
+            list=$(node -e "const s=require('fs').readFileSync('scripts/import-dbpr.mjs','utf8');const m=s.match(/const COUNTIES = \{([\s\S]*?)\};/)[1];console.log([...m.matchAll(/'([a-z-]+)':/g)].map(x=>x[1]).join(' '))")
+          else
+            list="$COUNTY"
+          fi
+          echo "list=$list" >> "$GITHUB_OUTPUT"
+          echo "Counties: $list"
+
       # Always report before writing. The dry run is the audit trail: if a later
       # month delists someone unexpectedly, this step's log says what the state
       # was and what the import intended to do about it.
       - name: Report what would change
-        env:
-          PUBLIC_SUPABASE_URL: ${{ secrets.PUBLIC_SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
-          node scripts/import-dbpr.mjs \
-            --county "${{ inputs.county || 'pinellas' }}" \
-            --dry-run
+          for c in ${{ steps.counties.outputs.list }}; do
+            echo "::group::$c"
+            node scripts/import-dbpr.mjs --county "$c" --csv /tmp/lic04home.csv --dry-run
+            echo "::endgroup::"
+          done
 
-      # Rebuilds only when something actually changed, so a no-op month costs no
-      # deploy. The shrink guard runs here and fails the job rather than
+      # The shrink guard runs per county and fails the job rather than
       # delisting hundreds of listings off a truncated download; GitHub emails
-      # on a failed scheduled run.
+      # on a failed scheduled run. A failure in one county stops the run so it
+      # is looked at, rather than being buried under fifty successes.
       - name: Import
-        env:
-          PUBLIC_SUPABASE_URL: ${{ secrets.PUBLIC_SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          NETLIFY_BUILD_HOOK: ${{ secrets.NETLIFY_BUILD_HOOK }}
         run: |
-          node scripts/import-dbpr.mjs \
-            --county "${{ inputs.county || 'pinellas' }}" \
-            --deploy \
-            ${{ inputs.force && '--force' || '' }}
+          for c in ${{ steps.counties.outputs.list }}; do
+            echo "::group::$c"
+            node scripts/import-dbpr.mjs --county "$c" --csv /tmp/lic04home.csv $FORCE
+            echo "::endgroup::"
+          done
+
+      # One rebuild for the whole run. The importer's own --deploy is left off
+      # above so fifty-six counties do not queue fifty-six builds.
+      - name: Rebuild the site
+        run: curl -fsS -X POST -d '{}' "$NETLIFY_BUILD_HOOK"
