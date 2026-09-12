@@ -95,7 +95,7 @@ if (description.length > 160) description = `${description.slice(0, 157).trimEnd
     <div class="wrap">
       <div class="section-head">
         <h2>Featured in {city}</h2>
-        <div class="note">{CITY_FEATURED_CAP} spots per city while we build out, never more than {CITY_FEATURED_TARGET}</div>
+        <div class="note">{CITY_FEATURED_CAP} spots per city, never more</div>
       </div>
       <div class="featured-grid">
         {featured.map((l) => (
@@ -104,15 +104,15 @@ if (description.length > 160) description = `${description.slice(0, 157).trimEnd
         {Array.from({ length: openSpots }).map(() => (
           <div class="card ad-slot">
             <h3 style="font-size:1rem;">
-              {openSpots === CITY_FEATURED_CAP
-                ? `Both featured spots in ${city} are open`
-                : `${openSpots} featured spot open in ${city}`}
+              {openSpots === 1
+                ? `1 featured spot open in ${city}`
+                : `${openSpots} featured spots open in ${city}`}
             </h3>
             <p style="color:var(--slate);font-size:0.88rem;margin:0;">
               {page.listings.length} licensed inspectors are listed for {city}. Featured puts a
               card with your logo at the top of this page, up to two more city pages you choose,
-              and the {county.name} page, above all of them. Two spots per city while we build
-              out Florida, and never more than {CITY_FEATURED_TARGET}.
+              and the {county.name} page, above all of them. {CITY_FEATURED_TARGET} spots per
+              city, never more.
             </p>
             <button type="button" class="btn-primary featured-btn" data-county={county.slug} data-city={city} style="font-size:0.85rem;padding:8px 16px;">
               Get featured in {city}

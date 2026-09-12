@@ -33,20 +33,13 @@ const nonFeatured = listings.filter((l) => l.tier !== 'featured');
 const cities = [...new Set(nonFeatured.map((l) => l.city))].sort((a, b) => a.localeCompare(b));
 // Cities with pages of their own — three or more listings; see lib/cities.ts.
 const cityPages = cityPagesFor(county.slug, listings);
-// What an inspector BUYS is one of FEATURED_TARGET spots. What is live today is
-// FEATURED_CAP, and the gap between them is deliberate: while the county pages
-// are still being built out, a buyer is one of two rather than one of four.
-//
-// Stating it that way round matters. Anchoring on four makes raising the cap
-// the plan rather than a halving of what someone paid for, and it makes today's
-// smaller row a bonus with an end date instead of a promise we take back. The
-// copy must never state the LIVE count as the offer — "only 2 spots" sold to
-// someone who later sees four is scarcity we removed from them in writing.
-//
+// Four featured spots on the county page, and the copy says "never more than
+// four": an inspector buying one has to know they will not be one of twenty.
 // The database allows positions up to 6 and .featured-grid is two columns, so
 // any EVEN cap fills its rows; an odd one leaves a visible hole where a card
-// should be. 4 and 6 are both fine, 3 and 5 are not.
-const FEATURED_CAP = 2;
+// should be. (A cap of 2 with a target of 4 was shown here for one day on
+// 2026-09-12; the cap was always meant to be four.)
+const FEATURED_CAP = 4;
 const FEATURED_TARGET = 4;
 // Never negative: a third paid card renders (Stripe can sell one before the
 // cap moves), it just leaves no open-slot card behind it.
@@ -106,9 +99,8 @@ const openFeaturedSlots = Math.max(0, FEATURED_CAP - featured.length);
                 <h3 style="font-size:1rem;">This spot could be yours</h3>
                 <p style="color:var(--slate);font-size:0.88rem;margin:0;">
                   {nonFeatured.length} licensed inspectors are listed in {county.name}. Featured
-                  is one of {FEATURED_TARGET} spots above all of them, and every request goes to
-                  one inspector only. Only {FEATURED_CAP} are live while we build out the county
-                  pages, so right now you would be one of {FEATURED_CAP}.
+                  is one of {FEATURED_TARGET} spots above all of them — never more — and it
+                  also puts your card at the top of up to three city pages you choose.
                 </p>
                 <button type="button" class="btn-primary featured-btn" data-county={county.slug} style="font-size:0.85rem;padding:8px 16px;">
                   Get featured

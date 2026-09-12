@@ -13,19 +13,15 @@ import { slugify } from './slug';
 export const MIN_CITY_LISTINGS = 3;
 
 /**
- * How many featured cards a city page shows. Two while the site is being
- * built out; the copy says "while we build out" rather than "two" so raising
- * this is a number change, not a promise taken back. The county page has the
- * same arrangement with FEATURED_CAP and FEATURED_TARGET.
+ * How many featured cards a city page holds: four, and the copy says "never
+ * more than four" on every page that sells one. An inspector buying a spot
+ * has to know they will never be one of twenty; the value of the spot is
+ * that number. Raising this is a promise taken back and needs a DECISIONS
+ * entry, not an edit. (It was briefly two "while we build out" on
+ * 2026-09-12; that was a misreading of the county page's cap/target split,
+ * and the cap was always meant to be four.)
  */
-export const CITY_FEATURED_CAP = 2;
-
-/**
- * The most a city page will ever hold. Stated in the copy so an inspector
- * buying one of two today knows they will never be one of twenty; the
- * value of the spot is that number. Raising CITY_FEATURED_CAP past this
- * is a promise taken back and needs a DECISIONS entry, not an edit.
- */
+export const CITY_FEATURED_CAP = 4;
 export const CITY_FEATURED_TARGET = 4;
 
 /**
