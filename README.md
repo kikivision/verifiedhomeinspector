@@ -80,10 +80,13 @@ the Supabase dashboard; none of it is in the repo):
   testing and useless for a real inspector. Resend with a
   `mail.verifiedhomeinspector.com` sending domain is the known-good setup
   from SuperReports.
-- A database webhook on `listings` (UPDATE) pointing at the Netlify build
-  hook, so a claim or a save rebuilds the site. Without it, nothing an
-  inspector does is visible until someone deploys. See "Rebuild required
-  for new data" below.
+- The `rebuild_site_on_listing_change` trigger from the migration file,
+  with the `supabase-listings` build hook URL pasted in and the `pg_net`
+  extension enabled, so a claim or a save rebuilds the site. Not the
+  dashboard's point-and-click Database Webhook: that fires on every
+  update, and the monthly import would queue hundreds of builds. Without
+  the trigger, nothing an inspector does is visible until someone
+  deploys. See "Rebuild required for new data" below.
 
 ## Per-inspector pages
 

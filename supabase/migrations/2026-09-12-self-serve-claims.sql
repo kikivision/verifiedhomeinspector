@@ -346,3 +346,58 @@ alter table public.listings
 create index if not exists idx_listings_stripe_subscription
   on public.listings (stripe_subscription_id)
   where stripe_subscription_id is not null;
+
+-- ---------------------------------------------------------------------------
+-- Rebuild the site when a listing changes (added later the same day).
+--
+-- The site is static, so a dashboard save is invisible until Netlify
+-- rebuilds. This trigger POSTs the Netlify build hook when a column the
+-- dashboard or the tier scripts write changes. Deliberately NOT the
+-- dashboard's point-and-click Database Webhook: that fires on every UPDATE,
+-- and the monthly DBPR import updates city, licensee_name and delisted_at
+-- on hundreds of rows in one run — hundreds of queued builds. Those three
+-- columns are excluded here; the import triggers its own rebuild with
+-- --deploy. Stripe purchases rebuild from the webhook function, so a tier
+-- change from there fires this too; two builds in a row is harmless.
+--
+-- Requires the pg_net extension (Database → Extensions → pg_net → enable).
+-- Replace <NETLIFY_BUILD_HOOK> with the supabase-listings build hook URL
+-- before running. The URL lives inside this function in the database; it
+-- is a secret in the same sense the service-role key is, and the SQL
+-- editor is the only place it is ever pasted.
+-- ---------------------------------------------------------------------------
+create or replace function public.rebuild_site_on_listing_change()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  perform net.http_post(
+    url := '<NETLIFY_BUILD_HOOK>',
+    body := '{}'::jsonb,
+    headers := '{"Content-Type": "application/json"}'::jsonb
+  );
+  return null;
+end
+$$;
+
+drop trigger if exists rebuild_site_on_listing_change on public.listings;
+create trigger rebuild_site_on_listing_change
+  after update on public.listings
+  for each row
+  when (
+    old.tier is distinct from new.tier
+    or old.claimed_by is distinct from new.claimed_by
+    or old.business_name is distinct from new.business_name
+    or old.phone is distinct from new.phone
+    or old.website is distinct from new.website
+    or old.about is distinct from new.about
+    or old.specialties is distinct from new.specialties
+    or old.service_cities is distinct from new.service_cities
+    or old.years_experience is distinct from new.years_experience
+    or old.logo_path is distinct from new.logo_path
+    or old.featured_position is distinct from new.featured_position
+    or old.featured_cities is distinct from new.featured_cities
+  )
+  execute function public.rebuild_site_on_listing_change();
