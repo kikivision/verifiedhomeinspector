@@ -25,9 +25,9 @@
  *   --dry-run                    print the change, write nothing
  *   --deploy                     trigger a rebuild so the change goes live
  *
- * The site is statically built, so a tier change is invisible to visitors until
- * the site rebuilds. Either pass --deploy (needs NETLIFY_BUILD_HOOK) or trigger
- * a deploy in Netlify afterwards.
+ * The site is statically built. A database trigger rebuilds it when a tier,
+ * position or city changes; --deploy (needs NETLIFY_BUILD_HOOK) forces one if
+ * the trigger is ever missing.
  *
  * Writing requires SUPABASE_SERVICE_ROLE_KEY: the anon key the site uses is
  * read-only, and changing tiers is an admin operation.
@@ -275,9 +275,12 @@ async function main() {
     if (!res.ok) throw new Error(`Build hook failed: HTTP ${res.status}`);
     console.error('Rebuild triggered — live in a minute or so.');
   } else {
+    // The rebuild_site_on_listing_change trigger POSTs the build hook when a
+    // tier, position or city changes, so --deploy is a belt-and-braces
+    // option rather than a requirement since 2026-09-12.
     console.error(
-      'The site is statically built, so this is not visible to visitors yet. ' +
-        'Re-run with --deploy, or trigger a deploy in Netlify.',
+      'Saved. The database trigger should rebuild the site within a minute or two; ' +
+        'if it does not appear, re-run with --deploy.',
     );
   }
 }
