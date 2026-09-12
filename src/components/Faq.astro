@@ -37,6 +37,21 @@ const schema = {
         <details class="faq-item" open={i === 0}>
           <summary>{item.question}</summary>
           <p>{item.answer}</p>
+          {/* The schema above carries the answer as plain text, which is what
+              an answer engine wants. The links live here instead, so a reader
+              can check a claim without the citation ending up inside the
+              structured data as markup. */}
+          {item.sources && (
+            <p class="faq-sources">
+              Source:{' '}
+              {item.sources.map((src, n) => (
+                <>
+                  {n > 0 && <span>, </span>}
+                  <a href={src.url} rel="noopener">{src.label}</a>
+                </>
+              ))}
+            </p>
+          )}
         </details>
       ))}
     </div>
