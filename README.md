@@ -39,9 +39,10 @@ See [CLAUDE.md](CLAUDE.md) for why every assertion in that file exists.
 ## Self-serve claims
 
 An inspector claims their own listing without anyone at Sunstate in the
-loop. `/for-inspectors/` states the offer and the prices; `/claim/` sends
-a Supabase magic link; `/dashboard/` is where they enter their license
-number and fill in what the listing shows. Every write goes through a
+loop. `/for-inspectors/` states the offer and the prices; `/claim/` emails
+a 6-digit code through Supabase Auth and signs them in on the spot;
+`/dashboard/` is where they enter their license number and fill in what
+the listing shows. Every write goes through a
 database function (`claim_listing`, `update_my_listing`,
 `release_my_listing` in `supabase/migrations/`); there is no UPDATE
 policy on `listings`, on purpose.
@@ -56,18 +57,20 @@ node --env-file=.env scripts/set-tier.mjs HI7816 unclaimed --deploy
 **Supabase configuration the code assumes** (Authentication settings in
 the Supabase dashboard; none of it is in the repo):
 
-- Email provider enabled, with magic links, and "Allow new users to sign
-  up" left ON. Sign-ups are gated in the database instead: the
+- Email provider enabled and "Allow new users to sign up" left ON. The
+  **Magic Link** email template must contain `{{ .Token }}` so the email
+  carries the code rather than a link, and the email OTP length must be
+  **6** — the page's input accepts six digits and nothing else. (This
+  drifted to 8 on SuperReports once and every sign-in failed; check the
+  live setting, not the runbook.) Sign-ups are gated in the database instead: the
   `require_claimable_license` trigger refuses an account whose sign-in
   request did not carry an unclaimed license number, which is what
   `/claim/` sends. There are no cold sign-ups and no accounts that belong
-  to nobody. The default "magic link" template is what the inspector
-  receives.
-- Site URL `https://verifiedhomeinspector.com`, and
-  `https://verifiedhomeinspector.com/dashboard/` plus
-  `http://localhost:4321/dashboard/` in the redirect allowlist. A link
-  that redirects somewhere not on the list lands on the site root with
-  no session.
+  to nobody. The Magic Link template, edited to carry the code, is what
+  the inspector receives.
+- Site URL `https://verifiedhomeinspector.com`. No redirect allowlist is
+  needed: the code is verified on `/claim/` itself and nothing follows a
+  link back.
 - Custom SMTP. Supabase's built-in sender is rate-limited to a handful of
   emails an hour and only delivers to project members, which is fine for
   testing and useless for a real inspector. Resend with a

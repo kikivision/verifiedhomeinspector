@@ -426,8 +426,8 @@ import { counties } from '../../lib/counties';
 
     // ----- boot -------------------------------------------------------------
     async function boot() {
-      // The magic link lands here with the token in the URL; supabase-js reads
-      // it and establishes the session before getSession resolves.
+      // /claim/ verified the code and stored the session before sending them
+      // here; supabase-js reads it back from localStorage.
       const { data } = await supabase.auth.getSession();
       session = data.session;
       if (!session) {

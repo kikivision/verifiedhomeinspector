@@ -17,7 +17,9 @@ left beta and shows contact details in one step, three days in.
 - A claimed listing **shows the inspector's phone number and website**, on the
   county page row and on a featured card. A tap on the number logs
   `click_phone`; the request button and `click_request` stay.
-- Claiming is **self-serve**: `/claim/` sends a Supabase magic link, the
+- Claiming is **self-serve**: `/claim/` emails a 6-digit code (the same
+  flow as SuperReports and Sunstate Trades — a magic link opens in whatever
+  browser the mail app picks, which on a phone is often the wrong one), the
   inspector enters their license number on `/dashboard/`, and
   `claim_listing()` attaches the row to their account and moves it to
   `claimed` at once. They edit business name, phone, website, services, years,
