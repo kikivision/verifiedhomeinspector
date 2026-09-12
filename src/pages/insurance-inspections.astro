@@ -29,21 +29,53 @@ const live = counties.filter((c) => c.status === 'live');
       <div class="county-tag">Insurance renewals</div>
       <h1>Switching your homeowner's insurance company?</h1>
       <p style="color:var(--navy-soft);font-weight:500;margin-top:10px;max-width:68ch;">
-        Start with your insurance agent and ask them to shop other carriers for the same house.
-        The carrier that quotes you will tell your agent what it needs, which commonly includes
-        a 4-point inspection and a wind mitigation inspection. Licensed Florida home inspectors
-        perform both.
+        Two reports, two different jobs. Which of them a carrier wants depends on how old the
+        house is and on that company's own underwriting rules.
       </p>
-      <!-- Both claims here are linked to the source that makes them, because
-           the earlier version of this page stated things nobody here had
-           checked. A reader, or Karen, can verify either in one click. -->
-      <p style="color:var(--navy-soft);font-weight:500;margin-top:14px;max-width:68ch;">
-        The wind mitigation is a{' '}
-        <a href="https://floir.gov/consumers/wind-mitigation-resources" rel="noopener">state form</a>, and{' '}
-        <a href="https://flsenate.gov/Laws/Statutes/2025/627.711" rel="noopener">not every licensed inspector is allowed to sign it</a>, so ask before you book. If you had one done
-        in the last five years, find it first: the Office of Insurance Regulation says a
-        completed form stays valid that long unless the house has materially changed.
-      </p>
+    </div>
+  </section>
+
+  <!-- No carrier is named anywhere on this page. A directory that lists every
+       licensed inspector in a county has no business singling out one insurer,
+       and the age threshold is a range across the market rather than one
+       company's rule — so it is stated as a range that varies, which is both
+       true and what a reader can act on.
+
+       What is cited is the regulator and the statute: OIR for the form and its
+       validity, 627.0629 for the credits behind a wind mitigation. -->
+  <section class="section" id="which-one" style="padding-top:0;">
+    <div class="wrap">
+      <div class="legal" style="max-width:68ch;">
+        <h2>4-point inspection</h2>
+        <p>
+          A 4-point looks at four systems — roof, electrical, plumbing, HVAC — and settles one
+          question: will this company insure the house. It is a gate rather than a price.
+          Passing it takes nothing off the premium.
+        </p>
+        <p>
+          Age is what triggers it. Each carrier sets its own threshold, and those commonly fall
+          somewhere between 20 and 40 years, so the same house can need one at one company and
+          not at another. A newer house is usually not asked for one at all.
+        </p>
+
+        <h2>Wind mitigation inspection</h2>
+        <p>
+          A wind mitigation is almost never what stands between you and a policy. It is usually
+          optional, and it exists to document discounts rather than to qualify you for coverage.
+          What it records is how well the house is built to hold up in a storm: the shape of the
+          roof, how that roof is fastened to the walls, whether the windows and doors are
+          protected.
+        </p>
+        <p>
+          That record is where the money is.{' '}
+          <a href="https://flsenate.gov/Laws/Statutes/2025/627.0629" rel="noopener">Florida law requires a carrier's rate filing to include credits</a>{' '}
+          for features like those, and with no report on file there is nothing showing that your
+          house qualifies for them. The{' '}
+          <a href="https://floir.gov/consumers/wind-mitigation-resources" rel="noopener">Office of Insurance Regulation</a>{' '}
+          treats a completed form as good for up to five years, so look for an existing one
+          before paying for a new one.
+        </p>
+      </div>
     </div>
   </section>
 
