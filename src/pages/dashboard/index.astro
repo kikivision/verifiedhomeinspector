@@ -31,7 +31,7 @@ const TRIAL_DAYS = 7;
     <div class="wrap">
       <div class="section-head">
         <h1 class="dash-title">Your listing</h1>
-        <div class="note" id="whoami"></div>
+        <div class="note dash-who" id="whoami"></div>
       </div>
 
       <p class="dash-msg dash-msg-top" id="msg" role="status" aria-live="polite"></p>
@@ -199,8 +199,11 @@ const TRIAL_DAYS = 7;
 
             <div class="dash-links">
               <a href="#" id="viewListing">View your page</a>
-              <button type="button" class="dash-linkbtn" id="signOutBtn">Sign out</button>
-              <button type="button" class="dash-linkbtn dash-danger" id="releaseBtn">Release this listing</button>
+              {/* The undo for a wrong claim or a closed business, not a step
+                  anyone needs to take; a listing that is never released stays
+                  claimed, which is the point. Worded so nobody mistakes it for
+                  sign out or cancel. */}
+              <button type="button" class="dash-linkbtn dash-danger" id="releaseBtn">Not your listing, or closing the business? Release it</button>
             </div>
           </aside>
         </div>
@@ -580,11 +583,6 @@ const TRIAL_DAYS = 7;
       show('claim');
     });
 
-    $('#signOutBtn').addEventListener('click', async () => {
-      await supabase.auth.signOut();
-      location.href = '/';
-    });
-
     // ----- boot -------------------------------------------------------------
     async function boot() {
       // /claim/ verified the code and stored the session before sending them
@@ -595,7 +593,17 @@ const TRIAL_DAYS = 7;
         show('signedOut');
         return;
       }
-      whoami.textContent = session.user.email ?? '';
+      whoami.replaceChildren();
+      whoami.append(session.user.email ?? '');
+      const out = document.createElement('button');
+      out.type = 'button';
+      out.className = 'dash-linkbtn';
+      out.textContent = 'Sign out';
+      out.addEventListener('click', async () => {
+        await supabase.auth.signOut();
+        location.href = '/';
+      });
+      whoami.append(' · ', out);
       listing = await loadListing();
       if (listing) {
         await showEdit();
