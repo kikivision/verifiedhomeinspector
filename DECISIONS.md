@@ -53,7 +53,7 @@ prorating anything.
 ## 2026-09-12 — City pages, and featured is sold by city
 
 **Built.** `/fl/<county>/<city>/` for every city with three or more
-listings (about 60 across the four counties). Each carries two featured
+listings (about 60 across the four counties). Each carries four featured
 spots of its own.
 
 ### The product is "featured where you work"
@@ -85,13 +85,11 @@ a founding rate chosen to be easy to say yes to, and $50 for every city in
 the county, which lets one Largo inspector occupy a St. Petersburg slot he
 never works. Cross-county is not possible: a listing lives in one county.
 
-Two cards per city is the build-out number, like `FEATURED_CAP` on the
-county page against its target of four, and four is the ceiling for city
-pages too (`CITY_FEATURED_TARGET`). The copy says both: "two while we
-build out, never more than four." The first half makes raising it a
-number change rather than a promise taken back; the second is what the
-spot is worth — an inspector buying one of two has to know they will not
-be one of twenty.
+Four cards per city and four on the county page, and the copy says
+"never more" on every page that sells one: an inspector buying a spot has
+to know they will not be one of twenty. (For one day the city pages said
+"two while we build out, never more than four" — a misreading of the
+county page's old cap/target split. The cap was always four.)
 
 ### Why three listings is the threshold
 
@@ -150,7 +148,7 @@ dashboard's snippet both call it.
 ### The city segment is a promise about the next step
 
 `/fl/pinellas/largo/` does not exist yet. The inspector URL carries the city
-anyway, so that when city pages are built (the next step: two featured
+anyway, so that when city pages are built (the next step: four featured
 spots per city, "featured where you work"), no inspector URL has to move.
 Until then the breadcrumb's city link goes to the county page with the city
 filter preset (`?city=Largo`), which is what a city page would show.

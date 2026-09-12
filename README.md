@@ -109,7 +109,7 @@ inspector pages come out.
 `/fl/<county>/<city>/` is built for every city with three or more
 listings (`MIN_CITY_LISTINGS` in `src/lib/cities.ts`); smaller cities
 get no page, and their inspectors' pages link to the filtered county
-page instead. Each city page has two featured spots. A featured listing
+page instead. Each city page has four featured spots. A featured listing
 shows on the city pages named in its `featured_cities`, or on its own
 city's page when that is empty:
 

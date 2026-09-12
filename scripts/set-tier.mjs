@@ -39,7 +39,7 @@ const TIERS = ['unclaimed', 'claimed', 'featured'];
 // renders, so the script allows the ceiling rather than the advertised count.
 const FEATURED_CAP = 4;
 // Kept in step with the same names in src/lib/cities.ts.
-const CITY_FEATURED_CAP = 2;
+const CITY_FEATURED_CAP = 4;
 const MAX_FEATURED_CITIES = 3;
 
 function parseArgs(argv) {
