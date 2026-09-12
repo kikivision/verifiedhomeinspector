@@ -69,6 +69,10 @@ export interface Listing {
    * select('*') simply omits it.
    */
   featured_cities?: string[];
+  /** Set by the Stripe webhook; null for a spot set up by hand. */
+  stripe_customer_id?: string | null;
+  stripe_subscription_id?: string | null;
+  featured_since?: string | null;
   created_at: string;
 }
 
@@ -88,6 +92,25 @@ export function websiteLabel(url: string): string {
   } catch {
     return url;
   }
+}
+
+/**
+ * Live listings per city in a county, for the dashboard to know which cities
+ * have pages (MIN_CITY_LISTINGS or more) and so can carry a featured card.
+ */
+export async function getCityCountsForCounty(countySlug: string): Promise<Map<string, number>> {
+  const { data, error } = await supabase
+    .from('listings')
+    .select('city')
+    .is('delisted_at', null)
+    .eq('county', countySlug);
+  if (error) {
+    console.error('Error fetching city counts:', error.message);
+    return new Map();
+  }
+  const counts = new Map<string, number>();
+  for (const r of data as { city: string }[]) counts.set(r.city, (counts.get(r.city) ?? 0) + 1);
+  return counts;
 }
 
 /**

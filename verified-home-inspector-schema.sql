@@ -38,6 +38,11 @@ create table listings (
   -- Cities whose pages show this listing's featured card. Set by
   -- set-tier.mjs --cities; empty means the listing's own city.
   featured_cities jsonb not null default '[]'::jsonb,
+  -- Written by the Stripe webhook when a featured spot is bought; null for
+  -- a spot set up by hand with set-tier.mjs.
+  stripe_customer_id text,
+  stripe_subscription_id text,
+  featured_since timestamptz,
   -- Set when a license stops appearing in the DBPR extract. Null means current.
   -- The importer marks rows here and never deletes them, so a claimed listing
   -- survives a bad upstream file and can be restored by clearing this.

@@ -120,6 +120,47 @@ $50/month covers the county page plus up to three city pages. Claimed inspectors
 pages of the cities they chose as served on their dashboard, in a
 "Based nearby, serves …" section — that part is free.
 
+## Featured spots are sold through Stripe
+
+A claimed inspector buys a featured spot from `/dashboard/`: they pick up
+to three city pages, and `netlify/functions/create-checkout.mts` starts
+a Stripe Checkout session for a $50/month subscription with a 7-day free
+trial. `netlify/functions/stripe-webhook.mts` moves the listing to
+`featured` when Stripe confirms, assigns the county-page position, sets
+`featured_cities`, and triggers a rebuild; a canceled or unpaid
+subscription moves it back to `claimed`. `billing-portal.mts` sends them
+to Stripe's customer portal to update a card or cancel. `set-tier.mjs`
+still exists for spots arranged by hand (RMC), which have no Stripe ids
+and show "set up directly with us" on the dashboard. `npm run check`
+type-checks the functions along with the site.
+
+**Setup, once, in this order:**
+
+1. Stripe (test mode first) → Product "Verified Home Inspector — Featured
+   spot", recurring price **$50.00 / month**. Copy the `price_…` id. A
+   later price rise is a *new* price for new buyers; existing
+   subscriptions keep theirs, which is the founding-rate promise.
+2. Stripe → Developers → Webhooks → Add endpoint
+   `https://verifiedhomeinspector.com/.netlify/functions/stripe-webhook`
+   with events `checkout.session.completed`,
+   `customer.subscription.updated`, `customer.subscription.deleted`.
+   Copy the `whsec_…` signing secret.
+3. Stripe → Settings → Billing → Customer portal: enable it, allow
+   canceling and updating payment methods.
+4. Netlify → Site configuration → Environment variables:
+   `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_FEATURED`,
+   `SUPABASE_SERVICE_ROLE_KEY`, `NETLIFY_BUILD_HOOK`. (`PUBLIC_SUPABASE_URL`
+   is already there for the build; `URL` is set by Netlify.)
+5. Run the Stripe block at the bottom of
+   `supabase/migrations/2026-09-12-self-serve-claims.sql`.
+6. Test with the test account: buy with card `4242 4242 4242 4242`, any
+   future date, any CVC. The dashboard should flip to "You're featured"
+   and the county page should show the card after the rebuild. Cancel
+   from Manage billing and watch it come down.
+7. Go live: swap `STRIPE_SECRET_KEY` for the live key, register the
+   webhook again in live mode (a new `whsec_…`), and create the price in
+   live mode (a new `price_…`). All three env vars change.
+
 ## How data gets in
 
 `scripts/import-dbpr.mjs` pulls the official DBPR public-records extract

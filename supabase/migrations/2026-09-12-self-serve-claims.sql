@@ -321,3 +321,20 @@ create trigger require_claimable_license
 -- ---------------------------------------------------------------------------
 alter table public.listings
   add column if not exists featured_cities jsonb not null default '[]'::jsonb;
+
+-- ---------------------------------------------------------------------------
+-- Stripe (added later the same day).
+--
+-- Written only by the Netlify functions with the service-role key. The
+-- dashboard reads them back through the public select to decide whether to
+-- show "Start featured" or "Manage billing"; a customer id and a
+-- subscription id identify nothing outside Stripe's dashboard.
+-- ---------------------------------------------------------------------------
+alter table public.listings
+  add column if not exists stripe_customer_id text,
+  add column if not exists stripe_subscription_id text,
+  add column if not exists featured_since timestamptz;
+
+create index if not exists idx_listings_stripe_subscription
+  on public.listings (stripe_subscription_id)
+  where stripe_subscription_id is not null;

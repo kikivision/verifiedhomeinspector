@@ -34,9 +34,10 @@
  */
 
 const TIERS = ['unclaimed', 'claimed', 'featured'];
-// Kept in step with the page's cap. The database check allows up to 6, so this
-// enforces current policy rather than the schema's outer limit.
-const FEATURED_CAP = 2;
+// The county page's ceiling (FEATURED_TARGET there): positions 1-4. The page
+// advertises two open slots while building out, but a paid card past two still
+// renders, so the script allows the ceiling rather than the advertised count.
+const FEATURED_CAP = 4;
 // Kept in step with the same names in src/lib/cities.ts.
 const CITY_FEATURED_CAP = 2;
 const MAX_FEATURED_CITIES = 3;

@@ -11,18 +11,21 @@
     "preview": "astro preview",
     "astro": "astro",
     "smoke": "node scripts/smoke-test.mjs",
-    "verify": "npm run build && npm run smoke"
+    "verify": "npm run build && npm run smoke",
+    "check": "astro check && tsc -p netlify/tsconfig.json"
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.7.4",
     "@supabase/supabase-js": "^2.116.0",
-    "astro": "^7.3.2"
+    "astro": "^7.3.2",
+    "stripe": "^22.6.2"
   },
   "allowScripts": {
     "esbuild": true
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
+    "@netlify/functions": "^6.0.0",
     "typescript": "^6.0.3"
   }
 }
