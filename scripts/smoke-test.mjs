@@ -244,6 +244,13 @@ if (insurance) {
       const faqLinks = [...insurance.matchAll(/class="faq-sources"[\s\S]*?<\/p>/g)]
         .flatMap((m) => [...m[0].matchAll(/href="(https?:\/\/[^"]+)"/g)].map((h) => h[1]));
       check(faqLinks.length > 0, 'No FAQ answer carries a source link.');
+
+      // A citation that replaces the page the reader was on costs a lead to
+      // prove a point. They open in a new tab, and nothing else enforces it.
+      const citations = [...insurance.matchAll(/<a [^>]*href="https:\/\/(?:flsenate|floir|www\.myfloridalicense)[^"]*"[^>]*>/g)];
+      const sameTab = citations.filter((m) => !m[0].includes('target="_blank"'));
+      check(sameTab.length === 0,
+        `${sameTab.length} citation link(s) would navigate away from the page.`);
       for (const url of faqLinks) {
         const host = new URL(url).host;
         check(allowed.includes(host),
