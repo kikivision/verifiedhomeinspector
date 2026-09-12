@@ -173,10 +173,10 @@ const TRIAL_DAYS = 7;
               <h3>Your badge</h3>
               <p class="dash-muted">
                 Paste this on your own website. It shows your license is current and links to
-                your page here. The image appears after the next rebuild.
+                your page here.
               </p>
               <div class="dash-badge">
-                <img id="badgeImg" alt="Verified on Verified Home Inspector badge" width="230" height="64" />
+                <div id="badgePreview" aria-label="Your badge"></div>
                 <textarea id="badgeSnippet" rows="4" readonly></textarea>
                 <button type="button" class="request-btn-row" id="copySnippet">Copy snippet</button>
               </div>
@@ -230,6 +230,7 @@ const TRIAL_DAYS = 7;
     import { supabase, getCitiesForCounty, getCityCountsForCounty, type Listing } from '../../lib/supabase';
     import { getCounty } from '../../lib/counties';
     import { inspectorPath } from '../../lib/slug';
+    import { badgeSvg } from '../../lib/badge';
     import { MIN_CITY_LISTINGS, CITY_FEATURED_CAP, MAX_FEATURED_CITIES, featuredCities } from '../../lib/cities';
     import { submitNetlifyForm } from '../../lib/netlify-forms';
     import { trackEvent } from '../../lib/gtag';
@@ -337,7 +338,9 @@ const TRIAL_DAYS = 7;
       await showFeaturedCard();
       const pagePath = inspectorPath(listing.county, listing.city, listing.license_number, listing.licensee_name);
       $<HTMLAnchorElement>('#viewListing').href = pagePath;
-      $<HTMLImageElement>('#badgeImg').src = `/badge/${listing.license_number}.svg`;
+      // Drawn inline rather than loaded from /badge/, which does not exist
+      // until the next build; the snippet below still points at the file.
+      $('#badgePreview').innerHTML = badgeSvg(listing.license_number);
       $<HTMLTextAreaElement>('#badgeSnippet').value =
         `<a href="https://verifiedhomeinspector.com${pagePath}">` +
         `<img src="https://verifiedhomeinspector.com/badge/${listing.license_number}.svg" ` +

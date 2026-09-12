@@ -21,6 +21,7 @@
 import type { APIRoute, GetStaticPaths } from 'astro';
 import { counties } from '../../lib/counties';
 import { getAllListings, isClaimed } from '../../lib/supabase';
+import { badgeSvg } from '../../lib/badge';
 
 export const getStaticPaths: GetStaticPaths = async () => {
   const live = counties.filter((c) => c.status === 'live').map((c) => c.slug);
@@ -30,25 +31,8 @@ export const getStaticPaths: GetStaticPaths = async () => {
     .map((l) => ({ params: { license: l.license_number }, props: { license: l.license_number } }));
 };
 
-// Escaped by hand: the license is HI followed by digits, so nothing here can
-// carry markup, but the number is still the one value that came from data.
-function esc(text: string): string {
-  return text.replace(/[<>&"']/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&#39;' })[c]!);
-}
-
 export const GET: APIRoute = ({ props }) => {
-  const license = esc(String(props.license));
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="230" height="64" viewBox="0 0 230 64" role="img" aria-label="Verified on Verified Home Inspector, FL license ${license}">
-  <rect x="0.5" y="0.5" width="229" height="63" rx="5" fill="#1D2B3A" stroke="#2C4054"/>
-  <g transform="translate(12 12) scale(0.625)">
-    <path d="M32,14 L51,31 L51,50 L13,50 L13,31 Z" fill="#E8A93A"/>
-  </g>
-  <text x="58" y="21" font-family="Georgia, 'Times New Roman', serif" font-size="9" letter-spacing="1.2" fill="#B9C4CC">VERIFIED ON</text>
-  <text x="58" y="38" font-family="Georgia, 'Times New Roman', serif" font-size="15" fill="#FCFBF6">Verified<tspan fill="#E8A93A" font-style="italic">Home Inspector</tspan></text>
-  <text x="58" y="53" font-family="Arial, Helvetica, sans-serif" font-size="9.5" fill="#B9C4CC">FL Lic #${license} · Active</text>
-</svg>
-`;
-  return new Response(svg, {
+  return new Response(badgeSvg(String(props.license)), {
     headers: { 'Content-Type': 'image/svg+xml; charset=utf-8' },
   });
 };
