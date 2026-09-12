@@ -135,6 +135,11 @@ const CITY_ALIASES = new Map(Object.entries({
   'ST PETE BEACH': 'St. Pete Beach',
   'ST. PETE BEACH': 'St. Pete Beach',
   'CLEAWATER': 'Clearwater',
+  // Seen in the 2026-09-12 extract: one Orange inspector and two in Pasco,
+  // each of whom would otherwise be the only listing in a city that does
+  // not exist.
+  'ORALANDO': 'Orlando',
+  'LAND O LAKE': 'Land O Lakes',
   // Clearwater Beach sits inside Clearwater city limits; one entry is friendlier
   // in a city filter than two that mean the same place to a homeowner.
   'CLEARWATER BEACH': 'Clearwater',

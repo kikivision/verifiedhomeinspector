@@ -538,3 +538,10 @@ footer p { font-size: 0.8rem; color: var(--slate); margin: 4px 0; max-width: 70c
   .badge-card { grid-template-columns: 1fr; }
   .neighbor-grid { grid-template-columns: 1fr; }
 }
+
+/* City links on the county page and between city pages. */
+.city-links { display: flex; flex-wrap: wrap; gap: 8px; }
+.city-links a { border: 1px solid var(--line); background: var(--paper-raised); padding: 6px 12px; border-radius: 3px; font-size: 0.9rem; color: var(--navy); transition: border-color .15s; }
+.city-links a:hover { border-color: var(--mustard-deep); color: var(--navy); }
+.city-links a span { color: var(--slate); font-size: 0.8rem; margin-left: 4px; }
+.city-links-all { color: var(--mustard-deep) !important; font-weight: 600; border-color: transparent !important; background: transparent !important; }

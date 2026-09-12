@@ -19,6 +19,9 @@
  *   --experience N               years in business, shown as "N+ years"
  *   --logo /logos/name.png       brand mark; site-relative, committed to public/
  *   --position N                 featured slot, 1-6, required for featured
+ *   --cities "Largo, Clearwater"  city pages the featured card shows on, up to
+ *                                three; two cards per city, so this checks
+ *                                both counts. Empty means the listing's own city
  *   --dry-run                    print the change, write nothing
  *   --deploy                     trigger a rebuild so the change goes live
  *
@@ -34,6 +37,9 @@ const TIERS = ['unclaimed', 'claimed', 'featured'];
 // Kept in step with the page's cap. The database check allows up to 6, so this
 // enforces current policy rather than the schema's outer limit.
 const FEATURED_CAP = 2;
+// Kept in step with the same names in src/lib/cities.ts.
+const CITY_FEATURED_CAP = 2;
+const MAX_FEATURED_CITIES = 3;
 
 function parseArgs(argv) {
   const positional = [];
@@ -131,10 +137,52 @@ async function main() {
       );
     }
     update.featured_position = position;
+
+    // Which city pages carry the card. Each name must be a city with listings
+    // in this county, and no city may end up with more cards than it has
+    // spots: a third card in a two-spot row is someone paying for a
+    // placement that does not render.
+    if (flags.cities !== undefined) {
+      const wanted = [...new Set(flags.cities.split(',').map((c) => c.trim()).filter(Boolean))];
+      if (wanted.length > MAX_FEATURED_CITIES) {
+        throw new Error(
+          `${wanted.length} cities named; a featured listing covers up to ${MAX_FEATURED_CITIES}. ` +
+            `More than that is a separate conversation, not a flag.`,
+        );
+      }
+      const { data: countyRows, error: cityError } = await supabase
+        .from('listings')
+        .select('license_number, city, tier, featured_cities')
+        .eq('county', listing.county)
+        .is('delisted_at', null);
+      if (cityError) throw cityError;
+      const known = new Set(countyRows.map((r) => r.city));
+      for (const city of wanted) {
+        if (!known.has(city)) {
+          throw new Error(
+            `"${city}" is not a city with listings in ${listing.county}. ` +
+              `Spell it as the site does (e.g. "St. Petersburg"), and check the county page.`,
+          );
+        }
+        const holders = countyRows.filter((r) => {
+          if (r.tier !== 'featured' || r.license_number === license) return false;
+          const cities = r.featured_cities?.length ? r.featured_cities : [r.city];
+          return cities.includes(city);
+        });
+        if (holders.length >= CITY_FEATURED_CAP) {
+          throw new Error(
+            `${city} already has ${holders.length} featured card(s): ` +
+              `${holders.map((h) => h.license_number).join(', ')}. The cap is ${CITY_FEATURED_CAP}.`,
+          );
+        }
+      }
+      update.featured_cities = wanted;
+    }
   } else {
     // Only featured listings hold a slot; leaving a stale one behind would let a
     // downgraded listing silently block a slot someone else is paying for.
     update.featured_position = null;
+    update.featured_cities = [];
   }
 
   if (tier === 'unclaimed') {

@@ -5,6 +5,76 @@ until you know why. Newest first.
 
 ---
 
+## 2026-09-12 — City pages, and featured is sold by city
+
+**Built.** `/fl/<county>/<city>/` for every city with three or more
+listings (about 60 across the four counties). Each carries two featured
+spots of its own.
+
+### The product is "featured where you work"
+
+An inspector does not think in counties. They think in the cities their
+jobs come from, and a homeowner searches a city ("home inspector St.
+Petersburg"), not a county. So featured is one product with one price:
+the inspector names the cities they serve, their card sits at the top of
+each of those city pages and of the county page, two cards per city. The
+county page's featured row shows whoever is featured anywhere in the
+county, capped at `FEATURED_CAP`. There is no separate county-level SKU
+and no city-level SKU; an earlier draft had both, and the question "why
+would I pay more for the county page when Google sends people to the city
+page" had no answer.
+
+The list of cities is `featured_cities` on the listing, set by
+`set-tier.mjs --cities "Largo, Clearwater"` and never by the inspector,
+because it is the thing being sold. Empty means the listing's own city, so
+RMC's spot bought before city pages existed lands on Largo without anyone
+touching it. `set-tier.mjs` refuses a third card in a two-spot city.
+
+**$50/month buys the county page plus up to three city pages** the
+inspector names (`MAX_FEATURED_CITIES`; `set-tier.mjs` refuses a fourth).
+Three because that is how the work is shaped — a home base and the towns
+next to it — and because it leaves something to sell: an inspector who
+wants six cities is a conversation, at a price that is not $50. The other
+two shapes were $50 per city, which puts four cities at $200/month against
+a founding rate chosen to be easy to say yes to, and $50 for every city in
+the county, which lets one Largo inspector occupy a St. Petersburg slot he
+never works. Cross-county is not possible: a listing lives in one county.
+
+Two cards per city is the build-out number, like `FEATURED_CAP` on the
+county page against its target of four, and four is the ceiling for city
+pages too (`CITY_FEATURED_TARGET`). The copy says both: "two while we
+build out, never more than four." The first half makes raising it a
+number change rather than a promise taken back; the second is what the
+spot is worth — an inspector buying one of two has to know they will not
+be one of twenty.
+
+### Why three listings is the threshold
+
+The DBPR extract files a license under a county but carries whatever
+mailing city the licensee gave. Pinellas holds one inspector each in
+Bradenton, Sarasota and St. Augustine; Hillsborough holds one in Lakeland.
+A "Home inspectors in Sarasota" page under Pinellas with one unclaimed name
+is a page Google should never index and a homeowner should never land on.
+Those inspectors keep their own pages; their city crumb goes to the county
+page with the city filter set. `MIN_CITY_LISTINGS` in `lib/cities.ts`.
+
+### "Based nearby, serves X"
+
+A claimed inspector's `service_cities` (chosen on the dashboard) put them
+on city pages other than their mailing city, in their own section below
+the featured row. That is the free version of being on a city page — a
+reason to claim and fill in the dashboard, and the natural upsell to a
+featured card on the same page.
+
+### What was refactored to get here
+
+The featured card, the listing rows and the featured dialog were inline in
+the county page; a second copy for city pages was the wrong answer. They
+are `FeaturedCard`, `ListingRows` and `FeaturedDialog` components now, and
+the county page is 290 lines rather than 680.
+
+---
+
 ## 2026-09-12 — One page per inspector, with the URL built from the state record
 
 **Built.** Every live listing has a page at

@@ -1,0 +1,95 @@
+---
+// A featured listing's card, on the county page and on each city page it is
+// featured in. One component so the paid placement looks and behaves the
+// same everywhere it is sold.
+//
+// Comments in here are JSX comments, not HTML ones: this renders once per
+// featured listing, and an HTML comment would be emitted once per card, which
+// the smoke test treats as a comment written inside a loop.
+import type { County } from '../lib/counties';
+import { websiteLabel, type Listing } from '../lib/supabase';
+import { inspectorPath } from '../lib/slug';
+
+interface Props {
+  listing: Listing;
+  county: County;
+  /** Where the card is: 'county_pinellas_featured', 'city_pinellas_largo_featured'. */
+  pageContext: string;
+}
+
+const { listing: l, county, pageContext } = Astro.props;
+const name = l.business_name || l.licensee_name;
+---
+
+<div class="card featured">
+  <div class="badge">Featured</div>
+  {/* The logo sits on an explicit white plate. The file has no alpha — 64% of
+      it is solid #FFFFFF — and the card ground is warm off-white, so placed
+      bare it reads as a white rectangle someone forgot to cut out. Keying the
+      white out instead would fringe the navy and teal edges at this size. A
+      plate makes the white deliberate. Capped at the file's own 210px so it
+      is never upscaled. */}
+  {l.logo_path && (
+    <div class="logo-plate">
+      <img src={l.logo_path} alt={`${name} logo`} />
+    </div>
+  )}
+  {/* No initials tile: a navy square reading "RW" is a placeholder wearing
+      the colors of a brand. The strip appears only with a real image. */}
+  {l.photo_urls.length > 0 && (
+    <div class="photo-strip">
+      {l.photo_urls.slice(0, 3).map((url) => (
+        <img src={url} alt="" class="photo-slot" />
+      ))}
+    </div>
+  )}
+  <h3><a href={inspectorPath(l.county, l.city, l.license_number, l.licensee_name)}>{name}</a></h3>
+  {/* The heading falls back to the licensee's name when there is no business
+      name, so the name is only repeated here when it is different. */}
+  <div class="city">{l.business_name ? `${l.licensee_name} · ` : ''}{l.city}, FL</div>
+  <div class="tags">
+    {l.specialties.length > 0 ? (
+      l.specialties.map((s) => <span class="tag">{s}</span>)
+    ) : (
+      <span class="tag">Licensed Home Inspector</span>
+    )}
+  </div>
+  {(l.cert_badges.length > 0 || l.years_experience) && (
+    <div class="cert-row">
+      {l.cert_badges.map((c) => <span class="cert">{c}</span>)}
+      {l.years_experience && <span class="cert">{l.years_experience}+ years in business</span>}
+    </div>
+  )}
+  <div class="lic"><span class="check">✓</span>FL Lic #{l.license_number} — DBPR verified, active</div>
+  {/* Phone and website, shown since 2026-09-12. A tap on the number logs
+      click_phone before dialing. See DECISIONS.md. */}
+  <div class="contact">
+    <div class="contact-lines">
+      {l.phone && (
+        <a
+          class="row-phone phone-link"
+          href={`tel:${l.phone.replace(/[^\d+]/g, '')}`}
+          data-listing-id={l.id}
+          data-page-context={pageContext}
+        >
+          {l.phone}
+        </a>
+      )}
+      {l.website && (
+        <a class="row-web" href={l.website} target="_blank" rel="sponsored noopener">
+          {websiteLabel(l.website)} ↗
+        </a>
+      )}
+    </div>
+    <button
+      class="request-btn"
+      data-listing-id={l.id}
+      data-license={l.license_number}
+      data-name={name}
+      data-page-context={pageContext}
+      data-county={county.slug}
+    >
+      Request this inspector
+    </button>
+  </div>
+</div>

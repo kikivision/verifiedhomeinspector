@@ -15,6 +15,7 @@ import RequestDialog from '../../../../../components/RequestDialog.astro';
 import { counties, getCounty, searchName } from '../../../../../lib/counties';
 import { getAllListings, isClaimed, websiteLabel, type Listing, type Tier } from '../../../../../lib/supabase';
 import { slugify, inspectorSlug, inspectorPath } from '../../../../../lib/slug';
+import { cityPagesFor, cityPath } from '../../../../../lib/cities';
 
 export async function getStaticPaths() {
   const live = counties.filter((c) => c.status === 'live').map((c) => c.slug);
@@ -37,6 +38,12 @@ export async function getStaticPaths() {
     );
   }
 
+  // Which cities have pages, so the crumb can go there rather than to the
+  // filtered county page. Same rule the city pages are built from.
+  const cityHasPage = new Set(
+    live.flatMap((c) => cityPagesFor(c, all).map((p) => `${p.county}/${p.city}`)),
+  );
+
   return all.map((listing) => ({
     params: {
       county: listing.county,
@@ -48,6 +55,7 @@ export async function getStaticPaths() {
       neighbors: (byCity.get(`${listing.county}/${listing.city}`) ?? [])
         .filter((n) => n.id !== listing.id)
         .slice(0, 6),
+      cityHasPage: cityHasPage.has(`${listing.county}/${listing.city}`),
     },
   }));
 }
@@ -55,14 +63,19 @@ export async function getStaticPaths() {
 interface Props {
   listing: Listing;
   neighbors: Listing[];
+  cityHasPage: boolean;
 }
 
-const { listing: l, neighbors } = Astro.props;
+const { listing: l, neighbors, cityHasPage } = Astro.props;
 const county = getCounty(l.county)!;
 const claimed = isClaimed(l);
 const name = l.business_name || l.licensee_name;
 const pageContext = `inspector_${county.slug}`;
-const countyCityUrl = `/fl/${county.slug}/?city=${encodeURIComponent(l.city)}`;
+// A city with too few listings for a page of its own still has a crumb: it
+// goes to the county page with the city filter set.
+const countyCityUrl = cityHasPage
+  ? cityPath(l.county, l.city)
+  : `/fl/${county.slug}/?city=${encodeURIComponent(l.city)}`;
 const pagePath = inspectorPath(l.county, l.city, l.license_number, l.licensee_name);
 const badgeSnippet =
   `<a href="https://verifiedhomeinspector.com${pagePath}">` +

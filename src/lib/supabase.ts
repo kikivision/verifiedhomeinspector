@@ -61,6 +61,14 @@ export interface Listing {
   about: string | null;
   /** Cities the inspector serves, chosen from the cities in their county. */
   service_cities: string[];
+  /**
+   * Cities whose pages show this listing's featured card. Set by
+   * set-tier.mjs --cities, never by the inspector. Empty means the listing's
+   * own city; see featuredCities() in lib/cities.ts. Optional in the type
+   * because a build against a database without the column must still work —
+   * select('*') simply omits it.
+   */
+  featured_cities?: string[];
   created_at: string;
 }
 
