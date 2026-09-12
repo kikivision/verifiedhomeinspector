@@ -5,6 +5,51 @@ until you know why. Newest first.
 
 ---
 
+## 2026-09-12 — Featured is bought on the dashboard, through Stripe
+
+**Built.** A claimed inspector picks up to three city pages on
+`/dashboard/` and pays through Stripe Checkout. Three Netlify functions
+(`create-checkout`, `stripe-webhook`, `billing-portal`) do the work; the
+site stays static.
+
+### A subscription with a free week, not a charge on sign-up
+
+Every page has promised "nothing is charged until the card is live and you
+have seen it." A card charged at checkout breaks that; a 7-day trial keeps
+it literally: the card goes up at the next rebuild, the first charge is on
+day eight, and Stripe's portal lets them cancel before it. Trials also
+remove the "let me think about it" step from the sale.
+
+### Netlify Functions rather than Supabase Edge Functions
+
+SuperReports uses Edge Functions. Here the site is already on Netlify with
+git-push deploys, the Supabase project is not in the tooling Claude can
+deploy to, and Netlify functions ship with the repo and need nothing but
+environment variables. Same Stripe account as the other Sunstate brands.
+
+### The webhook re-checks the cities
+
+Two people can check out for the last spot in Clearwater in the same
+minute. `create-checkout` refuses a full city before Stripe, but the
+webhook checks again at fulfillment and features the card on the cities
+still open, logging the one that filled. Refusing the whole purchase after
+the card was taken is worse; a person sorts out the one city with a swap
+or a partial refund.
+
+### What set-tier.mjs is for now
+
+Spots arranged by hand (RMC) and revoking claims. A hand-set spot has no
+Stripe ids; the dashboard shows "set up directly with us" and no billing
+button. Attaching Stripe to an existing hand-set spot is not built.
+
+### Not built
+
+Changing cities on a live subscription (contact form for now), a waitlist
+when a city is full (the 2026-09-11 entry below still applies), and
+prorating anything.
+
+---
+
 ## 2026-09-12 — City pages, and featured is sold by city
 
 **Built.** `/fl/<county>/<city>/` for every city with three or more

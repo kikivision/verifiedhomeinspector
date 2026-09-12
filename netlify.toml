@@ -1,0 +1,7 @@
+# Build settings stay in the Netlify UI, where they already are. This file only
+# tells Netlify where the functions live and how to bundle them; adding build
+# settings here would silently override the UI the next time someone changed
+# them there.
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"

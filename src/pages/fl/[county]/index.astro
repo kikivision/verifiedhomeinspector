@@ -48,7 +48,9 @@ const cityPages = cityPagesFor(county.slug, listings);
 // should be. 4 and 6 are both fine, 3 and 5 are not.
 const FEATURED_CAP = 2;
 const FEATURED_TARGET = 4;
-const openFeaturedSlots = FEATURED_CAP - featured.length;
+// Never negative: a third paid card renders (Stripe can sell one before the
+// cap moves), it just leaves no open-slot card behind it.
+const openFeaturedSlots = Math.max(0, FEATURED_CAP - featured.length);
 ---
 
 <Layout

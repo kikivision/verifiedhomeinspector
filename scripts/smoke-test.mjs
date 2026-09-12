@@ -167,8 +167,10 @@ const capMatch = (await readFile('src/pages/fl/[county]/index.astro', 'utf8'))
 const cap = capMatch ? Number(capMatch[1]) : null;
 check(cap !== null, 'Could not read FEATURED_CAP from the county page.');
 if (cap !== null) {
+  // At least the cap: paid cards past the advertised count still render, so
+  // the row can be larger than the cap but never smaller.
   check(
-    featuredSlots + claimedFeatured === cap,
+    featuredSlots + claimedFeatured >= cap,
     `Pinellas page shows ${featuredSlots + claimedFeatured} featured positions, but FEATURED_CAP is ${cap}.`,
   );
 }
@@ -192,8 +194,6 @@ const forms = [
     ['form-name', 'county', 'inspector-license', 'inspector-name', 'homeowner-name', 'homeowner-email']],
   ['/dashboard/', dashboard, 'claim-listing',
     ['form-name', 'county', 'license-number', 'licensee-name', 'email', 'plan']],
-  ['/dashboard/', dashboard, 'featured-inquiry',
-    ['form-name', 'county', 'plan', 'license-number', 'licensee-name', 'email']],
   ['/for-inspectors/', forInspectors, 'inspector-question',
     ['form-name', 'name', 'email', 'message']],
 ];
