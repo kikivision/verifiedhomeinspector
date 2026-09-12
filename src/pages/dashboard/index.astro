@@ -58,8 +58,8 @@ const TRIAL_DAYS = 7;
             <h2>Which listing is yours?</h2>
             <p>
               Enter the HI number on your Florida home inspector license. It has to match a
-              listing already on this site, which covers
-              {counties.filter((c) => c.status === 'live').map((c) => c.name).join(', ')}.
+              listing already on this site, which covers {counties.filter((c) => c.status === 'live').length} Florida
+              counties.
             </p>
             <p>
               Claiming is free. Your name and license number stay as the state records them;
@@ -186,8 +186,9 @@ const TRIAL_DAYS = 7;
               <h3>How it goes live</h3>
               <p class="dash-muted">
                 The site is rebuilt after a save and your details appear on the county page
-                within a few minutes. Homeowner requests come to us and are forwarded to the
-                email you signed in with, and to nobody else.
+                within a few minutes. Homeowners call the number on your listing. A written request
+                from the site comes to us and goes to the email you signed in with, and to nobody
+                else.
               </p>
               <p class="dash-muted">
                 Questions, or a listing that should not be yours?

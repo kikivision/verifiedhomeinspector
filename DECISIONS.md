@@ -5,6 +5,43 @@ until you know why. Newest first.
 
 ---
 
+## 2026-09-12 — Statewide, in one afternoon
+
+**Built.** Every Florida county with five or more licensed inspectors is
+live: 56 counties, 7,166 listings, 7,500 pages. The nine counties left
+out (Calhoun, Dixie, Franklin, Hamilton, Holmes, Jefferson, Lafayette,
+Liberty, Madison) have one to four inspectors each; a county page with
+two names on it is not a directory, and their inspectors are not on the
+site at all rather than on a page nobody should land on.
+
+### Why now
+
+The revenue cap is inventory times price, and inventory is city pages.
+Four counties held 51 city pages; the state holds 317. Every other lever
+— price, spots per city, cities per buyer — moves the cap by a factor of
+two at most; geography moves it by six. The imports were an afternoon
+because the importer already refused a county whose code did not match
+its anchor city, and the codes turned out to be the counties in
+alphabetical order plus ten.
+
+### What changed to make it hold
+
+`formatCity` gained general rules (SAINT → St., FT → Fort, trailing FL)
+because the alias table could not enumerate every spelling in 67
+counties. The smoke test's page budget scales with the rows on the page:
+Miami-Dade's 888 rows are 594KB at the same per-row weight as Pinellas's
+316. City pages in one-city counties still render the county link. The
+`/for-inspectors/` hero stopped naming counties.
+
+### Not done
+
+A county page with 888 rows is a long page. It works, it is under 60KB
+compressed, and the city links sit above the table, but a county that
+size may want the table collapsed behind the city pages eventually. Not
+until someone complains.
+
+---
+
 ## 2026-09-12 — Featured is bought on the dashboard, through Stripe
 
 **Built.** A claimed inspector picks up to three city pages on

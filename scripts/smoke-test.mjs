@@ -133,7 +133,14 @@ for (const path of pages) {
   check(h1s.length === 1, `${page}: found ${h1s.length} <h1> elements, expected exactly 1.`);
 
   const kb = Math.round(size / 1024);
-  check(kb <= MAX_PAGE_KB, `${page}: ${kb}KB exceeds the ${MAX_PAGE_KB}KB budget.`,
+  // A listing row weighs about 0.7KB, so a county page's size is its row
+  // count: Miami-Dade's 888 rows are 594KB at the same per-row weight as
+  // Pinellas's 316 at 205KB. The budget grows with the rows on the page and
+  // still catches the thing it exists for, content repeated per row, because
+  // that doubles the per-row weight rather than the row count.
+  const rowsOnPage = (html.match(/class="list-row/g) ?? []).length;
+  const budget = Math.max(MAX_PAGE_KB, Math.round(rowsOnPage * 1.0));
+  check(kb <= budget, `${page}: ${kb}KB exceeds the ${budget}KB budget for ${rowsOnPage} rows.`,
     'Check for content repeated inside a loop before raising this.');
 
   // A comment written inside a .map() is emitted once per item. That is how a

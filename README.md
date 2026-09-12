@@ -4,8 +4,9 @@ A Florida home-inspector directory, built county-by-county from public
 DBPR license records. Astro + Supabase, matching the stack already used
 for Jet & Swim and Sky & Swim.
 
-Live at https://verifiedhomeinspector.com. Four counties: Pinellas,
-Hillsborough (shown as Tampa), Pasco, and Orange (shown as Orlando).
+Live at https://verifiedhomeinspector.com. Statewide since 2026-09-12:
+every Florida county with five or more licensed inspectors, 56 of them,
+about 7,200 listings. `src/lib/counties.ts` is the list.
 
 ## Setup
 

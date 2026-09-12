@@ -167,11 +167,10 @@ if (description.length > 160) description = `${description.slice(0, 157).trimEnd
     </div>
   </section>
 
-  {otherCities.length > 0 && (
-    <section class="section" id="cities" style="padding-top:0;">
+  <section class="section" id="cities" style="padding-top:0;">
       <div class="wrap">
         <div class="section-head">
-          <h2>Other cities in {county.name}</h2>
+          <h2>{otherCities.length > 0 ? `Other cities in ${county.name}` : `More of ${county.name}`}</h2>
         </div>
         <div class="city-links">
           {otherCities.map((c) => (
@@ -181,7 +180,6 @@ if (description.length > 160) description = `${description.slice(0, 157).trimEnd
         </div>
       </div>
     </section>
-  )}
 
   <section class="section" id="insurance-renewals" style="padding-top:0;">
     <div class="wrap">

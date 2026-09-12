@@ -53,11 +53,70 @@ const EXTRACT_URL =
 // The anchor is the county seat or largest city, and must be the most common
 // city in the matched rows. Verified against the extract on 2026-09-11 by
 // grouping every row by county code and reading the city distribution.
+//
+// Statewide since 2026-09-12: the codes turned out to be the counties in
+// alphabetical order plus ten (Alachua 11 … Washington 77), which the city
+// distribution confirmed for every one. Nine counties with fewer than five
+// licensed inspectors are left out: Calhoun (17), Dixie (25), Franklin (29),
+// Hamilton (34), Holmes (40), Jefferson (43), Lafayette (44), Liberty (49),
+// Madison (50). A county page with two names on it is not a directory.
 const COUNTIES = {
-  pinellas: { code: '62', anchor: 'ST. PETERSBURG' },
-  hillsborough: { code: '39', anchor: 'TAMPA' },
-  pasco: { code: '61', anchor: 'NEW PORT RICHEY' },
-  orange: { code: '58', anchor: 'ORLANDO' },
+  'alachua': { code: '11', anchor: 'GAINESVILLE' },
+  'baker': { code: '12', anchor: 'GLEN ST MARY' },
+  'bay': { code: '13', anchor: 'PANAMA CITY' },
+  'bradford': { code: '14', anchor: 'STARKE' },
+  'brevard': { code: '15', anchor: 'MELBOURNE' },
+  'broward': { code: '16', anchor: 'PEMBROKE PINES' },
+  'charlotte': { code: '18', anchor: 'PORT CHARLOTTE' },
+  'citrus': { code: '19', anchor: 'INVERNESS' },
+  'clay': { code: '20', anchor: 'ORANGE PARK' },
+  'collier': { code: '21', anchor: 'NAPLES' },
+  'columbia': { code: '22', anchor: 'LAKE CITY' },
+  'miami-dade': { code: '23', anchor: 'MIAMI' },
+  'desoto': { code: '24', anchor: 'ARCADIA' },
+  'duval': { code: '26', anchor: 'JACKSONVILLE' },
+  'escambia': { code: '27', anchor: 'PENSACOLA' },
+  'flagler': { code: '28', anchor: 'PALM COAST' },
+  'gadsden': { code: '30', anchor: 'HAVANA' },
+  'gilchrist': { code: '31', anchor: 'TRENTON' },
+  'gulf': { code: '33', anchor: 'PORT ST JOE' },
+  'hardee': { code: '35', anchor: 'WAUCHULA' },
+  'hendry': { code: '36', anchor: 'LABELLE' },
+  'hernando': { code: '37', anchor: 'SPRING HILL' },
+  'highlands': { code: '38', anchor: 'SEBRING' },
+  'hillsborough': { code: '39', anchor: 'TAMPA' },
+  'indian-river': { code: '41', anchor: 'VERO BEACH' },
+  'jackson': { code: '42', anchor: 'MARIANNA' },
+  'lake': { code: '45', anchor: 'CLERMONT' },
+  'lee': { code: '46', anchor: 'CAPE CORAL' },
+  'leon': { code: '47', anchor: 'TALLAHASSEE' },
+  'levy': { code: '48', anchor: 'WILLISTON' },
+  'manatee': { code: '51', anchor: 'BRADENTON' },
+  'marion': { code: '52', anchor: 'OCALA' },
+  'martin': { code: '53', anchor: 'STUART' },
+  'monroe': { code: '54', anchor: 'KEY WEST' },
+  'nassau': { code: '55', anchor: 'FERNANDINA BEACH' },
+  'okaloosa': { code: '56', anchor: 'FORT WALTON BEACH' },
+  'okeechobee': { code: '57', anchor: 'OKEECHOBEE' },
+  'orange': { code: '58', anchor: 'ORLANDO' },
+  'osceola': { code: '59', anchor: 'KISSIMMEE' },
+  'palm-beach': { code: '60', anchor: 'BOCA RATON' },
+  'pasco': { code: '61', anchor: 'NEW PORT RICHEY' },
+  'pinellas': { code: '62', anchor: 'ST PETERSBURG' },
+  'polk': { code: '63', anchor: 'LAKELAND' },
+  'putnam': { code: '64', anchor: 'PALATKA' },
+  'st-johns': { code: '65', anchor: 'ST AUGUSTINE' },
+  'st-lucie': { code: '66', anchor: 'PORT ST LUCIE' },
+  'santa-rosa': { code: '67', anchor: 'MILTON' },
+  'sarasota': { code: '68', anchor: 'SARASOTA' },
+  'seminole': { code: '69', anchor: 'OVIEDO' },
+  'sumter': { code: '70', anchor: 'THE VILLAGES' },
+  'suwannee': { code: '71', anchor: 'LIVE OAK' },
+  'union': { code: '73', anchor: 'LAKE BUTLER' },
+  'volusia': { code: '74', anchor: 'DELAND' },
+  'wakulla': { code: '75', anchor: 'CRAWFORDVILLE' },
+  'walton': { code: '76', anchor: 'SANTA ROSA BEACH' },
+  'washington': { code: '77', anchor: 'CHIPLEY' },
 };
 
 // How far down the city ranking the anchor may appear. Not 1: Pasco has no
@@ -195,7 +254,26 @@ function formatLicenseeName(raw) {
 function formatCity(raw) {
   const key = raw.trim().toUpperCase().replace(/\s+/g, ' ');
   if (CITY_ALIASES.has(key)) return CITY_ALIASES.get(key);
-  return key.split(' ').map(titleToken).join(' ');
+  // Statewide, the alias table cannot enumerate every spelling. The extract
+  // writes the same place as "SAINT CLOUD" and "ST CLOUD", "PORT SAINT
+  // LUCIE" and "PORT ST LUCIE", "FT PIERCE" and "FORT PIERCE", sometimes with
+  // a trailing "FL". One rule each, then title case with "St." and "Mt."
+  // written the way the site already writes St. Petersburg.
+  const norm = key
+    .replace(/[.,]/g, '')
+    .replace(/\s+FL$/, '')
+    .replace(/^SAINT /, 'ST ')
+    .replace(/ SAINT /g, ' ST ')
+    .replace(/^FT /, 'FORT ')
+    .replace(/ FT /g, ' FORT ')
+    .replace(/^PT /, 'PORT ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (CITY_ALIASES.has(norm)) return CITY_ALIASES.get(norm);
+  return norm
+    .split(' ')
+    .map((t) => (t === 'ST' ? 'St.' : t === 'MT' ? 'Mt.' : titleToken(t)))
+    .join(' ');
 }
 
 /** Minimal RFC-4180 parser — the extract quotes every field and has no header. */
