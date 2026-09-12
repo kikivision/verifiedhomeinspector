@@ -373,11 +373,20 @@ security definer
 set search_path = public
 as $$
 begin
-  perform net.http_post(
-    url := '<NETLIFY_BUILD_HOOK>',
-    body := '{}'::jsonb,
-    headers := '{"Content-Type": "application/json"}'::jsonb
-  );
+  -- Wrapped so that a rebuild problem can never block the write that caused
+  -- it. The first version was not, and a URL pasted with a stray space made
+  -- every claim fail with "Malformed input to a URL function" — the trigger's
+  -- error rolled back the inspector's own save. A missed rebuild is a
+  -- nuisance; a claim that cannot be made is the site not working.
+  begin
+    perform net.http_post(
+      url := trim('<NETLIFY_BUILD_HOOK>'),
+      body := '{}'::jsonb,
+      headers := '{"Content-Type": "application/json"}'::jsonb
+    );
+  exception when others then
+    raise warning 'rebuild_site_on_listing_change: build hook not called: %', sqlerrm;
+  end;
   return null;
 end
 $$;
