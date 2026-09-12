@@ -12,8 +12,21 @@ import { slugify } from './slug';
  */
 export const MIN_CITY_LISTINGS = 3;
 
-/** How many featured cards a city page shows. Two spots per city, sold separately. */
+/**
+ * How many featured cards a city page shows. Two while the site is being
+ * built out; the copy says "while we build out" rather than "two" so raising
+ * this is a number change, not a promise taken back. The county page has the
+ * same arrangement with FEATURED_CAP and FEATURED_TARGET.
+ */
 export const CITY_FEATURED_CAP = 2;
+
+/**
+ * How many city pages one featured listing may name. Decided 2026-09-12:
+ * $50/month buys the county page plus up to three city pages the inspector
+ * chooses, which is a home base and the two or three towns next to it. More
+ * than three is a conversation, not a checkbox. set-tier.mjs enforces it.
+ */
+export const MAX_FEATURED_CITIES = 3;
 
 export interface CityPage {
   county: string;

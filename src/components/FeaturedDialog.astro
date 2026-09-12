@@ -17,7 +17,9 @@ interface Props {
 }
 
 const { county, city, listingCount } = Astro.props;
-const where = city ? `${city} page and the ${county.name} page` : `${county.name} page`;
+const where = city
+  ? `${city} page, up to two more city pages you choose, and the ${county.name} page`
+  : `${county.name} page and up to three city pages you choose`;
 ---
 
 <dialog id="featuredDialog" class="request-dialog">

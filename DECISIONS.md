@@ -30,9 +30,19 @@ because it is the thing being sold. Empty means the listing's own city, so
 RMC's spot bought before city pages existed lands on Largo without anyone
 touching it. `set-tier.mjs` refuses a third card in a two-spot city.
 
-Pricing by number of cities is not decided. $50/month founding rate stays
-for whatever cities an inspector names; if someone asks for eight cities
-that is the moment to decide.
+**$50/month buys the county page plus up to three city pages** the
+inspector names (`MAX_FEATURED_CITIES`; `set-tier.mjs` refuses a fourth).
+Three because that is how the work is shaped — a home base and the towns
+next to it — and because it leaves something to sell: an inspector who
+wants six cities is a conversation, at a price that is not $50. The other
+two shapes were $50 per city, which puts four cities at $200/month against
+a founding rate chosen to be easy to say yes to, and $50 for every city in
+the county, which lets one Largo inspector occupy a St. Petersburg slot he
+never works. Cross-county is not possible: a listing lives in one county.
+
+Two cards per city is the build-out number, like `FEATURED_CAP` on the
+county page against its target of four. The copy says "two while we build
+out" so raising it later is a number change, not a promise taken back.
 
 ### Why three listings is the threshold
 

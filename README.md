@@ -115,7 +115,8 @@ node --env-file=.env scripts/set-tier.mjs HI7816 featured --position 1   --citie
 ```
 
 City names must be spelled as the site shows them. The script refuses a
-third card in a two-spot city. Claimed inspectors also appear on the
+third card in a two-spot city and a fourth city on one listing:
+$50/month covers the county page plus up to three city pages. Claimed inspectors also appear on the
 pages of the cities they chose as served on their dashboard, in a
 "Based nearby, serves …" section — that part is free.
 

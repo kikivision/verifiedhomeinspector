@@ -19,9 +19,9 @@
  *   --experience N               years in business, shown as "N+ years"
  *   --logo /logos/name.png       brand mark; site-relative, committed to public/
  *   --position N                 featured slot, 1-6, required for featured
- *   --cities "Largo, Clearwater"  city pages the featured card shows on; two
- *                                cards per city, so this checks the count.
- *                                Empty or omitted means the listing's own city
+ *   --cities "Largo, Clearwater"  city pages the featured card shows on, up to
+ *                                three; two cards per city, so this checks
+ *                                both counts. Empty means the listing's own city
  *   --dry-run                    print the change, write nothing
  *   --deploy                     trigger a rebuild so the change goes live
  *
@@ -37,8 +37,9 @@ const TIERS = ['unclaimed', 'claimed', 'featured'];
 // Kept in step with the page's cap. The database check allows up to 6, so this
 // enforces current policy rather than the schema's outer limit.
 const FEATURED_CAP = 2;
-// Kept in step with CITY_FEATURED_CAP in src/lib/cities.ts.
+// Kept in step with the same names in src/lib/cities.ts.
 const CITY_FEATURED_CAP = 2;
+const MAX_FEATURED_CITIES = 3;
 
 function parseArgs(argv) {
   const positional = [];
@@ -142,7 +143,13 @@ async function main() {
     // spots: a third card in a two-spot row is someone paying for a
     // placement that does not render.
     if (flags.cities !== undefined) {
-      const wanted = flags.cities.split(',').map((c) => c.trim()).filter(Boolean);
+      const wanted = [...new Set(flags.cities.split(',').map((c) => c.trim()).filter(Boolean))];
+      if (wanted.length > MAX_FEATURED_CITIES) {
+        throw new Error(
+          `${wanted.length} cities named; a featured listing covers up to ${MAX_FEATURED_CITIES}. ` +
+            `More than that is a separate conversation, not a flag.`,
+        );
+      }
       const { data: countyRows, error: cityError } = await supabase
         .from('listings')
         .select('license_number, city, tier, featured_cities')
