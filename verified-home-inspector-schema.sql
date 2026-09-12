@@ -35,6 +35,9 @@ create table listings (
   website text,
   about text,
   service_cities jsonb not null default '[]'::jsonb,
+  -- Cities whose pages show this listing's featured card. Set by
+  -- set-tier.mjs --cities; empty means the listing's own city.
+  featured_cities jsonb not null default '[]'::jsonb,
   -- Set when a license stops appearing in the DBPR extract. Null means current.
   -- The importer marks rows here and never deletes them, so a claimed listing
   -- survives a bad upstream file and can be restored by clearing this.

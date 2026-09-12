@@ -1,9 +1,12 @@
 ---
 import Layout from '../../../layouts/Layout.astro';
+import FeaturedCard from '../../../components/FeaturedCard.astro';
+import FeaturedDialog from '../../../components/FeaturedDialog.astro';
+import ListingRows from '../../../components/ListingRows.astro';
 import RequestDialog from '../../../components/RequestDialog.astro';
-import { inspectorPath } from '../../../lib/slug';
 import { counties, getCounty, searchName } from '../../../lib/counties';
-import { getListingsForCounty, isClaimed, websiteLabel, type Listing } from '../../../lib/supabase';
+import { getListingsForCounty, type Listing } from '../../../lib/supabase';
+import { cityPagesFor, cityPath } from '../../../lib/cities';
 
 export function getStaticPaths() {
   return counties.map((c) => ({ params: { county: c.slug } }));
@@ -28,6 +31,8 @@ const nonFeatured = listings.filter((l) => l.tier !== 'featured');
 // Cities actually present in the data, so the filter can never offer a city
 // with nothing behind it.
 const cities = [...new Set(nonFeatured.map((l) => l.city))].sort((a, b) => a.localeCompare(b));
+// Cities with pages of their own — three or more listings; see lib/cities.ts.
+const cityPages = cityPagesFor(county.slug, listings);
 // What an inspector BUYS is one of FEATURED_TARGET spots. What is live today is
 // FEATURED_CAP, and the gap between them is deliberate: while the county pages
 // are still being built out, a buyer is one of two rather than one of four.
@@ -92,104 +97,7 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
           </div>
           <div class="featured-grid">
             {featured.map((l) => (
-              <div class="card featured">
-                <div class="badge">Featured</div>
-                {/* "+ Add photo" and "+ Add certification" used to render here
-                    whenever these were empty. They read as prompts to the
-                    inspector, but this site has no login and no editing UI, so
-                    the only people who ever saw them were homeowners — an
-                    unfinished-looking card on a placement someone is paying
-                    for. Empty now means absent, not advertised. */}
-                {/* The logo sits on an explicit white plate. The file has no
-                    alpha — 64% of it is solid #FFFFFF — and the card ground is
-                    warm off-white, so placed bare it reads as a white rectangle
-                    someone forgot to cut out. Keying the white out instead
-                    would fringe the navy and teal edges at this size. A plate
-                    makes the white deliberate.
-
-                    Capped at the file's own 210px so it is never upscaled;
-                    a small source enlarged is worse than a small source. */}
-                {l.logo_path && (
-                  <div class="logo-plate">
-                    <img src={l.logo_path} alt={`${l.business_name ?? l.licensee_name} logo`} />
-                  </div>
-                )}
-                {/* No initials tile. A navy square reading "RW" is not a
-                    brand, it is a placeholder wearing the colors of one, and
-                    with the photo slots gone it was the largest element on a
-                    paid card while carrying no information the heading below
-                    it did not already give. The strip appears only when there
-                    is a real image to put in it. */}
-                {l.photo_urls.length > 0 && (
-                  <div class="photo-strip">
-                    {l.photo_urls.slice(0, 3).map((url) => (
-                      <img src={url} alt="" class="photo-slot" />
-                    ))}
-                  </div>
-                )}
-                <h3><a href={inspectorPath(l.county, l.city, l.license_number, l.licensee_name)}>{l.business_name || l.licensee_name}</a></h3>
-                {/* The heading falls back to the licensee's name when there is
-                    no business name, so printing the name again here rendered
-                    it twice — "Robert W Martin / Robert W Martin · Largo, FL"
-                    on the first featured card the site ever had. The list rows
-                    below already guard this; the featured card did not. */}
-                <div class="city">{l.business_name ? `${l.licensee_name} · ` : ''}{l.city}, FL</div>
-                <div class="tags">
-                  {l.specialties.length > 0 ? (
-                    l.specialties.map((s) => <span class="tag">{s}</span>)
-                  ) : (
-                    <span class="tag">Licensed Home Inspector</span>
-                  )}
-                </div>
-                {(l.cert_badges.length > 0 || l.years_experience) && (
-                  <div class="cert-row">
-                    {l.cert_badges.map((c) => <span class="cert">{c}</span>)}
-                    {/* Years in business is not a certification, so it is its
-                        own column rather than a badge stuffed into that list —
-                        but it belongs on the same row, which is where a reader
-                        is already looking for credentials. */}
-                    {l.years_experience && (
-                      <span class="cert">{l.years_experience}+ years in business</span>
-                    )}
-                  </div>
-                )}
-                <div class="lic"><span class="check">✓</span>FL Lic #{l.license_number} — DBPR verified, active</div>
-                {/* Phone and website, shown since 2026-09-12. They were withheld
-                    while the offer was "free until five counted requests"; that
-                    offer is retired and a claimed listing is free outright, so
-                    the count no longer has anything to bill against. A tap on
-                    the number logs click_phone before dialing, which is the
-                    measure that replaced it. See DECISIONS.md. */}
-                <div class="contact">
-                  <div class="contact-lines">
-                    {l.phone && (
-                      <a
-                        class="row-phone phone-link"
-                        href={`tel:${l.phone.replace(/[^\d+]/g, '')}`}
-                        data-listing-id={l.id}
-                        data-page-context={`county_${county.slug}_featured`}
-                      >
-                        {l.phone}
-                      </a>
-                    )}
-                    {l.website && (
-                      <a class="row-web" href={l.website} target="_blank" rel="sponsored noopener">
-                        {websiteLabel(l.website)} ↗
-                      </a>
-                    )}
-                  </div>
-                  <button
-                    class="request-btn"
-                    data-listing-id={l.id}
-                    data-license={l.license_number}
-                    data-name={l.business_name || l.licensee_name}
-                    data-page-context={`county_${county.slug}_featured`}
-                    data-county={county.slug}
-                  >
-                    Request this inspector
-                  </button>
-                </div>
-              </div>
+              <FeaturedCard listing={l} county={county} pageContext={`county_${county.slug}_featured`} />
             ))}
             {Array.from({ length: openFeaturedSlots }).map(() => (
               <div class="card ad-slot">
@@ -213,64 +121,7 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
         </div>
       </section>
 
-      <!-- The price lives here rather than on the button. On the card it read as
-           a price tag on a placeholder; in the dialog it is the first thing an
-           inspector sees after asking, which is where a number belongs. Netlify
-           reads this form out of the built HTML like the other two. -->
-      <dialog id="featuredDialog" class="request-dialog">
-        <form
-          name="featured-inquiry"
-          method="POST"
-          data-netlify="true"
-          netlify-honeypot="company-website"
-          action="/featured-received/"
-        >
-          <input type="hidden" name="form-name" value="featured-inquiry" />
-          <input type="hidden" name="county" value={county.name} />
-          <!-- Matches the wording the claim form's select posts, so both land in
-               the inbox saying the same thing about the same plan. -->
-          <input type="hidden" name="plan" value="Featured - $50/mo (founding rate)" />
-          <p class="visually-hidden">
-            <label>Leave this field empty: <input name="company-website" /></label>
-          </p>
-
-          <div class="request-head">
-            <h2>Get a featured spot</h2>
-            <button type="button" class="request-close" id="featuredClose" aria-label="Close">×</button>
-          </div>
-          <p class="request-who">
-            $50 a month for a spot above all {nonFeatured.length} listings in {county.name}. The
-            first inspectors to take one keep that rate for as long as they stay. Nothing is
-            charged until your listing is live and you have seen it.
-          </p>
-
-          <label>
-            License number
-            <input type="text" name="license-number" required placeholder="HI12345" />
-          </label>
-          <label>
-            Your name
-            <input type="text" name="licensee-name" required />
-          </label>
-          <label>
-            Business name
-            <input type="text" name="business-name" />
-          </label>
-          <label>
-            Email
-            <input type="email" name="email" required />
-          </label>
-          <label>
-            Phone
-            <input type="tel" name="phone" />
-          </label>
-          <label>
-            Anything you want to ask first
-            <textarea name="message" rows="3"></textarea>
-          </label>
-          <button type="submit" class="btn-primary">Send</button>
-        </form>
-      </dialog>
+      <FeaturedDialog county={county} listingCount={nonFeatured.length} />
 
       <section class="section" id="all-inspectors">
         <div class="wrap">
@@ -302,93 +153,23 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
             />
           </div>
           <div class="search-count" id="searchCount" aria-live="polite"></div>
-          <div class="list-row head">
-            <div>Inspector</div><div>City</div><div>License</div><div>Specialties</div><div>Contact</div><div>Hire</div>
-          </div>
-          <!-- Each unclaimed row links straight to sign-in with its license
-               number in the URL. An inspector arrives looking for their own name
-               and finds it here, so the claim is offered on the row itself and
-               the number they just recognized is carried along for them.
+          <ListingRows listings={nonFeatured} county={county} pageContext={`county_${county.slug}_table`} />
+        </div>
+      </section>
 
-               This comment lives outside the map on purpose: inside it, Astro
-               emitted it once per listing — 123KB on a 253KB page. -->
-          {nonFeatured.map((l) => (
-            <div
-              class:list={['list-row', { 'is-claimed': isClaimed(l) }]}
-              data-city={l.city}
-              data-search={`${l.licensee_name} ${l.business_name ?? ''} ${l.city} ${l.license_number}`.toLowerCase()}
-            >
-              <div>
-                <a class="name" href={inspectorPath(l.county, l.city, l.license_number, l.licensee_name)}>{l.business_name || l.licensee_name}</a>
-                <div class="role">
-                  {l.business_name ? `${l.licensee_name} · ` : ''}Licensed home inspector
-                </div>
-              </div>
-              <div>{l.city}</div>
-              <div class="lic-num">{l.license_number}</div>
-              <div class="tags">
-                {l.specialties.length > 0 ? (
-                  l.specialties.map((s) => <span class="tag">{s}</span>)
-                ) : (
-                  <span class="tag tag-empty">—</span>
-                )}
-              </div>
-              {isClaimed(l) ? (
-                <div class="row-contact">
-                  <span class="claimed-mark">Claimed</span>
-                  {l.phone && (
-                    <a
-                      class="row-phone phone-link"
-                      href={`tel:${l.phone.replace(/[^\d+]/g, '')}`}
-                      data-listing-id={l.id}
-                      data-page-context={`county_${county.slug}_table`}
-                    >
-                      {l.phone}
-                    </a>
-                  )}
-                  {l.website && (
-                    <a class="row-web" href={l.website} target="_blank" rel="noopener">
-                      {websiteLabel(l.website)} ↗
-                    </a>
-                  )}
-                  {!l.phone && !l.website && <span class="claimed-note">Responds to requests</span>}
-                </div>
-              ) : (
-                <div class="claimed-status">
-                  <span class="unclaimed-mark">Unclaimed</span>
-                  <span class="claimed-note">No contact on file. Free to claim.</span>
-                </div>
-              )}
-              {/* An unclaimed listing has no contact path, and that is the point.
-                  Offering to pass a homeowner to an inspector we cannot reach
-                  promised something the site could not do. So the only action on
-                  an unclaimed row is the claim, which goes straight to sign-in
-                  with the license number carried along. */}
-              <div>
-                {isClaimed(l) ? (
-                  <button
-                    class="request-btn-row"
-                    data-listing-id={l.id}
-                    data-license={l.license_number}
-                    data-name={l.business_name || l.licensee_name}
-                    data-page-context={`county_${county.slug}_table`}
-                    data-county={county.slug}
-                  >
-                    Request this inspector
-                  </button>
-                ) : (
-                  <a
-                    href={`/claim/?license=${l.license_number}`}
-                    class="claim-btn-row claim-link"
-                    data-license={l.license_number}
-                    data-county={county.slug}
-                  >
-                    Claim this listing
-                  </a>
-                )}
-              </div>
-            </div>
-          ))}
+      <!-- Every city page is one click from here so a crawler finds them all,
+           and a homeowner who knows their city can skip the 300-row table. -->
+      <section class="section" id="cities" style="padding-top:0;">
+        <div class="wrap">
+          <div class="section-head">
+            <h2>Browse by city</h2>
+            <div class="note">Cities in {county.name} with three or more listed inspectors</div>
+          </div>
+          <div class="city-links">
+            {cityPages.map((p) => (
+              <a href={cityPath(county.slug, p.city)}>{p.city} <span>{p.listings.length}</span></a>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -459,7 +240,6 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
   )}
 
   <script>
-    import { trackEvent } from '../../../lib/gtag';
 
     // Client-side filtering: all 317 rows are already in the HTML, so narrowing
     // them is a matter of hiding rows rather than fetching anything. Matching
@@ -506,23 +286,6 @@ const openFeaturedSlots = FEATURED_CAP - featured.length;
       citySelect.value = preset;
       applyFilters();
     }
-
-    // The card's Get featured button opens its own dialog. Logged on open for
-    // the same reason as the request dialog: it counts an inspector who asked,
-    // including the ones who close the form again, and that number is the one
-    // worth knowing before any of these spots have sold.
-    const featuredDialog = document.querySelector<HTMLDialogElement>('#featuredDialog');
-    document.querySelectorAll<HTMLButtonElement>('.featured-btn').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        if (!featuredDialog) return;
-        trackEvent('featured_inquiry', { county: btn.dataset.county });
-        featuredDialog.showModal();
-      });
-    });
-    document.querySelector('#featuredClose')?.addEventListener('click', () => featuredDialog?.close());
-    featuredDialog?.addEventListener('click', (event) => {
-      if (event.target === featuredDialog) featuredDialog.close();
-    });
 
   </script>
 </Layout>

@@ -101,6 +101,24 @@ caps a query at 1,000 rows and one query for the table would silently
 build no page for the tail. The smoke test fails if fewer than 1,000
 inspector pages come out.
 
+## City pages
+
+`/fl/<county>/<city>/` is built for every city with three or more
+listings (`MIN_CITY_LISTINGS` in `src/lib/cities.ts`); smaller cities
+get no page, and their inspectors' pages link to the filtered county
+page instead. Each city page has two featured spots. A featured listing
+shows on the city pages named in its `featured_cities`, or on its own
+city's page when that is empty:
+
+```
+node --env-file=.env scripts/set-tier.mjs HI7816 featured --position 1   --cities "Largo, Clearwater, Seminole" --deploy
+```
+
+City names must be spelled as the site shows them. The script refuses a
+third card in a two-spot city. Claimed inspectors also appear on the
+pages of the cities they chose as served on their dashboard, in a
+"Based nearby, serves …" section — that part is free.
+
 ## How data gets in
 
 `scripts/import-dbpr.mjs` pulls the official DBPR public-records extract

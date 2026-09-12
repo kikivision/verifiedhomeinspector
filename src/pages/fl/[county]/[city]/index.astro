@@ -1,0 +1,253 @@
+---
+// One page per city with enough inspectors to deserve one:
+// /fl/pinellas/st-petersburg/
+//
+// This is the page that ranks for "home inspector St. Petersburg", which is
+// what people search — nobody searches a county. It carries two featured
+// spots of its own (see lib/cities.ts), the inspectors whose mailing city
+// this is, and the claimed inspectors based elsewhere in the county who say
+// they serve it. The threshold for building one, and why, is with
+// MIN_CITY_LISTINGS.
+import Layout from '../../../../layouts/Layout.astro';
+import FeaturedCard from '../../../../components/FeaturedCard.astro';
+import FeaturedDialog from '../../../../components/FeaturedDialog.astro';
+import ListingRows from '../../../../components/ListingRows.astro';
+import RequestDialog from '../../../../components/RequestDialog.astro';
+import { counties, getCounty, searchName } from '../../../../lib/counties';
+import { getAllListings, isClaimed, type Listing } from '../../../../lib/supabase';
+import { cityPagesFor, cityPath, featuredCities, CITY_FEATURED_CAP, type CityPage } from '../../../../lib/cities';
+import { inspectorPath } from '../../../../lib/slug';
+
+export async function getStaticPaths() {
+  const live = counties.filter((c) => c.status === 'live').map((c) => c.slug);
+  const all = await getAllListings(live);
+
+  return live.flatMap((countySlug) => {
+    const countyListings = all.filter((l) => l.county === countySlug);
+    const pages = cityPagesFor(countySlug, countyListings);
+    return pages.map((page) => ({
+      params: { county: countySlug, city: page.slug },
+      props: {
+        page,
+        // Featured anywhere in the county whose featured cities include this
+        // one. countyListings is already in featured-position order.
+        featured: countyListings
+          .filter((l) => l.tier === 'featured' && featuredCities(l).includes(page.city))
+          .slice(0, CITY_FEATURED_CAP),
+        // Claimed inspectors based in another city who chose this one on
+        // their dashboard. Unclaimed listings have no such list.
+        alsoServes: countyListings.filter(
+          (l) => isClaimed(l) && l.city !== page.city && l.service_cities.includes(page.city),
+        ),
+        otherCities: pages
+          .filter((p) => p.city !== page.city)
+          .map((p) => ({ city: p.city, count: p.listings.length })),
+      },
+    }));
+  });
+}
+
+interface Props {
+  page: CityPage;
+  featured: Listing[];
+  alsoServes: Listing[];
+  otherCities: { city: string; count: number }[];
+}
+
+const { page, featured, alsoServes, otherCities } = Astro.props;
+const county = getCounty(page.county)!;
+const city = page.city;
+const featuredIds = new Set(featured.map((l) => l.id));
+const rows = page.listings.filter((l) => !featuredIds.has(l.id));
+const openSpots = CITY_FEATURED_CAP - featured.length;
+const tableContext = `city_${county.slug}_${page.slug}_table`;
+
+const title = `Home Inspectors in ${city}, FL | Verified Home Inspector`;
+let description =
+  `${page.listings.length} licensed home inspectors in ${city}, Florida, from state DBPR records. ` +
+  'Find one for a pre-purchase inspection, a 4-point, or a wind mitigation.';
+if (description.length > 160) description = `${description.slice(0, 157).trimEnd()}…`;
+---
+
+<Layout title={title} description={description} currentCountySlug={county.slug}>
+  <div class="wrap">
+    <nav class="crumbs" aria-label="Breadcrumb">
+      <a href="/">Florida</a><span>›</span>
+      <a href={`/fl/${county.slug}/`}>{searchName(county)}</a><span>›</span>
+      <span class="crumb-current">{city}</span>
+    </nav>
+  </div>
+
+  <section class="hero" id="homebuyers" style="padding-top:22px;">
+    <div class="wrap hero-grid">
+      <div>
+        <div class="county-tag">{city}, FL · {county.name}</div>
+        <h1>Home inspectors in {city}</h1>
+        <p style="color:var(--navy-soft);font-weight:500;margin-top:10px;">
+          {page.listings.length} licensed inspectors list a {city} address with the state.
+          Claimed listings show a phone number you can call now.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="browse">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>Featured in {city}</h2>
+        <div class="note">{CITY_FEATURED_CAP} spots per city</div>
+      </div>
+      <div class="featured-grid">
+        {featured.map((l) => (
+          <FeaturedCard listing={l} county={county} pageContext={`city_${county.slug}_${page.slug}_featured`} />
+        ))}
+        {Array.from({ length: openSpots }).map(() => (
+          <div class="card ad-slot">
+            <h3 style="font-size:1rem;">
+              {openSpots === CITY_FEATURED_CAP
+                ? `Both featured spots in ${city} are open`
+                : `${openSpots} featured spot open in ${city}`}
+            </h3>
+            <p style="color:var(--slate);font-size:0.88rem;margin:0;">
+              {page.listings.length} licensed inspectors are listed for {city}. Featured puts a
+              card with your logo at the top of this page and the {county.name} page, above all
+              of them, and every request goes to one inspector only.
+            </p>
+            <button type="button" class="btn-primary featured-btn" data-county={county.slug} data-city={city} style="font-size:0.85rem;padding:8px 16px;">
+              Get featured in {city}
+            </button>
+          </div>
+        ))}
+      </div>
+      <p class="disclosure">
+        Featured spots are paid placements. Every listing here is verified against the
+        Florida DBPR record, paid or not.
+      </p>
+    </div>
+  </section>
+
+  <FeaturedDialog county={county} city={city} listingCount={page.listings.length} />
+
+  {alsoServes.length > 0 && (
+    <section class="section" id="also-serves" style="padding-top:0;">
+      <div class="wrap">
+        <div class="section-head">
+          <h2>Based nearby, serves {city}</h2>
+          <div class="note">Claimed inspectors who chose {city} as a city they work in</div>
+        </div>
+        <div class="neighbor-grid">
+          {alsoServes.map((n) => (
+            <a class="card neighbor" href={inspectorPath(n.county, n.city, n.license_number, n.licensee_name)}>
+              <div class="name">{n.business_name || n.licensee_name}</div>
+              <div class="dash-muted">Based in {n.city} · {n.license_number}</div>
+              <div class="neighbor-status">
+                <span class="claimed-mark">Claimed</span>
+                {n.phone && <span class="row-phone">{n.phone}</span>}
+              </div>
+            </a>
+          ))}
+        </div>
+      </div>
+    </section>
+  )}
+
+  <section class="section" id="all-inspectors" style="padding-top:0;">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>All {rows.length} inspectors in {city}</h2>
+        <a class="note" href={`/fl/${county.slug}/#all-inspectors`}>All of {county.name} →</a>
+      </div>
+      <div class="search-bar">
+        <label class="visually-hidden" for="listingSearch">Search listings</label>
+        <input id="listingSearch" type="search" autocomplete="off" placeholder="Name or license" />
+      </div>
+      <div class="search-count" id="searchCount" aria-live="polite"></div>
+      <ListingRows listings={rows} county={county} pageContext={tableContext} />
+    </div>
+  </section>
+
+  {otherCities.length > 0 && (
+    <section class="section" id="cities" style="padding-top:0;">
+      <div class="wrap">
+        <div class="section-head">
+          <h2>Other cities in {county.name}</h2>
+        </div>
+        <div class="city-links">
+          {otherCities.map((c) => (
+            <a href={cityPath(county.slug, c.city)}>{c.city} <span>{c.count}</span></a>
+          ))}
+          <a href={`/fl/${county.slug}/`} class="city-links-all">All of {searchName(county)} →</a>
+        </div>
+      </div>
+    </section>
+  )}
+
+  <section class="section" id="insurance-renewals" style="padding-top:0;">
+    <div class="wrap">
+      <div class="claim">
+        <div>
+          <div class="claim-eyebrow">For homeowners</div>
+          <h2>Shopping for cheaper home insurance?</h2>
+          <p>
+            A carrier will usually ask for a 4-point inspection on an older home before it
+            writes a policy, and a wind mitigation is what earns the storm-resistance
+            discounts. Both are done by the same licensed inspectors listed above.
+          </p>
+        </div>
+        <a href="/insurance-inspections/" class="btn-primary">Insurance inspections explained</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="claim" style="padding-top:0;">
+    <div class="wrap">
+      <div class="claim">
+        <div>
+          <div class="claim-eyebrow">For home inspectors</div>
+          <h2>Work in {city}?</h2>
+          <p>
+            If your license is listed here, claiming it is free: your business name, phone,
+            website and services on the listing, above every unclaimed inspector. A featured
+            spot at the top of this page is $50 a month at the founding rate.
+          </p>
+        </div>
+        <div class="claim-cta">
+          <a href="/claim/" class="btn-primary">Claim your listing — free</a>
+          <a href="/for-inspectors/" class="claim-more">What a claimed listing shows</a>
+          <a href="/for-inspectors/#contact" class="claim-more">Don't see your business? Let us know.</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <RequestDialog county={county} />
+
+  <script>
+    // Client-side filtering, the county page's minus the city select: every
+    // row here is already one city, so the box narrows to one person.
+    const search = document.querySelector<HTMLInputElement>('#listingSearch');
+    const countEl = document.querySelector<HTMLElement>('#searchCount');
+    const rows = Array.from(document.querySelectorAll<HTMLElement>('.list-row:not(.head)'));
+
+    function applyFilter() {
+      if (!search || !countEl) return;
+      const term = search.value.trim().toLowerCase();
+      let shown = 0;
+      rows.forEach((row) => {
+        const visible = !term || (row.dataset.search ?? '').includes(term);
+        row.hidden = !visible;
+        if (visible) shown += 1;
+      });
+      if (!term) {
+        countEl.textContent = '';
+      } else if (shown === 0) {
+        countEl.textContent =
+          'No inspectors match that search. Every licensed inspector on this page comes from the DBPR record, so try a license number or a surname.';
+      } else {
+        countEl.textContent = `Showing ${shown} of ${rows.length} listings.`;
+      }
+    }
+
+    search?.addEventListener('input', applyFilter);
+  </script>
+</Layout>

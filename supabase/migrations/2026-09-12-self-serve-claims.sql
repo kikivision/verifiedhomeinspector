@@ -309,3 +309,15 @@ drop trigger if exists require_claimable_license on auth.users;
 create trigger require_claimable_license
   before insert on auth.users
   for each row execute function public.require_claimable_license();
+
+-- ---------------------------------------------------------------------------
+-- City pages (added later the same day).
+--
+-- A featured listing's card shows at the top of each city page named here,
+-- two spots per city. Set by scripts/set-tier.mjs --cities, never by the
+-- inspector; empty means the listing's own city. Safe to add after the site
+-- has deployed: the build reads select('*') and treats a missing column as
+-- an empty list.
+-- ---------------------------------------------------------------------------
+alter table public.listings
+  add column if not exists featured_cities jsonb not null default '[]'::jsonb;

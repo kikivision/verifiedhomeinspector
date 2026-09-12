@@ -475,7 +475,8 @@ for (const path of pages) {
   const html = faqHtml.get(path);
   if (!html) continue;
   const page = pagePath(path);
-  if (!/^\/fl\/[a-z-]+\/$/.test(page)) continue;
+  // County pages and city pages; inspector pages have a third segment.
+  if (!/^\/fl\/[a-z-]+(\/[a-z0-9-]+)?\/$/.test(page)) continue;
 
   // Each chunk runs from one row's class attribute to the next row's, which is
   // the whole row. An earlier version truncated at the first </div></div>,
@@ -540,6 +541,35 @@ for (const file of badges) {
   check(/^\s*<svg[\s>]/.test(svg) && /<\/svg>\s*$/.test(svg.trim()), `badge/${file} is not a well-formed SVG.`);
   check(svg.includes(file.replace('.svg', '')), `badge/${file} does not carry its own license number.`);
 }
+
+// City pages: one per city with MIN_CITY_LISTINGS or more inspectors, at
+// /fl/<county>/<city>/. Each carries two featured positions of its own, the
+// rows for that city, and a link to every other city page in the county.
+const cityPages = pages.filter((p) => /^\/fl\/[a-z-]+\/[a-z0-9-]+\/$/.test(pagePath(p)));
+check(cityPages.length >= 40,
+  `Only ${cityPages.length} city pages were built; the four counties hold more than 40 cities with three or more listings.`);
+const cityCapMatch = (await readFile('src/lib/cities.ts', 'utf8')).match(/CITY_FEATURED_CAP = (\d+)/);
+const cityCap = cityCapMatch ? Number(cityCapMatch[1]) : null;
+check(cityCap !== null, 'Could not read CITY_FEATURED_CAP from lib/cities.ts.');
+for (const path of cityPages) {
+  const html = faqHtml.get(path);
+  const page = pagePath(path);
+  const rowCount = (html.match(/class="list-row"/g) ?? []).length + (html.match(/class="list-row is-claimed"/g) ?? []).length;
+  check(rowCount >= 2, `${page} renders ${rowCount} listing rows; a city page needs at least three listings less its featured cards.`);
+  const cards = (html.match(/class="card featured"/g) ?? []).length;
+  const slots = (html.match(/card ad-slot/g) ?? []).length;
+  if (cityCap !== null) {
+    check(cards + slots === cityCap,
+      `${page} shows ${cards + slots} featured positions, but CITY_FEATURED_CAP is ${cityCap}.`);
+  }
+  check(/<form[^>]*name=['"]featured-inquiry['"]/.test(html) && /name="city"/.test(html),
+    `${page} has no featured-inquiry form carrying the city.`);
+  check(/<form[^>]*name=['"]inspector-request['"]/.test(html), `${page} has no request form.`);
+  check(/class="city-links"/.test(html), `${page} does not link to the county's other cities.`);
+}
+// The county page is the crawler's way to every city page.
+check(/class="city-links"/.test(county) && (county.match(/class="city-links">[\s\S]*?<\/div>/)?.[0].match(/<a /g) ?? []).length >= 10,
+  'The Pinellas page does not link to its city pages.');
 
 // The sitemap is the one file nobody looks at after it is generated. Its
 // failure mode is silent and slow: Google crawls what it lists, so a wrong

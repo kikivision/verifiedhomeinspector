@@ -1,0 +1,100 @@
+---
+// The "get a featured spot" dialog and the button binding that opens it.
+//
+// The price lives here rather than on the ad-slot card. On the card it read
+// as a price tag on a placeholder; in the dialog it is the first thing an
+// inspector sees after asking, which is where a number belongs. Netlify reads
+// the form out of the built HTML; the same form name on many pages registers
+// as one form, and the hidden city field says which page the ask came from.
+import type { County } from '../lib/counties';
+
+interface Props {
+  county: County;
+  /** Set on a city page; the county page leaves it out. */
+  city?: string;
+  /** How many listings the spot sits above, for the pitch line. */
+  listingCount: number;
+}
+
+const { county, city, listingCount } = Astro.props;
+const where = city ? `${city} page and the ${county.name} page` : `${county.name} page`;
+---
+
+<dialog id="featuredDialog" class="request-dialog">
+  <form
+    name="featured-inquiry"
+    method="POST"
+    data-netlify="true"
+    netlify-honeypot="company-website"
+    action="/featured-received/"
+  >
+    <input type="hidden" name="form-name" value="featured-inquiry" />
+    <input type="hidden" name="county" value={county.name} />
+    {city && <input type="hidden" name="city" value={city} />}
+    <!-- Matches the wording the dashboard posts, so both land in the inbox
+         saying the same thing about the same plan. -->
+    <input type="hidden" name="plan" value="Featured - $50/mo (founding rate)" />
+    <p class="visually-hidden">
+      <label>Leave this field empty: <input name="company-website" /></label>
+    </p>
+
+    <div class="request-head">
+      <h2>Get a featured spot</h2>
+      <button type="button" class="request-close" id="featuredClose" aria-label="Close">×</button>
+    </div>
+    <p class="request-who">
+      $50 a month for a card with your logo at the top of the {where}, above all
+      {' '}{listingCount} listings. The first inspectors to take one keep that rate for as long
+      as they stay.
+      Nothing is charged until your card is live and you have seen it.
+    </p>
+
+    <label>
+      License number
+      <input type="text" name="license-number" required placeholder="HI12345" />
+    </label>
+    <label>
+      Your name
+      <input type="text" name="licensee-name" required />
+    </label>
+    <label>
+      Business name
+      <input type="text" name="business-name" />
+    </label>
+    <label>
+      Email
+      <input type="email" name="email" required />
+    </label>
+    <label>
+      Phone
+      <input type="tel" name="phone" />
+    </label>
+    <label>
+      Anything you want to ask first
+      <textarea name="message" rows="3"></textarea>
+    </label>
+    <button type="submit" class="btn-primary">Send</button>
+  </form>
+</dialog>
+
+<script>
+  import { trackEvent } from '../lib/gtag';
+
+  // Logged on open, for the same reason as the request dialog: it counts an
+  // inspector who asked, including the ones who close the form again, and
+  // that number is the one worth knowing before many of these spots have
+  // sold. It fires when the dialog OPENS, not when anything is sent — do not
+  // cite it as evidence a spot was wanted.
+  const featuredDialog = document.querySelector<HTMLDialogElement>('#featuredDialog');
+  document.querySelectorAll<HTMLButtonElement>('.featured-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (!featuredDialog) return;
+      trackEvent('featured_inquiry', { county: btn.dataset.county, city: btn.dataset.city });
+      featuredDialog.showModal();
+    });
+  });
+  document.querySelector('#featuredClose')?.addEventListener('click', () => featuredDialog?.close());
+  featuredDialog?.addEventListener('click', (event) => {
+    if (event.target === featuredDialog) featuredDialog.close();
+  });
+</script>
