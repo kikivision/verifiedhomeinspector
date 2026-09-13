@@ -83,9 +83,14 @@ for (const path of pages) {
     'Layout takes a `description` prop; a page that omits it ships without the tag.');
   if (description !== undefined) {
     check(description.trim().length > 0, `${page}: meta description is empty.`);
+    // Measured as a reader sees it, not as the attribute is escaped: "R&R
+    // Inspections" is 15 characters on the page and 19 in the HTML, and the
+    // source trims on the former.
+    const shown = description.replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+      .replace(/&lt;/g, '<').replace(/&gt;/g, '>');
     check(
-      description.length <= MAX_META_DESCRIPTION,
-      `${page}: meta description is ${description.length} characters.`,
+      shown.length <= MAX_META_DESCRIPTION,
+      `${page}: meta description is ${shown.length} characters.`,
       `Google truncates around ${MAX_META_DESCRIPTION}.`,
     );
   }
@@ -530,8 +535,25 @@ for (const path of inspectorPages) {
   check(html.includes(`FL Lic #HI${license}`), `${page} does not show its own license number.`);
   check(/<form[^>]*name=['"]inspector-request['"]/.test(html), `${page} has no request form.`,
     'RequestDialog renders it; without it the request button opens nothing.');
-  const isClaimed = html.includes('class="card profile-card');
-  if (isClaimed) {
+  // Three states, not two. A pre-filled public contact renders the same
+  // card as a claimed page, marked data-contact="public"; it is still an
+  // unclaimed listing, so it gets the note, the claim link, no badge and no
+  // business schema. Reading the card alone counted those as claimed and
+  // failed 27 pages the day the first numbers went in.
+  const isPublic = /class="card profile-card" data-contact="public"/.test(html);
+  const isClaimed = !isPublic && html.includes('class="card profile-card');
+  if (isPublic) {
+    check(/href="tel:/.test(html) || /class="row-web"/.test(html),
+      `${page} carries a public-contact card with nothing in it.`);
+    check(html.includes('From a public listing'),
+      `${page} shows a pre-filled contact without saying where it came from.`);
+    check(!/request-btn/.test(html), `${page} offers a request button on a pre-filled listing.`,
+      'A request goes to an email the site does not have.');
+    check(html.includes(`/claim/?license=HI${license}`), `${page} is pre-filled but has no claim link.`);
+    check(!html.includes(`/badge/HI${license}.svg`), `${page} is pre-filled but carries a badge.`);
+    check(!html.includes('"@type":"HomeAndConstructionBusiness"'),
+      `${page} is pre-filled but carries business schema.`, 'Only a claim confirms a business.');
+  } else if (isClaimed) {
     claimedPages += 1;
     check(/href="tel:/.test(html) || /class="row-web"/.test(html) || /Responds to requests/.test(html),
       `${page} is claimed but shows no contact and no fallback.`);
