@@ -12,7 +12,7 @@ import Layout from '../../../../layouts/Layout.astro';
 import FeaturedCard from '../../../../components/FeaturedCard.astro';
 import FeaturedDialog from '../../../../components/FeaturedDialog.astro';
 import ListingRows from '../../../../components/ListingRows.astro';
-import RequestDialog from '../../../../components/RequestDialog.astro';
+import ListingEvents from '../../../../components/ListingEvents.astro';
 import { counties, getCounty, searchName } from '../../../../lib/counties';
 import { getAllListings, isClaimed, type Listing } from '../../../../lib/supabase';
 import { cityPagesFor, cityPath, featuredCities, CITY_FEATURED_CAP, CITY_FEATURED_TARGET, type CityPage } from '../../../../lib/cities';
@@ -225,7 +225,7 @@ if (description.length > 160) description = `${description.slice(0, 157).trimEnd
     </div>
   </section>
 
-  <RequestDialog county={county} />
+  <ListingEvents />
 
   <script>
     // Client-side filtering, the county page's minus the city select: every

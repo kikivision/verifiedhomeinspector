@@ -11,7 +11,7 @@
 // the licensee name in the state record (see lib/slug.ts), so the URL never
 // changes when a business name is added or edited.
 import Layout from '../../../../../layouts/Layout.astro';
-import RequestDialog from '../../../../../components/RequestDialog.astro';
+import ListingEvents from '../../../../../components/ListingEvents.astro';
 import { counties, getCounty, searchName } from '../../../../../lib/counties';
 import { getAllListings, isClaimed, hasPublicContact, websiteLabel, type Listing, type Tier } from '../../../../../lib/supabase';
 import { slugify, inspectorSlug, inspectorPath } from '../../../../../lib/slug';
@@ -265,20 +265,7 @@ const schema = claimed
                   {websiteLabel(l.website)} ↗
                 </a>
               )}
-              {!l.phone && !l.website && <span class="dash-muted">Responds to requests</span>}
-            </div>
-            <div class="profile-request">
-              <button
-                class="btn-primary request-btn"
-                data-listing-id={l.id}
-                data-license={l.license_number}
-                data-name={name}
-                data-page-context={pageContext}
-                data-county={county.slug}
-              >
-                Request an inspection
-              </button>
-              <p class="dash-muted">Goes to {name} only. Never shared with other inspectors.</p>
+              {!l.phone && !l.website && <span class="dash-muted">No contact listed yet</span>}
             </div>
             {(l.cert_badges.length > 0 || l.years_experience) && (
               <div class="cert-row">
@@ -321,7 +308,7 @@ const schema = claimed
             <ul class="profile-claim-list">
               <li><span>✓</span>Phone, website and services on your page</li>
               <li><span>✓</span>Above every unclaimed inspector in {county.name}</li>
-              <li><span>✓</span>Requests go to you and nobody else — never sold per lead</li>
+              <li><span>✓</span>Homeowners call you directly — no lead forms, nobody in the middle</li>
               <li><span>✓</span>About two minutes. No card, no contract.</li>
             </ul>
             <a
@@ -373,5 +360,5 @@ const schema = claimed
     </section>
   )}
 
-  <RequestDialog county={county} />
+  <ListingEvents />
 </Layout>

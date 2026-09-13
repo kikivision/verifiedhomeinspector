@@ -5,6 +5,45 @@ until you know why. Newest first.
 
 ---
 
+## 2026-09-12 — The request button is gone: the site does what the ad says
+
+**Built.** No "Request this inspector" button on featured cards, listing
+rows or inspector pages; no `inspector-request` form; no
+`/request-received/` page. `RequestDialog.astro` became
+`ListingEvents.astro`, which keeps the phone-tap and claim-link logging.
+The smoke test fails if either the form or the button text appears on
+any page. Reverses the "the request button stays" line in the entry
+below.
+
+### Why
+
+The Google Ads campaign written tonight says *Call an Inspector Directly*
+and *No Lead Forms, No Middleman*; the outreach email to inspectors says
+*homeowners call you; nobody's in the middle.* A form that sent a
+homeowner's details to hello@ and to the inspector was a lead form with a
+middleman — smaller and more honest than the ones the site positions
+against, but the same shape, and an inspector reading the ad and then the
+page would be right to call it a contradiction. The phone number is the
+product. The site should not carry a second contact path that the pitch
+says does not exist.
+
+### What is lost
+
+A written channel for the homeowner who will not call at 9pm, and the one
+contact event the site could see end to end. `request_submitted` stops
+firing; the Google Ads "Contacts" goal imported from it will sit at zero
+and can be removed. `click_request` rows from before today stay in
+`listing_events` and in the `listing_request_counts` view; nothing writes
+them now.
+
+### What it is not
+
+Not a change to featured, claims, or the inspector-side forms
+(`claim-listing`, `featured-inquiry`, `inspector-question`), which are
+inspectors talking to us, not homeowners talking to inspectors.
+
+---
+
 ## 2026-09-12 — A listing can be removed by hand, and it stays removed — but the list is empty
 
 **Built.** `src/lib/removed.ts` names licenses taken off the site with a

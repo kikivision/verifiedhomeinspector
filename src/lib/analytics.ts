@@ -1,6 +1,6 @@
 // Client-side event logging for listings.
 //
-// Scope, on purpose: this logs CLICKS only (click_phone, click_request),
+// Scope, on purpose: this logs CLICKS only (click_phone),
 // not raw impressions. Impression-at-scroll tracking was considered and
 // deliberately deferred — it multiplies write volume across 400+ listings
 // for a signal that's weaker than "someone actually clicked." Revisit this
@@ -18,7 +18,9 @@ const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-type EventType = 'click_phone' | 'click_request';
+// 'click_request' rows exist in the table from before 2026-09-12; nothing
+// writes them now.
+type EventType = 'click_phone';
 
 // These rows are the basis of a billing promise — a listing's free period ends
 // at five homeowner requests — so an event has to come from a real visitor on
@@ -41,8 +43,7 @@ function isRealVisitor(): boolean {
 }
 
 /**
- * Call this from an onclick handler on a phone number or "Request
- * inspector" button. `pageContext` should describe where the click
+ * Call this from an onclick handler on a phone number. `pageContext` should describe where the click
  * happened — e.g. 'county_pinellas', 'filter_wind_mitigation' — so you
  * can later report "X of your clicks came from a wind-mit search" back
  * to the inspector, not just a raw total.

@@ -282,34 +282,34 @@ re-reads Supabase on the way.
 A claimed or featured listing shows its phone number as a `tel:` link and
 its website as a link; an unclaimed one shows neither, because there is
 nothing on file. A tap on the number logs `click_phone` before the dial.
+There is no request form (removed 2026-09-12, evening): the ads and the
+outreach say "call the inspector directly, no lead forms," and the site
+does what they say.
 Until 2026-09-12 no listing showed contact on any tier, so that requests
 could be counted against a "free until five requests" offer; that offer
 is retired and the reasoning is in [DECISIONS.md](DECISIONS.md).
 
 ## Analytics scope
 
-`src/lib/analytics.ts` logs clicks — `click_request` — to Supabase,
+`src/lib/analytics.ts` logs clicks — `click_phone` — to Supabase,
 tagged with `page_context`. Raw impression logging remains deliberately
 out of scope; read the comments in that file before adding it.
 
-Four Netlify forms carry the real conversions, read out of the built
+Three Netlify forms carry the inspector-side conversions, read out of the built
 HTML, so none of them depends on the mailbox (hello@verifiedhomeinspector.com,
 a Microsoft 365 mailbox at GoDaddy since 2026-09-12, which is the address on
 every page footer, the Stripe receipts and the sign-in email):
-`inspector-request` (a homeowner asking for an inspection),
 `claim-listing` (posted from the dashboard after a self-serve claim),
 `featured-inquiry` (an inspector asking about a paid spot, from the
 county page or the dashboard) and `inspector-question` (the contact form
 on `/for-inspectors/`).
 
 GA4 events, all sent through `trackEvent` and only from the live host.
-Key events (conversions) are the four marked; everything else is a
+Key events (conversions) are the ones marked; everything else is a
 funnel step for reading drop-off.
 
 | Event | Fires when | Key |
 |---|---|---|
-| `request_inspector` | request dialog opened (intent, including abandons) | |
-| `request_submitted` | homeowner request form sent (`/request-received/`) | **yes** |
 | `click_phone` | tap on a claimed listing's phone number | **yes** |
 | `claim_listing` | claim link clicked on a row or an inspector page | |
 | `claim_code_sent` | sign-in code emailed from `/claim/` | |

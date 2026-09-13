@@ -202,8 +202,6 @@ check(forInspectors !== null, 'The for-inspectors page was not built.');
 const forms = [
   ['/fl/pinellas/', county, 'featured-inquiry',
     ['form-name', 'county', 'plan', 'license-number', 'licensee-name', 'email']],
-  ['/fl/pinellas/', county, 'inspector-request',
-    ['form-name', 'county', 'inspector-license', 'inspector-name', 'homeowner-name', 'homeowner-email']],
   ['/dashboard/', dashboard, 'claim-listing',
     ['form-name', 'county', 'license-number', 'licensee-name', 'email', 'plan']],
   ['/for-inspectors/', forInspectors, 'inspector-question',
@@ -533,8 +531,6 @@ for (const path of inspectorPages) {
   const page = pagePath(path);
   const license = page.match(/\/hi(\d+)-/)[1];
   check(html.includes(`FL Lic #HI${license}`), `${page} does not show its own license number.`);
-  check(/<form[^>]*name=['"]inspector-request['"]/.test(html), `${page} has no request form.`,
-    'RequestDialog renders it; without it the request button opens nothing.');
   // Three states, not two. A pre-filled public contact renders the same
   // card as a claimed page, marked data-contact="public"; it is still an
   // unclaimed listing, so it gets the note, the claim link, no badge and no
@@ -547,15 +543,13 @@ for (const path of inspectorPages) {
       `${page} carries a public-contact card with nothing in it.`);
     check(html.includes('From a public listing'),
       `${page} shows a pre-filled contact without saying where it came from.`);
-    check(!/request-btn/.test(html), `${page} offers a request button on a pre-filled listing.`,
-      'A request goes to an email the site does not have.');
     check(html.includes(`/claim/?license=HI${license}`), `${page} is pre-filled but has no claim link.`);
     check(!html.includes(`/badge/HI${license}.svg`), `${page} is pre-filled but carries a badge.`);
     check(!html.includes('"@type":"HomeAndConstructionBusiness"'),
       `${page} is pre-filled but carries business schema.`, 'Only a claim confirms a business.');
   } else if (isClaimed) {
     claimedPages += 1;
-    check(/href="tel:/.test(html) || /class="row-web"/.test(html) || /Responds to requests/.test(html),
+    check(/href="tel:/.test(html) || /class="row-web"/.test(html) || /No contact listed yet/.test(html),
       `${page} is claimed but shows no contact and no fallback.`);
     check(html.includes(`/badge/HI${license}.svg`), `${page} is claimed but has no badge.`);
     check(html.includes('"@type":"HomeAndConstructionBusiness"'), `${page} is claimed but has no LocalBusiness schema.`);
@@ -604,7 +598,6 @@ for (const path of cityPages) {
   }
   check(/<form[^>]*name=['"]featured-inquiry['"]/.test(html) && /name="city"/.test(html),
     `${page} has no featured-inquiry form carrying the city.`);
-  check(/<form[^>]*name=['"]inspector-request['"]/.test(html), `${page} has no request form.`);
   check(/class="city-links"/.test(html), `${page} does not link to the county's other cities.`);
 }
 // The county page is the crawler's way to every city page.
@@ -668,11 +661,11 @@ if (sitemapIndex && robots) {
   // Discovered from the build rather than listed, because the list went stale
   // the moment a third confirmation page was added: it named two, and the new
   // one would have been offered to Google with nothing to stop it.
-  // Two since 2026-09-12: the claim confirmation page went with the claim form,
-  // which the dashboard now posts from script with nowhere to redirect to.
+  // One since 2026-09-12: the claim confirmation went with the claim form, and
+  // the request confirmation went with the request form.
   const confirmationPages = [...built].filter((p) => /^\/[a-z-]+-received\/$/.test(p));
-  check(confirmationPages.length >= 2,
-    `Found ${confirmationPages.length} confirmation page(s); request and featured are expected.`);
+  check(confirmationPages.length >= 1,
+    `Found ${confirmationPages.length} confirmation page(s); featured is expected.`);
   for (const path of confirmationPages) {
     check(!listed.includes(`${SITE_ORIGIN}${path}`),
       `Sitemap lists ${path}, a form confirmation page.`);
@@ -700,6 +693,16 @@ if (sitemapIndex && robots) {
       `${license} is on the removed list but still appears on ${mentions.length} page(s).`,
       mentions.slice(0, 3).map(pagePath).join(', '));
   }
+}
+
+// The request form is gone (2026-09-12, evening): the ads say "call the
+// inspector directly, no lead forms," and the site has to do what the ad says.
+// Checked on every page, by the visible text and the form name, so a stray
+// component cannot bring it back.
+for (const p of pages) {
+  const html = faqHtml.get(p);
+  check(!/name=['"]inspector-request['"]/.test(html), `${pagePath(p)} still carries the inspector-request form.`);
+  check(!/Request (this inspector|an inspection)/.test(html), `${pagePath(p)} still offers a request button.`);
 }
 
 for (const note of notes) console.log(`  note: ${note}`);

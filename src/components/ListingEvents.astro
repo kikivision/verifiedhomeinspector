@@ -1,0 +1,38 @@
+---
+// The click logging for listings: a tap on a phone number, a click on a
+// claim link. One script for every page that renders listings — county,
+// city, inspector — so the paid card and the free rows stay wired the same
+// way.
+//
+// This used to be RequestDialog.astro, which also carried a "Request this
+// inspector" form. The form is gone (2026-09-12, evening): the ads and the
+// outreach say "call the inspector directly, no lead forms, nobody in the
+// middle," and a form that landed in our inbox and the inspector's was
+// exactly the thing they say we are not. The phone number is the product.
+---
+
+<script>
+  import { logListingEvent } from '../lib/analytics';
+  import { trackEvent } from '../lib/gtag';
+
+  // A tap on a phone number is the measure of what a listing does for an
+  // inspector. Logged before the dial, which the browser handles on its own;
+  // nothing here can block it. Supabase is the record tied to a listing id,
+  // GA4 is the traffic story, so it goes to both.
+  document.querySelectorAll<HTMLAnchorElement>('.phone-link').forEach((link) => {
+    link.addEventListener('click', () => {
+      const { listingId, pageContext } = link.dataset;
+      if (listingId) logListingEvent(listingId, 'click_phone', pageContext ?? 'unknown');
+      trackEvent('click_phone', { page_context: pageContext });
+    });
+  });
+
+  // A claim link goes to sign-in with the license in the URL; this only
+  // records that it was clicked, so the site can still report how many
+  // inspectors found their own row or page.
+  document.querySelectorAll<HTMLAnchorElement>('.claim-link').forEach((link) => {
+    link.addEventListener('click', () => {
+      trackEvent('claim_listing', { license_number: link.dataset.license, county: link.dataset.county });
+    });
+  });
+</script>

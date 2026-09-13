@@ -72,7 +72,7 @@ const { listings, county, pageContext } = Astro.props;
             {websiteLabel(l.website)} ↗
           </a>
         )}
-        {!l.phone && !l.website && <span class="claimed-note">Responds to requests</span>}
+        {!l.phone && !l.website && <span class="claimed-note">No contact listed yet</span>}
       </div>
     ) : hasPublicContact(l) ? (
       <div class="row-contact" data-contact="public">
@@ -102,20 +102,10 @@ const { listings, county, pageContext } = Astro.props;
     )}
     {/* An unclaimed listing has no contact path, and that is the point:
         nothing is on file. The only action on an unclaimed row is the claim,
-        which goes straight to sign-in with the license carried along. */}
+        which goes straight to sign-in with the license carried along. A
+        claimed row has no button at all: the phone number is the action. */}
     <div>
-      {isClaimed(l) ? (
-        <button
-          class="request-btn-row"
-          data-listing-id={l.id}
-          data-license={l.license_number}
-          data-name={l.business_name || l.licensee_name}
-          data-page-context={pageContext}
-          data-county={county.slug}
-        >
-          Request this inspector
-        </button>
-      ) : (
+      {!isClaimed(l) && (
         <a
           href={`/claim/?license=${l.license_number}`}
           class="claim-btn-row claim-link"

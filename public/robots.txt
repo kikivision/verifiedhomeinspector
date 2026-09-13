@@ -6,7 +6,6 @@ Allow: /
 # Confirmation pages only make sense after a form submit. They carry no
 # content of their own and would look like doorway pages in search results.
 Disallow: /claim-received/
-Disallow: /request-received/
 Disallow: /featured-received/
 
 # @astrojs/sitemap writes an index that points at the numbered sitemaps.

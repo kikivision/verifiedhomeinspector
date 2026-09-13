@@ -3,7 +3,7 @@ import Layout from '../../../layouts/Layout.astro';
 import FeaturedCard from '../../../components/FeaturedCard.astro';
 import FeaturedDialog from '../../../components/FeaturedDialog.astro';
 import ListingRows from '../../../components/ListingRows.astro';
-import RequestDialog from '../../../components/RequestDialog.astro';
+import ListingEvents from '../../../components/ListingEvents.astro';
 import { counties, getCounty, searchName } from '../../../lib/counties';
 import { getListingsForCounty, type Listing } from '../../../lib/supabase';
 import { cityPagesFor, cityPath } from '../../../lib/cities';
@@ -194,7 +194,7 @@ const openFeaturedSlots = Math.max(0, FEATURED_CAP - featured.length);
         </div>
       </section>
 
-      <RequestDialog county={county} />
+      <ListingEvents />
 
       <section class="section" id="claim">
         <div class="wrap">
@@ -218,9 +218,9 @@ const openFeaturedSlots = Math.max(0, FEATURED_CAP - featured.length);
                 <h3>How do homeowners contact me?</h3>
                 <p>
                   Straight from your listing: your phone number dials and your website opens.
-                  A homeowner who would rather write uses the request button, and that goes
-                  to you and nobody else. We never send one homeowner to several inspectors,
-                  and we never charge per lead.
+                  There is no request form and nobody in the middle — we never see the call,
+                  we never send one homeowner to several inspectors, and we never charge per
+                  lead.
                 </p>
               </div>
             </div>
