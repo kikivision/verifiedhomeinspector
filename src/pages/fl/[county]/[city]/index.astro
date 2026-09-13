@@ -69,7 +69,13 @@ let description =
 if (description.length > 160) description = `${description.slice(0, 157).trimEnd()}…`;
 ---
 
-<Layout title={title} description={description} currentCountySlug={county.slug}>
+<Layout
+  title={title}
+  description={description}
+  currentCountySlug={county.slug}
+  currentCity={city}
+  cities={[...otherCities.map((c) => c.city), city].sort((a, b) => a.localeCompare(b)).map((c) => ({ name: c, path: cityPath(county.slug, c) }))}
+>
   <div class="wrap">
     <nav class="crumbs" aria-label="Breadcrumb">
       <a href="/">Florida</a><span>›</span>

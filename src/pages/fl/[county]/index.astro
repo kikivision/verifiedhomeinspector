@@ -50,6 +50,7 @@ const openFeaturedSlots = Math.max(0, FEATURED_CAP - featured.length);
   title={`${searchName(county)} Home Inspectors | Verified Home Inspector`}
   description={`Every licensed home inspector in ${searchName(county)}, Florida, from state DBPR records. Find one for a pre-purchase inspection, a 4-point, or a wind mitigation.`}
   currentCountySlug={county.slug}
+  cities={cityPages.map((p) => ({ name: p.city, path: cityPath(county.slug, p.city) }))}
 >
   {county.status === 'coming_soon' ? (
     <section class="section">
@@ -81,6 +82,22 @@ const openFeaturedSlots = Math.max(0, FEATURED_CAP - featured.length);
               structure, electrical, plumbing, and HVAC, which are the systems that cost the most
               to fix once the house is yours.
             </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Every city page is one click from here so a crawler finds them all,
+           and a homeowner who knows their city can skip the 300-row table. -->
+      <section class="section" id="cities" style="padding-top:0;padding-bottom:8px;">
+        <div class="wrap">
+          <div class="section-head">
+            <h2>Browse by city</h2>
+            <div class="note">Cities in {county.name} with three or more listed inspectors</div>
+          </div>
+          <div class="city-links">
+            {cityPages.map((p) => (
+              <a href={cityPath(county.slug, p.city)}>{p.city} <span>{p.listings.length}</span></a>
+            ))}
           </div>
         </div>
       </section>
@@ -151,21 +168,6 @@ const openFeaturedSlots = Math.max(0, FEATURED_CAP - featured.length);
         </div>
       </section>
 
-      <!-- Every city page is one click from here so a crawler finds them all,
-           and a homeowner who knows their city can skip the 300-row table. -->
-      <section class="section" id="cities" style="padding-top:0;">
-        <div class="wrap">
-          <div class="section-head">
-            <h2>Browse by city</h2>
-            <div class="note">Cities in {county.name} with three or more listed inspectors</div>
-          </div>
-          <div class="city-links">
-            {cityPages.map((p) => (
-              <a href={cityPath(county.slug, p.city)}>{p.city} <span>{p.listings.length}</span></a>
-            ))}
-          </div>
-        </div>
-      </section>
 
       <!-- The FAQ moved to /fl/<county>/insurance/. It used to render here, at
            95.7% of the way through a 246KB page, where the only thing below it

@@ -40,8 +40,9 @@ export async function getStaticPaths() {
 
   // Which cities have pages, so the crumb can go there rather than to the
   // filtered county page. Same rule the city pages are built from.
+  const cityPagesByCounty = new Map(live.map((c) => [c, cityPagesFor(c, all).map((p) => p.city)]));
   const cityHasPage = new Set(
-    live.flatMap((c) => cityPagesFor(c, all).map((p) => `${p.county}/${p.city}`)),
+    [...cityPagesByCounty].flatMap(([c, cities]) => cities.map((city) => `${c}/${city}`)),
   );
 
   return all.map((listing) => ({
@@ -56,6 +57,7 @@ export async function getStaticPaths() {
         .filter((n) => n.id !== listing.id)
         .slice(0, 6),
       cityHasPage: cityHasPage.has(`${listing.county}/${listing.city}`),
+      countyCities: cityPagesByCounty.get(listing.county) ?? [],
     },
   }));
 }
@@ -64,9 +66,10 @@ interface Props {
   listing: Listing;
   neighbors: Listing[];
   cityHasPage: boolean;
+  countyCities: string[];
 }
 
-const { listing: l, neighbors, cityHasPage } = Astro.props;
+const { listing: l, neighbors, cityHasPage, countyCities } = Astro.props;
 const county = getCounty(l.county)!;
 const claimed = isClaimed(l);
 const name = l.business_name || l.licensee_name;
@@ -118,7 +121,13 @@ const schema = claimed
   : null;
 ---
 
-<Layout title={title} description={description} currentCountySlug={county.slug}>
+<Layout
+  title={title}
+  description={description}
+  currentCountySlug={county.slug}
+  currentCity={cityHasPage ? l.city : undefined}
+  cities={countyCities.map((c) => ({ name: c, path: cityPath(l.county, c) }))}
+>
   {schema && <script type="application/ld+json" set:html={JSON.stringify(schema)} />}
 
   <div class="wrap">

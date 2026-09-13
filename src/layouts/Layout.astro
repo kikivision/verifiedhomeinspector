@@ -8,9 +8,16 @@ interface Props {
   currentCountySlug?: string;
   /** For pages that only make sense to one signed-in person, like the dashboard. */
   noindex?: boolean;
+  /**
+   * The county's city pages, for the City select beside County. Passed by the
+   * county, city and inspector pages; the homepage and the rest leave it out.
+   * A city page names itself in currentCity so the select shows it.
+   */
+  cities?: { name: string; path: string }[];
+  currentCity?: string;
 }
 
-const { title, description, currentCountySlug, noindex = false } = Astro.props;
+const { title, description, currentCountySlug, noindex = false, cities, currentCity } = Astro.props;
 
 // The nav used bare fragments, which only work on a county page. On /privacy/,
 // /terms/ and the confirmation pages they resolved against the current URL —
@@ -130,6 +137,20 @@ const ogImage = new URL('/og-image.png', Astro.site);
           </option>
         ))}
       </select>
+      {/* The city pages were reachable only from links below the listing
+          table — on Miami-Dade, 888 rows down. This is the way in from the
+          top. "All of the county" goes back to the county page. */}
+      {cities && cities.length > 0 && (
+        <>
+          <label for="cityNav" class="county-bar-city">City:</label>
+          <select id="cityNav" data-county-path={`/fl/${currentCountySlug}/`}>
+            <option value="" selected={!currentCity}>All cities</option>
+            {cities.map((c) => (
+              <option value={c.path} selected={c.name === currentCity}>{c.name}</option>
+            ))}
+          </select>
+        </>
+      )}
     </div>
   </header>
 
@@ -195,6 +216,11 @@ const ogImage = new URL('/og-image.png', Astro.site);
     select?.addEventListener('change', () => {
       if (!select.value) return;
       window.location.href = `/fl/${select.value}/`;
+    });
+
+    const cityNav = document.getElementById('cityNav') as HTMLSelectElement | null;
+    cityNav?.addEventListener('change', () => {
+      window.location.href = cityNav.value || cityNav.dataset.countyPath || '/';
     });
   </script>
 </body>

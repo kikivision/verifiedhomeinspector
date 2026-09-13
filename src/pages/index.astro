@@ -1,7 +1,8 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import { counties, searchName } from '../lib/counties';
-import { getListingCounts } from '../lib/supabase';
+import { getListingCounts, getAllListings } from '../lib/supabase';
+import { cityPagesFor, cityPath } from '../lib/cities';
 
 // The root was a redirect to /fl/pinellas/ — an Astro redirect, which in a
 // static build emits a noindex meta-refresh stub. Google confirmed it:
@@ -12,6 +13,19 @@ const live = counties.filter((c) => c.status === 'live');
 const comingSoon = counties.filter((c) => c.status !== 'live');
 const counts = await getListingCounts(live.map((c) => c.slug));
 const total = Object.values(counts).reduce((sum, n) => sum + n, 0);
+// The three largest city pages per county, as links on the card. Listings are
+// already read once per build for the county, city and inspector pages, so
+// this costs nothing extra.
+const all = await getAllListings(live.map((c) => c.slug));
+const topCities = new Map(
+  live.map((c) => [
+    c.slug,
+    cityPagesFor(c.slug, all)
+      .sort((a, b) => b.listings.length - a.listings.length)
+      .slice(0, 3)
+      .map((p) => ({ name: p.city, path: cityPath(c.slug, p.city) })),
+  ]),
+);
 ---
 
 <Layout
@@ -54,15 +68,27 @@ const total = Object.values(counts).reduce((sum, n) => sum + n, 0);
       </div>
       <div class="county-grid">
         {live.map((county) => (
-          <a class="card county-card" href={`/fl/${county.slug}/`}>
-            <h3>{searchName(county)}</h3>
-            {/* Orlando and Tampa are what people search, but the county is the
-                precise fact and the only thing the data is keyed on, so a card
-                whose heading is a city still names the county underneath. */}
-            <div class="city">{county.metro ? `${county.name}, FL` : 'Florida'}</div>
-            <div class="county-count">{(counts[county.slug] ?? 0).toLocaleString()} licensed inspectors</div>
-            <span class="view">Browse {searchName(county)} &rarr;</span>
-          </a>
+          <div class="card county-card">
+            {/* The card used to be one link. It holds city links now, and a
+                link inside a link is invalid HTML, so the county link is the
+                heading block and the cities are their own. */}
+            <a class="county-card-main" href={`/fl/${county.slug}/`}>
+              <h3>{searchName(county)}</h3>
+              {/* Orlando and Tampa are what people search, but the county is the
+                  precise fact and the only thing the data is keyed on, so a card
+                  whose heading is a city still names the county underneath. */}
+              <div class="city">{county.metro ? `${county.name}, FL` : 'Florida'}</div>
+              <div class="county-count">{(counts[county.slug] ?? 0).toLocaleString()} licensed inspectors</div>
+              <span class="view">Browse {searchName(county)} &rarr;</span>
+            </a>
+            {(topCities.get(county.slug) ?? []).length > 0 && (
+              <div class="county-card-cities">
+                {(topCities.get(county.slug) ?? []).map((c) => (
+                  <a href={c.path}>{c.name}</a>
+                ))}
+              </div>
+            )}
+          </div>
         ))}
       </div>
       {comingSoon.length > 0 && (
