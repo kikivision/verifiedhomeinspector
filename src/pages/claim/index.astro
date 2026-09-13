@@ -122,13 +122,13 @@ import Layout from '../../layouts/Layout.astro';
         .maybeSingle();
       if (error) return `Could not check that license right now: ${error.message}`;
       if (!data) {
-        return `No listing with license ${license} yet. We list counties one at a time; if yours is not on the site, use the contact form and we will add it.`;
+        return `No listing with license ${license} yet. We list counties one at a time; if yours is not on the site, email hello@verifiedhomeinspector.com and we will add it.`;
       }
       if (data.delisted_at) {
-        return `License ${license} no longer appears in the DBPR extract, so it cannot be claimed. If the state shows it as current, use the contact form.`;
+        return `License ${license} no longer appears in the DBPR extract, so it cannot be claimed. If the state shows it as current, email hello@verifiedhomeinspector.com.`;
       }
       if (data.claimed_by) {
-        return `License ${license} has already been claimed. If that was not you, use the contact form and we will sort it out.`;
+        return `License ${license} has already been claimed. If that was not you, email hello@verifiedhomeinspector.com and we will sort it out.`;
       }
       return null;
     }

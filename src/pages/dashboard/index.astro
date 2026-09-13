@@ -192,8 +192,8 @@ const TRIAL_DAYS = 7;
               </p>
               <p class="dash-muted">
                 Questions, or a listing that should not be yours?
-                <a href="/for-inspectors/#contact">Send us a note</a> and we will reply to the
-                address you signed in with.
+                <a href="mailto:hello@verifiedhomeinspector.com">hello@verifiedhomeinspector.com</a>, or the
+                <a href="/for-inspectors/#contact">contact form</a>.
               </p>
             </div>
 
@@ -447,7 +447,7 @@ const TRIAL_DAYS = 7;
         const byHand = !listing.stripe_subscription_id;
         $<HTMLButtonElement>('#portalBtn').hidden = byHand;
         $('#portalNote').textContent = byHand
-          ? 'This spot was set up directly with us. To change cities or cancel, use the contact form.'
+          ? 'This spot was set up directly with us. To change cities or cancel, email hello@verifiedhomeinspector.com.'
           : 'Update your card, change plan, or cancel. Canceling takes the card down after the next rebuild.';
         return;
       }
