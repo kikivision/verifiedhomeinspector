@@ -255,7 +255,9 @@ tagged with `page_context`. Raw impression logging remains deliberately
 out of scope; read the comments in that file before adding it.
 
 Four Netlify forms carry the real conversions, read out of the built
-HTML so none of them needs a mailbox on this domain:
+HTML, so none of them depends on the mailbox (hello@verifiedhomeinspector.com,
+a Microsoft 365 mailbox at GoDaddy since 2026-09-12, which is the address on
+every page footer, the Stripe receipts and the sign-in email):
 `inspector-request` (a homeowner asking for an inspection),
 `claim-listing` (posted from the dashboard after a self-serve claim),
 `featured-inquiry` (an inspector asking about a paid spot, from the

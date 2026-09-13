@@ -102,9 +102,9 @@ const total = Object.values(counts).reduce((sum, n) => sum + n, 0);
     </div>
   </section>
 
-  <!-- The one place an inspector can write to us. There is no mailbox on this
-       domain by design; Netlify reads this form out of the built HTML and emails
-       each submission on, the same as the request and featured forms. -->
+  <!-- Two ways to write to us: the form, which Netlify reads out of the built
+       HTML and emails on like the request and featured forms, and the mailbox,
+       which exists since 2026-09-12 (hello@, a Microsoft 365 mailbox at GoDaddy). -->
   <section class="section" id="contact" style="padding-top:0;">
     <div class="wrap">
       <div class="claim">
@@ -114,6 +114,9 @@ const total = Object.values(counts).reduce((sum, n) => sum + n, 0);
           <p>
             A county you want added, a listing that should not be yours, a claim that will not
             go through. We reply to the address you give us, usually the same business day.
+          </p>
+          <p>
+            Or email <a href="mailto:hello@verifiedhomeinspector.com">hello@verifiedhomeinspector.com</a>.
           </p>
           <p class="dash-msg" id="contactSent" hidden>Sent. We will reply to the address you gave us.</p>
         </div>
