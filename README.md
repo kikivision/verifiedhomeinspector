@@ -235,14 +235,16 @@ it cannot verify.
 ```
 node --env-file=.env scripts/set-tier.mjs HI7816 featured --position 1 \
   --business "RMC Inspections" --phone "727-422-7688" \
-  --specialties "4-Point Inspections, Wind Mitigation, Roof Certifications" \
+  --specialties "4-Point Inspection, Wind Mitigation, Roof Certification" \
   --experience 14 --logo /logos/rmc-inspections.png --deploy
 ```
 
 `--specialties` **replaces** the list rather than adding to it, so a
 shorter list drops what it omits — that is how an inspector removes a
 service, and it is also how you delete one by accident. `--logo ""`
-removes a logo the same way.
+removes a logo the same way. Service names must match
+`src/lib/specialties.ts` exactly (the database refuses anything else);
+the script prints the allowed list when one does not.
 
 `--dry-run` prints the change and writes nothing, and is the fastest way
 to see exactly which fields a command would touch. `--deploy` triggers a

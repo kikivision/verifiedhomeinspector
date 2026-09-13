@@ -13,7 +13,7 @@
 // in search results, and it is also excluded from the sitemap in
 // astro.config.mjs.
 import Layout from '../../layouts/Layout.astro';
-import { SPECIALTIES } from '../../lib/specialties';
+import { SPECIALTIES, isInsuranceSpecialty } from '../../lib/specialties';
 import { counties } from '../../lib/counties';
 import { MAX_FEATURED_CITIES } from '../../lib/cities';
 
@@ -112,8 +112,21 @@ const TRIAL_DAYS = 7;
 
             <fieldset class="dash-fieldset">
               <legend>Services you offer</legend>
+              {/* Insurance work first and on its own: a homeowner is sent for
+                  a 4-point or wind mitigation every time a carrier asks, and
+                  those are the ticks a per-city insurance page will read. */}
+              <p class="dash-muted">Insurance inspections — what a homeowner needs at renewal or when switching carriers.</p>
               <div class="dash-checks">
-                {SPECIALTIES.map((s) => (
+                {SPECIALTIES.filter(isInsuranceSpecialty).map((s) => (
+                  <label class="dash-check">
+                    <input type="checkbox" name="specialties" value={s} />
+                    {s}
+                  </label>
+                ))}
+              </div>
+              <p class="dash-muted" style="margin-top:12px;">Everything else.</p>
+              <div class="dash-checks">
+                {SPECIALTIES.filter((s) => !isInsuranceSpecialty(s)).map((s) => (
                   <label class="dash-check">
                     <input type="checkbox" name="specialties" value={s} />
                     {s}

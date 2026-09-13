@@ -33,6 +33,10 @@
  * read-only, and changing tiers is an admin operation.
  */
 
+// The same list the dashboard offers and the database enforces. Node strips
+// the types on import, so the .ts file is the one source on this side.
+import { SPECIALTIES } from '../src/lib/specialties.ts';
+
 const TIERS = ['unclaimed', 'claimed', 'featured'];
 // The county page's ceiling (FEATURED_TARGET there): positions 1-4. The page
 // advertises two open slots while building out, but a paid card past two still
@@ -235,10 +239,23 @@ async function main() {
       update.years_experience = years;
     }
     if (flags.specialties !== undefined) {
-      update.specialties = flags.specialties
+      const picked = flags.specialties
         .split(',')
         .map((s) => s.trim())
         .filter(Boolean);
+      // Exact names only. "4-Point Inspections" (plural) went through here
+      // once and sat beside the checklist's "4-Point Inspection" until the
+      // database started refusing it; the constraint would reject this write
+      // anyway, but the message here says which name and what is allowed.
+      const unknown = picked.filter((s) => !SPECIALTIES.includes(s));
+      if (unknown.length > 0) {
+        throw new Error(
+          `--specialties: not on the list: ${unknown.map((s) => `"${s}"`).join(', ')}.\n` +
+          `Allowed: ${SPECIALTIES.join(', ')}`,
+        );
+      }
+      // Stored in list order, the way update_my_listing stores them.
+      update.specialties = SPECIALTIES.filter((s) => picked.includes(s));
     }
   }
 

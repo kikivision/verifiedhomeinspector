@@ -5,6 +5,41 @@ until you know why. Newest first.
 
 ---
 
+## 2026-09-12 — Services are a fixed list, and the insurance ones are marked
+
+**Built.** `public.allowed_services()` and a check constraint on
+`listings.specialties`; `update_my_listing` refuses a service by name and
+stores picks in list order; `set-tier.mjs` validates against the same list.
+Three services added (Termite (WDO), Sewer Scope, Commercial). The dashboard
+checklist shows the insurance three first, under their own heading.
+`INSURANCE_SPECIALTIES` in `src/lib/specialties.ts` names them in code.
+
+### Why now
+
+Shelton Home Inspections — the first St. Petersburg contact researched for
+outreach — runs two front doors: one for buyers (the home inspection, once,
+during a sale) and one for owners (4-point, wind mitigation, roof
+certification, whenever a carrier asks). The second is the Florida
+peculiarity: repeat, year-round, and not tied to a home sale. A city page is
+a buyer page. "Wind mitigation inspection in St. Petersburg" is a different
+query with a different reader, and the site cannot answer it until it knows
+which inspectors in a city do that work.
+
+That knowledge has to come from claims — the public-contact import can see
+a service on a website but the rule is the inspector confirms their own —
+so the cheap move today is to make sure the checklist data will be usable
+when there is enough of it. That meant enforcing the list: the one featured
+listing already carried "4-Point Inspections" beside the checklist's
+"4-Point Inspection", after one `set-tier` run.
+
+### What it is not
+
+Not a service page. That waits for a city with three or more claimed
+inspectors ticking insurance work, and it renders from `INSURANCE_SPECIALTIES`
+when it comes. Not a change to what shows on an inspector's page today.
+
+---
+
 ## 2026-09-12 — Unclaimed rows may carry a phone number, if it says where it came from
 
 **Built.** `scripts/import-contacts.mjs` pre-fills phone, website and

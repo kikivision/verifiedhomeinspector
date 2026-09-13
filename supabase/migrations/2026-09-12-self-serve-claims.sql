@@ -517,3 +517,175 @@ begin
    where id = v_row.id;
 end
 $$;
+
+-- ---------------------------------------------------------------------------
+-- Services are a fixed list, enforced here (added 2026-09-12, evening).
+--
+-- The dashboard has offered a checklist since the first claim, but
+-- update_my_listing accepted any string, and set-tier.mjs wrote whatever was
+-- typed: the first featured listing carried "4-Point Inspections" and "Roof
+-- Certifications" while the checklist says "4-Point Inspection" and "Roof
+-- Certification". Two spellings of one service is what makes a service page
+-- impossible, so the list now lives in the database as well.
+--
+-- allowed_services() mirrors SPECIALTIES in src/lib/specialties.ts, name for
+-- name. Three services are new with this block: Termite (WDO), Sewer Scope,
+-- Commercial. The insurance three (4-Point, Wind Mitigation, Roof
+-- Certification) are the ones a future per-city insurance page reads; they
+-- are marked in the TypeScript list, not here — the database only needs to
+-- know what is allowed.
+-- ---------------------------------------------------------------------------
+create or replace function public.allowed_services()
+returns jsonb
+language sql
+immutable
+as $$
+  select '[
+    "Full Home Inspection",
+    "4-Point Inspection",
+    "Wind Mitigation",
+    "Roof Certification",
+    "Pre-Listing Inspection",
+    "New Construction",
+    "Mold & Air Quality",
+    "Pool & Spa",
+    "Termite (WDO)",
+    "Sewer Scope",
+    "Commercial"
+  ]'::jsonb
+$$;
+
+-- The one row written before the list was enforced, brought onto it. Any
+-- other stray spelling would make the constraint below fail to add; this
+-- query shows them:
+--   select license_number, specialties from public.listings
+--    where not (specialties <@ public.allowed_services());
+update public.listings
+   set specialties = '["4-Point Inspection","Wind Mitigation","Roof Certification"]'::jsonb
+ where license_number = 'HI7816'
+   and specialties = '["4-Point Inspections","Wind Mitigation","Roof Certifications"]'::jsonb;
+
+alter table public.listings
+  drop constraint if exists listings_specialties_known;
+alter table public.listings
+  add constraint listings_specialties_known
+  check (
+    specialties is null
+    or (jsonb_typeof(specialties) = 'array' and specialties <@ public.allowed_services())
+  );
+
+-- Re-run: update_my_listing now rejects a service that is not on the list,
+-- with a message the dashboard can show, and stores the picks in list order.
+create or replace function public.update_my_listing(
+  p_business_name text,
+  p_phone text,
+  p_website text,
+  p_specialties jsonb,
+  p_years_experience int,
+  p_about text,
+  p_service_cities jsonb
+)
+returns public.listings
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_row public.listings;
+  v_business text := nullif(trim(coalesce(p_business_name, '')), '');
+  v_phone text := nullif(trim(coalesce(p_phone, '')), '');
+  v_website text := nullif(trim(coalesce(p_website, '')), '');
+  v_about text := nullif(trim(coalesce(p_about, '')), '');
+  v_specialties jsonb;
+  v_unknown text;
+  v_cities jsonb;
+begin
+  if v_uid is null then
+    raise exception 'You need to be signed in.';
+  end if;
+
+  if v_business is not null and length(v_business) > 80 then
+    raise exception 'Business name is too long (80 characters at most).';
+  end if;
+
+  -- Ten digits, optionally with a leading 1, however it was typed. Stored as
+  -- typed so it renders the way the inspector wrote it.
+  if v_phone is not null then
+    if length(regexp_replace(v_phone, '\D', '', 'g')) not between 10 and 11
+       or length(v_phone) > 25 then
+      raise exception 'Phone number should be a 10-digit US number.';
+    end if;
+  end if;
+
+  if v_website is not null then
+    if v_website !~* '^https?://' then
+      v_website := 'https://' || v_website;
+    end if;
+    if v_website !~* '^https?://[a-z0-9.-]+\.[a-z]{2,}(/\S*)?$' or length(v_website) > 200 then
+      raise exception 'Website should be a plain address like yourcompany.com.';
+    end if;
+  end if;
+
+  if v_about is not null and length(v_about) > 800 then
+    raise exception 'About is too long (800 characters at most).';
+  end if;
+
+  if p_years_experience is not null and (p_years_experience < 0 or p_years_experience > 80) then
+    raise exception 'Years in business should be between 0 and 80.';
+  end if;
+
+  if p_specialties is null or jsonb_typeof(p_specialties) <> 'array' then
+    v_specialties := '[]'::jsonb;
+  else
+    -- Anything not on the list is refused by name, so the dashboard can say
+    -- which box is wrong rather than failing on the check constraint.
+    select trim(e #>> '{}')
+      into v_unknown
+      from jsonb_array_elements(p_specialties) e
+     where jsonb_typeof(e) <> 'string'
+        or not (to_jsonb(trim(e #>> '{}')) <@ public.allowed_services())
+     limit 1;
+    if v_unknown is not null then
+      raise exception 'Unknown service "%". Pick from the list.', v_unknown;
+    end if;
+    -- Distinct, in the order of the allowed list rather than the order the
+    -- boxes were ticked, so two inspectors with the same services render the
+    -- same line.
+    select coalesce(jsonb_agg(a.value order by a.ordinality), '[]'::jsonb)
+      into v_specialties
+      from jsonb_array_elements(public.allowed_services()) with ordinality a
+     where a.value in (
+       select to_jsonb(trim(e #>> '{}')) from jsonb_array_elements(p_specialties) e
+     );
+  end if;
+
+  if p_service_cities is null or jsonb_typeof(p_service_cities) <> 'array' then
+    v_cities := '[]'::jsonb;
+  else
+    select coalesce(jsonb_agg(trim(e #>> '{}')), '[]'::jsonb)
+      into v_cities
+      from jsonb_array_elements(p_service_cities) e
+     where jsonb_typeof(e) = 'string'
+       and length(trim(e #>> '{}')) between 1 and 40;
+    if jsonb_array_length(v_cities) > 12 then
+      raise exception 'Pick up to twelve cities.';
+    end if;
+  end if;
+
+  update public.listings
+     set business_name = v_business,
+         phone = v_phone,
+         website = v_website,
+         specialties = v_specialties,
+         years_experience = p_years_experience,
+         about = v_about,
+         service_cities = v_cities
+   where claimed_by = v_uid
+   returning * into v_row;
+  if not found then
+    raise exception 'No listing is attached to this account yet.';
+  end if;
+  return v_row;
+end
+$$;
