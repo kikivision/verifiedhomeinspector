@@ -512,6 +512,12 @@ for (const path of pages) {
     `${page}: ${publicWithRequest.length} pre-filled row(s) offer a request button; only a claimed listing takes requests.`);
   check(contactable.length === 0,
     `${page} shows a contact path on ${contactable.length} unclaimed listing(s).`);
+  // Pre-filled rows sort above bare ones (2026-09-12): the last row with a
+  // number must come before the first row without one.
+  const lastPublic = unclaimed.map((r) => r.includes('data-contact="public"')).lastIndexOf(true);
+  const firstBare = unclaimed.findIndex((r) => !r.includes('data-contact="public"'));
+  check(lastPublic === -1 || firstBare === -1 || lastPublic < firstBare,
+    `${page}: an unclaimed row with no contact sorts above a row with a public number.`);
   const claimable = unclaimed.filter((r) => /href="\/claim\/\?license=HI\d+"/.test(r));
   check(claimable.length === unclaimed.length,
     `${page}: ${unclaimed.length - claimable.length} unclaimed row(s) do not link to /claim/ with their license.`);

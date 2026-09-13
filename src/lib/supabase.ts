@@ -202,6 +202,12 @@ function sortListings(rows: Listing[]): Listing[] {
   return rows.sort((a, b) => {
     if (a.tier !== b.tier) return tierRank[a.tier] - tierRank[b.tier];
     if (a.tier === 'featured') return (a.featured_position ?? 99) - (b.featured_position ?? 99);
+    // Among unclaimed rows, one with a pre-filled phone number is worth more
+    // to a homeowner than a bare name, so it sorts first. Below every claimed
+    // row still: a claim is the inspector's own word, a public number is ours.
+    const ap = hasPublicContact(a) ? 0 : 1;
+    const bp = hasPublicContact(b) ? 0 : 1;
+    if (ap !== bp) return ap - bp;
     return a.licensee_name.localeCompare(b.licensee_name);
   });
 }
