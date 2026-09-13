@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { isRemoved } from './removed';
 
 const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
@@ -187,7 +188,9 @@ async function fetchListingsForCounty(countySlug: string): Promise<Listing[]> {
       .eq('county', countySlug)
       .order('featured_position', { ascending: true, nullsFirst: false });
 
-    if (!error) return sortListings(data as Listing[]);
+    // Removed licenses are deleted by scripts/remove-listing.mjs; this is the
+    // guard for the window between a row coming back and the next removal run.
+    if (!error) return sortListings((data as Listing[]).filter((l) => !isRemoved(l.license_number)));
     console.error(`Error fetching listings for ${countySlug} (attempt ${attempt}):`, error.message);
     if (attempt === 1) await new Promise((r) => setTimeout(r, 1500));
   }

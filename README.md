@@ -250,6 +250,23 @@ the script prints the allowed list when one does not.
 to see exactly which fields a command would touch. `--deploy` triggers a
 rebuild, which is required for any of it to be visible (see below).
 
+## Removing a listing for good
+
+The DBPR extract decides who is listed, so a removal is not a row edit —
+the monthly import would put the row back. Name the license in
+`src/lib/removed.ts` with the date and reason, then:
+
+```
+node --env-file=.env scripts/remove-listing.mjs --dry-run
+node --env-file=.env scripts/remove-listing.mjs
+```
+
+The row is deleted, the importer refuses to re-insert it, the build
+filters on the list, and the smoke test fails if the license shows up
+anywhere in the output. Claimed or featured rows are refused; release
+them first. Delete the entry from `removed.ts` and the next import
+restores the listing.
+
 ## Rebuild required for new data
 
 Pages are statically generated at build time. A tier change, a new logo

@@ -34,6 +34,8 @@
  * read-only by design, and inserting listings is an admin operation.
  */
 
+import { isRemoved } from '../src/lib/removed.ts';
+
 const EXTRACT_URL =
   'https://www2.myfloridalicense.com/sto/file_download/extracts/lic04home.csv';
 
@@ -420,7 +422,11 @@ async function main() {
     ? Math.round((1 - deduped.length / existing.size) * 100)
     : 0;
 
-  const toInsert = deduped.filter((l) => !existing.has(l.license_number));
+  // A license on the removed list was deleted on purpose (src/lib/removed.ts);
+  // the extract still carries it, and without this it would be back next month.
+  const toInsert = deduped.filter(
+    (l) => !existing.has(l.license_number) && !isRemoved(l.license_number),
+  );
 
   if (dryRun) {
     const currentLicenses = new Set(deduped.map((l) => l.license_number));

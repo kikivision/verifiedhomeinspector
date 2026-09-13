@@ -664,6 +664,22 @@ if (sitemapIndex && robots) {
   }
 }
 
+// A removed license (src/lib/removed.ts) must not have a page or appear in
+// any other page's HTML. The row is deleted and the build filters on the
+// list; this is what proves both actually happened.
+{
+  const removedSrc = await readFile('src/lib/removed.ts', 'utf8');
+  for (const [, license] of removedSrc.matchAll(/^\s{2}(HI\d+):/gm)) {
+    const slug = license.toLowerCase() + '-';
+    const ownPage = pages.filter((p) => pagePath(p).includes('/' + slug));
+    check(ownPage.length === 0, `${license} is on the removed list but still has a page: ${ownPage.map(pagePath).join(', ')}`);
+    const mentions = pages.filter((p) => faqHtml.get(p).includes(license));
+    check(mentions.length === 0,
+      `${license} is on the removed list but still appears on ${mentions.length} page(s).`,
+      mentions.slice(0, 3).map(pagePath).join(', '));
+  }
+}
+
 for (const note of notes) console.log(`  note: ${note}`);
 
 if (failures.length > 0) {

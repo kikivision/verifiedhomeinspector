@@ -5,6 +5,44 @@ until you know why. Newest first.
 
 ---
 
+## 2026-09-12 — A listing can be removed by hand, and it stays removed — but the list is empty
+
+**Built.** `src/lib/removed.ts` names licenses taken off the site with a
+date and a reason; `scripts/remove-listing.mjs` deletes the rows; the DBPR
+importer never re-inserts a listed license; the build filters on the list;
+the smoke test fails if a removed license appears in any page.
+
+### Why it exists
+
+The site's promise is "everyone on the state roll, verified" — a license is
+listed because the state says it is current, and nothing else. But the
+owner also answers for what the site points people at, and there has to be
+a way to act on that which survives the monthly import, because the import
+restores any row whose license reappears in the extract. Setting
+`delisted_at` would be undone in thirty days. So the record of a removal
+lives in the repo, and everything that touches the table reads it.
+
+### Why the list is empty
+
+The first candidate was an inspector with no phone number of his own whose
+name, looked up, led through people-search sites that tripped malware
+warnings. Before the delete ran, the one number attached to him turned out
+to be the front desk of Waypoint Property Inspection, a large Tampa firm he
+inspects for. He is listed with that number, marked as an employee, like
+the Pillar To Post and Your Castle inspectors. The lesson is in
+`removed.ts`: check the employer before a name goes on the list, because a
+licensee with no footprint of their own is usually someone's employee, not
+a ghost.
+
+### What it is not
+
+Not a moderation queue, and not a place to park inspectors someone
+dislikes. Each entry carries the date and the reason, in the repo history,
+because a directory that quietly drops licensed people is worse than one
+that lists everyone. Expect the list to stay very short — or empty.
+
+---
+
 ## 2026-09-12 — Services are a fixed list, and the insurance ones are marked
 
 **Built.** `public.allowed_services()` and a check constraint on

@@ -28,6 +28,7 @@
  * Writing needs SUPABASE_SERVICE_ROLE_KEY, like the other admin scripts.
  */
 import { readFileSync } from 'node:fs';
+import { isRemoved } from '../src/lib/removed.ts';
 
 const [, , csvPath, ...rest] = process.argv;
 const dryRun = rest.includes('--dry-run');
@@ -106,6 +107,7 @@ const byLicense = new Map(rows.map((r) => [r.license_number, r]));
 let written = 0, skipped = 0;
 for (const e of entries) {
   const row = byLicense.get(e.license);
+  if (isRemoved(e.license)) { console.error(`  ${e.license}: removed from the site (src/lib/removed.ts) — skipped`); skipped += 1; continue; }
   if (!row) { console.error(`  ${e.license}: not on the site — skipped`); skipped += 1; continue; }
   if (row.delisted_at) { console.error(`  ${e.license} ${row.licensee_name}: delisted — skipped`); skipped += 1; continue; }
   if (row.tier !== 'unclaimed' || row.claimed_by || row.contact_source === 'inspector') {
