@@ -23,7 +23,13 @@ const { listings, county, pageContext } = Astro.props;
 <div class="list-row head">
   <div>Inspector</div><div>City</div><div>License</div><div>Specialties</div><div>Contact</div><div>Hire</div>
 </div>
-<!-- Each unclaimed row links straight to sign-in with its license number in
+<!-- An unclaimed row with data-contact="public" carries a phone and website
+     pre-filled from the inspector's own site or a public listing by
+     scripts/import-contacts.mjs, so a homeowner has someone to call; it is
+     marked so nobody mistakes it for a claim, and the smoke test uses the
+     marker to tell it from a contact path that should not be there.
+
+     <!-- Each unclaimed row links straight to sign-in with its license number in
      the URL. An inspector arrives looking for their own name and finds it
      here, so the claim is offered on the row itself and the number they just
      recognized is carried along for them. -->
@@ -69,11 +75,6 @@ const { listings, county, pageContext } = Astro.props;
         {!l.phone && !l.website && <span class="claimed-note">Responds to requests</span>}
       </div>
     ) : hasPublicContact(l) ? (
-      {/* Pre-filled from the inspector's own site or a public listing by
-          scripts/import-contacts.mjs. Shown so a homeowner has someone to
-          call; marked so nobody mistakes it for a claim. The row is still
-          data-contact="public", which is what lets the smoke test tell this
-          from a contact path that should not be there. */}
       <div class="row-contact" data-contact="public">
         <span class="unclaimed-mark">Not yet claimed</span>
         {l.phone && (
