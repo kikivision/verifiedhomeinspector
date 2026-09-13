@@ -5,6 +5,47 @@ until you know why. Newest first.
 
 ---
 
+## 2026-09-12 — Unclaimed rows may carry a phone number, if it says where it came from
+
+**Built.** `scripts/import-contacts.mjs` pre-fills phone, website and
+business name on unclaimed rows from a hand-researched CSV, marked
+`contact_source = 'public'`; the site shows them with "From a public
+listing" and still offers the claim.
+
+### Why the rule changed
+
+The rule since the first county page was that an unclaimed row shows no
+contact: nothing is on file, and a number the site invented would be a
+promise it could not keep. That rule was about *invented* contact. A number
+taken from the inspector's own website is not invented, and a city page of
+95 names with no way to call any of them is a page a homeowner leaves — and
+a page no advertising should ever be pointed at. Supply has to exist before
+demand is sent to it, and in a new city the fastest supply is the phone
+numbers inspectors already publish.
+
+It also changes the claim pitch from "please sign up" to "your number is
+already here; claim it to add your website and your own words," which is
+the email that gets answered.
+
+### What it is not
+
+Not Google Places data. Places may be used to *find* a business and its
+website; the number that goes on the page comes from that website or a
+public listing, and the CSV's `source` column says which. Not a request
+path: a pre-filled row shows a phone and a website, never the request
+button, because a request goes to an email the site does not have. Not
+permanent: a claim overwrites it, and the inspector sees the pre-filled
+values as the starting point on their dashboard.
+
+### What keeps it honest
+
+The row says "Not yet claimed · From a public listing" in the same cell as
+the number. The smoke test allows a phone number on an unclaimed row only
+inside a block marked `data-contact="public"` that carries that note, and
+refuses a request button there.
+
+---
+
 ## 2026-09-12 — Statewide, in one afternoon
 
 **Built.** Every Florida county with five or more licensed inspectors is

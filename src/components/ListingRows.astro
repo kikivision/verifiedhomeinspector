@@ -7,7 +7,7 @@
 // outside it on purpose: inside it, Astro emitted it once per listing — 123KB
 // on a 253KB page.
 import type { County } from '../lib/counties';
-import { isClaimed, websiteLabel, type Listing } from '../lib/supabase';
+import { isClaimed, hasPublicContact, websiteLabel, type Listing } from '../lib/supabase';
 import { inspectorPath } from '../lib/slug';
 
 interface Props {
@@ -67,6 +67,31 @@ const { listings, county, pageContext } = Astro.props;
           </a>
         )}
         {!l.phone && !l.website && <span class="claimed-note">Responds to requests</span>}
+      </div>
+    ) : hasPublicContact(l) ? (
+      {/* Pre-filled from the inspector's own site or a public listing by
+          scripts/import-contacts.mjs. Shown so a homeowner has someone to
+          call; marked so nobody mistakes it for a claim. The row is still
+          data-contact="public", which is what lets the smoke test tell this
+          from a contact path that should not be there. */}
+      <div class="row-contact" data-contact="public">
+        <span class="unclaimed-mark">Not yet claimed</span>
+        {l.phone && (
+          <a
+            class="row-phone phone-link"
+            href={`tel:${l.phone.replace(/[^\d+]/g, '')}`}
+            data-listing-id={l.id}
+            data-page-context={pageContext}
+          >
+            {l.phone}
+          </a>
+        )}
+        {l.website && (
+          <a class="row-web" href={l.website} target="_blank" rel="nofollow noopener">
+            {websiteLabel(l.website)} ↗
+          </a>
+        )}
+        <span class="claimed-note">From a public listing</span>
       </div>
     ) : (
       <div class="claimed-status">

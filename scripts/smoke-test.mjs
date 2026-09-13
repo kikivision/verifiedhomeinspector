@@ -494,8 +494,19 @@ for (const path of pages) {
     .filter((r) => !r.startsWith(' is-claimed') && !r.startsWith(' head'))
     .map((r) => r.split('</section>')[0]);
   check(unclaimed.length > 0, `${page} has no unclaimed rows to check.`);
+  // A pre-filled public contact is the one allowed exception, and it has to
+  // say so: the row carries data-contact="public" and its own note. A phone
+  // number on an unclaimed row without that marker is a leak.
   const contactable = unclaimed.filter((r) =>
+    !r.includes('data-contact="public"') &&
     /request-btn-row|href="tel:|\b\(?\d{3}\)?[ .-]\d{3}[ .-]\d{4}\b|target="_blank"/.test(r));
+  const publicRows = unclaimed.filter((r) => r.includes('data-contact="public"'));
+  const publicWithoutNote = publicRows.filter((r) => !r.includes('From a public listing'));
+  check(publicWithoutNote.length === 0,
+    `${page}: ${publicWithoutNote.length} pre-filled row(s) do not say the contact is from a public listing.`);
+  const publicWithRequest = publicRows.filter((r) => /request-btn-row/.test(r));
+  check(publicWithRequest.length === 0,
+    `${page}: ${publicWithRequest.length} pre-filled row(s) offer a request button; only a claimed listing takes requests.`);
   check(contactable.length === 0,
     `${page} shows a contact path on ${contactable.length} unclaimed listing(s).`);
   const claimable = unclaimed.filter((r) => /href="\/claim\/\?license=HI\d+"/.test(r));

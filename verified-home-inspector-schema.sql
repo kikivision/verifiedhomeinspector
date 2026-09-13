@@ -43,6 +43,10 @@ create table listings (
   stripe_customer_id text,
   stripe_subscription_id text,
   featured_since timestamptz,
+  -- 'public' when phone/website were pre-filled by scripts/import-contacts.mjs
+  -- from the inspector's own site or a public listing; 'inspector' once they
+  -- claim. Null on a bare DBPR row.
+  contact_source text check (contact_source in ('public', 'inspector')),
   -- Set when a license stops appearing in the DBPR extract. Null means current.
   -- The importer marks rows here and never deletes them, so a claimed listing
   -- survives a bad upstream file and can be restored by clearing this.

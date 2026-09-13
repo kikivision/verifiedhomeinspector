@@ -124,6 +124,25 @@ $50/month covers the county page plus up to three city pages. Claimed inspectors
 pages of the cities they chose as served on their dashboard, in a
 "Based nearby, serves …" section — that part is free.
 
+## Pre-filled contact on unclaimed listings
+
+A city page of names with no phone numbers gives a homeowner nobody to
+call, so unclaimed rows can carry a phone and website researched by hand:
+
+```
+node --env-file=.env scripts/import-contacts.mjs outreach/st-petersburg.csv --dry-run
+node --env-file=.env scripts/import-contacts.mjs outreach/st-petersburg.csv
+```
+
+CSV columns: `license, phone, website, business_name, source`. The script
+writes only unclaimed rows, never a claimed one, and marks them
+`contact_source = 'public'`; the site shows the number with "From a
+public listing" and still offers the claim. A claim takes the row over
+(`contact_source = 'inspector'`) and the dashboard shows the pre-filled
+values as the starting point. The numbers must come from the inspector's
+own website or a public listing; Google Places data may be used to find
+a business but not republished here.
+
 ## Featured spots are sold through Stripe
 
 A claimed inspector buys a featured spot from `/dashboard/`: they pick up

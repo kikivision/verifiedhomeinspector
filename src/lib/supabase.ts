@@ -73,7 +73,19 @@ export interface Listing {
   stripe_customer_id?: string | null;
   stripe_subscription_id?: string | null;
   featured_since?: string | null;
+  /**
+   * 'public' when the phone/website were pre-filled by import-contacts.mjs
+   * from the inspector's own site or a public listing; 'inspector' once they
+   * claim. Null on a bare DBPR row. Optional: builds against a database
+   * without the column treat it as null.
+   */
+  contact_source?: 'public' | 'inspector' | null;
   created_at: string;
+}
+
+/** An unclaimed row whose contact was pre-filled from a public source. */
+export function hasPublicContact(l: Listing): boolean {
+  return l.tier === 'unclaimed' && l.contact_source === 'public' && !!(l.phone || l.website);
 }
 
 /**

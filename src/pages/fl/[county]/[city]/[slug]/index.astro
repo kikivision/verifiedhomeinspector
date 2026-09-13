@@ -13,7 +13,7 @@
 import Layout from '../../../../../layouts/Layout.astro';
 import RequestDialog from '../../../../../components/RequestDialog.astro';
 import { counties, getCounty, searchName } from '../../../../../lib/counties';
-import { getAllListings, isClaimed, websiteLabel, type Listing, type Tier } from '../../../../../lib/supabase';
+import { getAllListings, isClaimed, hasPublicContact, websiteLabel, type Listing, type Tier } from '../../../../../lib/supabase';
 import { slugify, inspectorSlug, inspectorPath } from '../../../../../lib/slug';
 import { cityPagesFor, cityPath } from '../../../../../lib/cities';
 
@@ -72,6 +72,7 @@ interface Props {
 const { listing: l, neighbors, cityHasPage, countyCities } = Astro.props;
 const county = getCounty(l.county)!;
 const claimed = isClaimed(l);
+const publicContact = hasPublicContact(l);
 const name = l.business_name || l.licensee_name;
 const pageContext = `inspector_${county.slug}`;
 // A city with too few listings for a page of its own still has a crumb: it
@@ -198,12 +199,20 @@ const schema = claimed
             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 8v4M12 16h.01"></path></svg>
             <div>
               <div class="profile-unclaimed-head">This inspector hasn't claimed their page yet</div>
-              <p>
-                Everything shown here comes straight from the state license record. There is no
-                phone number or website on file because {l.licensee_name} has not added one. You
-                can still verify the license with the DBPR, or choose from inspectors in
-                {' '}{l.city} who have claimed theirs.
-              </p>
+              {publicContact ? (
+                <p>
+                  The license comes from the state record; the contact details come from a
+                  public listing and have not been confirmed by {l.licensee_name}. Call to
+                  check, or choose from inspectors in {l.city} who have claimed their pages.
+                </p>
+              ) : (
+                <p>
+                  Everything shown here comes straight from the state license record. There is no
+                  phone number or website on file because {l.licensee_name} has not added one. You
+                  can still verify the license with the DBPR, or choose from inspectors in
+                  {' '}{l.city} who have claimed theirs.
+                </p>
+              )}
             </div>
           </div>
         )}
@@ -279,6 +288,29 @@ const schema = claimed
             )}
           </div>
         ) : (
+          <>
+          {publicContact && (
+            <div class="card profile-card" data-contact="public">
+              <div class="contact-lines">
+                {l.phone && (
+                  <a
+                    class="row-phone phone-link profile-phone"
+                    href={`tel:${l.phone.replace(/[^\d+]/g, '')}`}
+                    data-listing-id={l.id}
+                    data-page-context={pageContext}
+                  >
+                    {l.phone}
+                  </a>
+                )}
+                {l.website && (
+                  <a class="row-web" href={l.website} target="_blank" rel="nofollow noopener">
+                    {websiteLabel(l.website)} ↗
+                  </a>
+                )}
+              </div>
+              <p class="dash-muted" style="margin-top:10px;">From a public listing. Not yet confirmed by the inspector.</p>
+            </div>
+          )}
           <div class="claim profile-claim">
             <div><span class="claim-eyebrow">Is this you?</span></div>
             <h2>Claim this page. It's free.</h2>
@@ -301,6 +333,7 @@ const schema = claimed
               Claim this listing
             </a>
           </div>
+          </>
         )}
       </aside>
     </div>

@@ -410,3 +410,110 @@ create trigger rebuild_site_on_listing_change
     or old.featured_cities is distinct from new.featured_cities
   )
   execute function public.rebuild_site_on_listing_change();
+
+-- ---------------------------------------------------------------------------
+-- Public contact on unclaimed listings (added 2026-09-12, evening).
+--
+-- A directory of names with no phone numbers gives a homeowner nobody to
+-- call. scripts/import-contacts.mjs fills phone, website and business name
+-- on UNCLAIMED rows from a CSV researched by hand (the inspector's own
+-- website or a public listing — never Google Places data, which may not be
+-- republished), and marks the row contact_source = 'public'. A claim takes
+-- the row over: claim_listing sets contact_source = 'inspector', and the
+-- inspector's dashboard edits replace whatever was pre-filled. Release
+-- clears it with everything else.
+-- ---------------------------------------------------------------------------
+alter table public.listings
+  add column if not exists contact_source text
+    check (contact_source in ('public', 'inspector'));
+
+-- Re-run: claim_listing now marks the contact as the inspector's own.
+create or replace function public.claim_listing(p_license text)
+returns public.listings
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_license text := upper(regexp_replace(coalesce(p_license, ''), '\s', '', 'g'));
+  v_row public.listings;
+begin
+  if v_uid is null then
+    raise exception 'You need to be signed in to claim a listing.';
+  end if;
+  if v_license !~ '^HI[0-9]{1,6}$' then
+    raise exception 'That does not look like a Florida home inspector license number. It is the HI number on your license, like HI3532.';
+  end if;
+  if exists (select 1 from public.listings where claimed_by = v_uid) then
+    raise exception 'This account already has a listing. Release it from your dashboard before claiming another.';
+  end if;
+
+  select * into v_row from public.listings where license_number = v_license for update;
+  if not found then
+    raise exception 'No listing with license % yet. We list counties one at a time; if yours is not on the site, tell us and we will add it.', v_license;
+  end if;
+  if v_row.delisted_at is not null then
+    raise exception 'License % no longer appears in the DBPR extract, so it cannot be claimed. If the state shows it as current, contact us.', v_license;
+  end if;
+  if v_row.claimed_by is not null then
+    raise exception 'License % has already been claimed. If that was not you, contact us and we will sort it out.', v_license;
+  end if;
+  if v_row.tier <> 'unclaimed' then
+    raise exception 'License % was set up before self-serve claims existed. Contact us and we will attach it to your account.', v_license;
+  end if;
+
+  update public.listings
+     set claimed_by = v_uid,
+         tier = 'claimed',
+         claimed_at = now(),
+         -- Whatever was pre-filled from a public listing is theirs now, and
+         -- the dashboard shows it as the starting point for their edits.
+         contact_source = 'inspector'
+   where id = v_row.id
+   returning * into v_row;
+  return v_row;
+end
+$$;
+
+-- Re-run: release clears the source with the rest.
+create or replace function public.release_my_listing()
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_row public.listings;
+begin
+  if v_uid is null then
+    raise exception 'You need to be signed in.';
+  end if;
+  select * into v_row from public.listings where claimed_by = v_uid for update;
+  if not found then
+    raise exception 'No listing is attached to this account.';
+  end if;
+  if v_row.tier = 'featured' then
+    raise exception 'This listing has a featured spot. Contact us to cancel it and we will release the listing at the same time.';
+  end if;
+  update public.listings
+     set claimed_by = null,
+         tier = 'unclaimed',
+         claimed_at = null,
+         business_name = null,
+         phone = null,
+         website = null,
+         about = null,
+         specialties = '[]'::jsonb,
+         service_cities = '[]'::jsonb,
+         years_experience = null,
+         logo_path = null,
+         stripe_customer_id = null,
+         stripe_subscription_id = null,
+         featured_since = null,
+         featured_cities = '[]'::jsonb,
+         contact_source = null
+   where id = v_row.id;
+end
+$$;

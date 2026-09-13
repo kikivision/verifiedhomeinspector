@@ -25,3 +25,6 @@ pnpm-debug.log*
 
 # Local Netlify folder
 .netlify
+
+# Outreach research CSVs live in Downloads, not here.
+outreach/
