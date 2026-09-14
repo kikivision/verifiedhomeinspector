@@ -3,9 +3,14 @@
 // Shared by the county page and the city pages, so a claimed row shows the
 // same contact and an unclaimed row offers the same claim on both.
 //
-// Comments inside the loop are JSX comments. The one HTML comment below sits
-// outside it on purpose: inside it, Astro emitted it once per listing — 123KB
-// on a 253KB page.
+// Comments inside the loop are JSX comments, and they cannot sit between a
+// tag's attributes at all — one there is a parse error, not a comment. The one
+// HTML comment below sits outside the loop on purpose: inside it, Astro emitted
+// it once per listing — 123KB on a 253KB page.
+//
+// Each row carries data-tier. The smoke test fails the build if a featured
+// listing shows up in this table: it means the listing holds no county
+// position, so somebody is paying for a card they are not getting.
 import type { County } from '../lib/counties';
 import { isClaimed, hasPublicContact, websiteLabel, type Listing } from '../lib/supabase';
 import { inspectorPath } from '../lib/slug';
@@ -36,6 +41,7 @@ const { listings, county, pageContext } = Astro.props;
 {listings.map((l) => (
   <div
     class:list={['list-row', { 'is-claimed': isClaimed(l) }]}
+    data-tier={l.tier}
     data-city={l.city}
     data-search={`${l.licensee_name} ${l.business_name ?? ''} ${l.city} ${l.license_number}`.toLowerCase()}
   >

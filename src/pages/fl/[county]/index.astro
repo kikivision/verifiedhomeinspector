@@ -111,6 +111,13 @@ const openFeaturedSlots = Math.max(0, COUNTY_FEATURED_TARGET - featured.length);
         <div class="wrap">
           <div class="section-head">
             <h2>Featured inspectors</h2>
+            {/* Unconditional, like the city page's. It used to be stated only
+                inside the "This spot could be yours" card, which stops
+                rendering once COUNTY_FEATURED_TARGET cards are sold — so the
+                page dropped its own promise exactly when the row filled up,
+                and the smoke test that checks for it went red on the fourth
+                sale. */}
+            <div class="note">{FEATURED_CAP} spots per county, never more</div>
           </div>
           <div class="featured-grid">
             {featured.map((l) => (

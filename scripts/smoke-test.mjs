@@ -195,11 +195,38 @@ if (Number.isInteger(cap) && Number.isInteger(target)) {
   const shown = featuredSlots + claimedFeatured;
   check(shown >= target, `Pinellas page shows ${shown} featured positions, but FEATURED_TARGET is ${target}.`);
   check(shown <= cap, `Pinellas page shows ${shown} featured positions, but the copy promises never more than ${cap}.`);
+  // Checked against the unconditional note beside the heading, NOT the
+  // open-slot card: that card stops rendering once the target is sold, so
+  // pinning the promise to it turned a fourth sale into a red build.
   check(
-    county.includes(`is one of ${cap} spots above all of them`),
-    `The county page's open-slot copy does not state the cap of ${cap}.`,
+    county.includes(`${cap} spots per county, never more`),
+    `The county page does not state the cap of ${cap} outside its open-slot cards.`,
   );
 }
+
+// Every county page, not just Pinellas. The cap is enforced by a .slice() in
+// one shared template, so a miss here is silent everywhere at once — and a
+// paying card dropped out of the row by that slice lands in the table below,
+// where it is indistinguishable from a free claimed listing without looking.
+const countyPages = (await htmlFiles(join(DIST, 'fl')))
+  .filter((f) => relative(DIST, f).split(sep).length === 3);
+for (const file of countyPages) {
+  const html = await readFile(file, 'utf8');
+  const page = pagePath(file);
+  const shown = (html.match(/card ad-slot/g) ?? []).length + (html.match(/class="card featured"/g) ?? []).length;
+  check(shown <= cap, `${page} shows ${shown} featured positions, but the copy promises never more than ${cap}.`);
+  check(html.includes(`${cap} spots per county, never more`), `${page} does not state the cap of ${cap}.`);
+  check(!/data-tier="featured"/.test(html),
+    `${page} has a featured listing in the plain table.`,
+    'It holds no county position, so it paid for a card it is not getting. Give it one with set-tier.mjs.');
+}
+
+// create-checkout must actually call the gate. Everything else here tests
+// assertCountyHasRoom's behaviour; nothing tested that it is wired in, and
+// deleting the call left every check green.
+const checkoutSrc = await readFile('netlify/functions/create-checkout.mts', 'utf8');
+check(/await assertCountyHasRoom\(/.test(checkoutSrc),
+  'create-checkout.mts does not call assertCountyHasRoom, so a full county can still be sold.');
 
 // The forms are the site's conversion paths, and Netlify only registers a
 // form it can find in the built HTML. A missing hidden field means the

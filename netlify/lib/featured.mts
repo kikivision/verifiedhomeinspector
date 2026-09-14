@@ -193,11 +193,47 @@ export async function nextPosition(db: SupabaseClient, county: string): Promise<
     .select('featured_position')
     .eq('county', county)
     .eq('tier', 'featured')
+    // A licence that stopped appearing in the DBPR extract is not rendered on
+    // any page, so it must not hold a position either. Without this the
+    // dashboard (which does filter delisted) offered a spot the server then
+    // refused as full. cityAvailability has always filtered it.
+    .is('delisted_at', null)
     .not('featured_position', 'is', null);
   if (error) throw new HttpError(500, error.message);
   const taken = new Set((data as { featured_position: number }[]).map((r) => r.featured_position));
   for (let p = 1; p <= COUNTY_POSITIONS; p += 1) if (!taken.has(p)) return p;
   return null;
+}
+
+/**
+ * Mails hello@ when a purchase cannot be delivered as sold. The log line this
+ * replaces went to Netlify function logs, which expire in 7 days and nobody
+ * watches — and the free trial is 7 days, so the first charge landed before
+ * anyone could have looked. Best effort: a send that fails must not 500 the
+ * webhook, because Stripe would retry it and the customer would be billed
+ * twice over an email.
+ */
+export async function notifyOps(subject: string, text: string): Promise<void> {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) {
+    console.error('RESEND_API_KEY is not set; this needed a person:', subject, text);
+    return;
+  }
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: 'Verified Home Inspector <hello@mail.verifiedhomeinspector.com>',
+        to: ['hello@verifiedhomeinspector.com'],
+        subject,
+        text,
+      }),
+    });
+    if (!res.ok) console.error('notifyOps failed', res.status, await res.text(), subject, text);
+  } catch (err) {
+    console.error('notifyOps threw', err, subject, text);
+  }
 }
 
 /** POSTs the Netlify build hook so the change shows on the site. Best effort. */

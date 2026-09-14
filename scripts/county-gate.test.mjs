@@ -16,15 +16,27 @@
 import { assertCountyHasRoom, nextPosition } from '../netlify/lib/featured.mts';
 import { COUNTY_FEATURED_CAP } from '../src/lib/cities.ts';
 
-/** A Supabase client that answers one listings query with these rows. */
+/**
+ * A Supabase client that answers one listings query with these rows, and
+ * RECORDS the chain it was asked for. The first version of this stub returned
+ * the same answer whatever was called on it, so deleting a .eq() or .is()
+ * filter from the real query left every case green — the stub was testing the
+ * arithmetic and pretending to test the query.
+ */
 function stubDb(positions, error = null) {
   const result = { data: positions.map((featured_position) => ({ featured_position })), error };
+  const calls = [];
+  // String(), not join's default: Array#join turns null into an empty string,
+  // so `.is('delisted_at', null)` recorded as "is delisted_at " and no probe
+  // for a null-valued filter could ever match.
+  const record = (name) => (...args) => { calls.push([name, ...args.map(String)].join(' ')); return chain; };
   const chain = {
-    from: () => chain,
-    select: () => chain,
-    eq: () => chain,
-    is: () => chain,
-    not: () => chain,
+    calls,
+    from: record('from'),
+    select: record('select'),
+    eq: record('eq'),
+    is: record('is'),
+    not: record('not'),
     then: (resolve) => resolve(result),
   };
   return chain;
@@ -62,20 +74,52 @@ const full = Array.from({ length: COUNTY_FEATURED_CAP }, (_, i) => i + 1);
 const err = await refused(stubDb(full));
 check('a full county is refused', err !== null, 'assertCountyHasRoom returned instead of throwing.');
 check('refusal is a 409', err?.status === 409, `status was ${err?.status}`);
-check('refusal names the number of spots', /All 6 featured spots/.test(err?.message ?? ''),
+check('refusal names the number of spots',
+  new RegExp(`All ${COUNTY_FEATURED_CAP} featured spots`).test(err?.message ?? ''),
   `message was ${JSON.stringify(err?.message)}`);
 
-// Rows past the cap must not wrap around and hand out a position again.
-check('over-full county is still refused', (await refused(stubDb([...full, 7]))) !== null);
+// The database CHECK constraint makes a 7 impossible today, so this is a
+// guard against the constraint being relaxed without this code following.
+check('a position above the cap is still refused', (await refused(stubDb([...full, 7]))) !== null);
+
+// A failed query must surface, not read as an empty county and sell position 1.
+let queryError = null;
+try {
+  await nextPosition(stubDb([], { message: 'connection reset' }), 'pinellas');
+} catch (e) {
+  queryError = e;
+}
+check('a failed query throws rather than selling position 1', queryError?.status === 500,
+  `got ${queryError === null ? 'no error' : `status ${queryError.status}`}`);
 
 // A county with room is not refused, and hands back the position it will get.
 check('a county with room returns its position', (await assertCountyHasRoom(stubDb([1, 2]), listing)) === 3);
 
 // Nulls never count as a taken position: a paid listing that lost the race
-// carries one, and it must not consume a spot nobody can see.
+// carries one, and it must not consume a spot nobody can see. This holds for
+// any implementation, because the loop compares against numbers — it is here
+// to pin the behaviour, not to catch a likely bug.
 check('null positions do not consume a spot',
   (await nextPosition(stubDb([1, null, 2]), 'pinellas')) === 3,
   'A null featured_position is a listing with no county placement, not a holder of one.');
+
+// The query itself, not just what is done with the answer. Each of these
+// filters is load-bearing and none of them is visible in the returned rows:
+// drop the county and every county shares one set of six positions; drop the
+// tier and a claimed listing's stale position blocks a sale; drop the
+// delisted filter and a lapsed licence holds a spot the dashboard says is
+// free. An earlier stub could not see any of this.
+const probe = stubDb([1]);
+await nextPosition(probe, 'pinellas');
+for (const [what, needle] of [
+  ['scope to the county', 'eq county pinellas'],
+  ['count only featured rows', 'eq tier featured'],
+  ['ignore delisted licences', 'is delisted_at null'],
+  ['read the listings table', 'from listings'],
+]) {
+  check(`nextPosition must ${what}`, probe.calls.includes(needle),
+    `The query was: ${probe.calls.join(' | ')}`);
+}
 
 if (failures.length > 0) {
   console.error(`\nCounty gate failed ${failures.length} check(s):\n`);

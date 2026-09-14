@@ -5,6 +5,81 @@ until you know why. Newest first.
 
 ---
 
+## 2026-09-14 — What a review of the county gate found, and what changed
+
+**Built.** A second model reviewed the gate after it shipped and found
+five real defects. All are fixed. Recorded because two of them are the
+kind that look correct in the diff and are wrong in production, which is
+what this file and the smoke test are both for.
+
+### The promise lived inside the advertisement
+
+The county page stated "never more than six" only inside the "This spot
+could be yours" card, and that card stops rendering once
+`COUNTY_FEATURED_TARGET` cards are sold. So the page dropped its own
+promise exactly when the row filled, and the smoke test check added
+hours earlier would have gone red on the fourth Pinellas sale — CI
+failing precisely because the business was working. The promise is now an
+unconditional `.note` beside the heading, the way the city page has always
+had it, and the check reads that. (The Netlify build command is `npm run
+build`, not `npm run verify`, so the post-purchase rebuild would have
+survived. That was luck, not design.)
+
+### A card that could not be delivered only wrote to a log
+
+Both fulfillment failure branches — every city refused, and no county
+position free — wrote `console.error` and nothing else. Netlify function
+logs expire in 7 days and nobody watches them; the free trial is 7 days.
+The first charge would have landed before anyone could have looked. Both
+now call `notifyOps`, which mails hello@ through Resend with the licence,
+county, subscription id and what to do, and is best-effort so a failed
+send can never 500 the webhook into a Stripe retry and a double charge.
+
+### One listing could pay two subscriptions
+
+`create-checkout` refuses an already-featured listing when the session is
+created, and a Stripe session lives 24 hours. Open checkout, press back,
+open it again, complete both: the first fulfilment features the listing,
+the second sees a different subscription id, proceeds, and overwrites
+`stripe_subscription_id`. The first subscription is orphaned and keeps
+billing, and its eventual `deleted` event matches no row. `fulfill` now
+cancels the duplicate, keeps the running subscription, and mails.
+
+### A lapsed licence held a county position
+
+`nextPosition` did not filter `delisted_at`, though `cityAvailability`
+always has and the dashboard's mirror of it does. A featured inspector
+whose licence stopped appearing in the DBPR extract kept a position that
+renders nowhere: the page would show five cards while the server refused
+a sixth sale as full. It filters now.
+
+### The test was pretending to test the query
+
+`county-gate.test.mjs` stubbed a chain that recorded nothing, so deleting
+`.eq('tier','featured')` or the delisted filter from the real query left
+every case green, and nothing checked that `create-checkout` calls the
+gate at all — deleting the call kept the suite passing. The stub now
+records the chain and the test asserts each filter; the smoke test
+asserts the wiring. Both were verified by breaking them.
+
+### And the smoke test only ever looked at Pinellas
+
+One shared template renders all 57 county pages, so a miss is silent
+everywhere at once. The cap and the promise are now checked on every
+county page, and a `data-tier="featured"` row in the plain table fails
+the build: a featured listing down there holds no county position, which
+means somebody is paying for a card they are not getting.
+
+### Not changed
+
+`featured_cities: []` at fulfilment still falls back to the listing's own
+mailing city, a city the inspector never chose. It needs distinguishing
+"never set" from "set to nothing" in the schema, and with the gate in
+place it takes two races to reach. The notification above means a person
+now hears about it either way.
+
+---
+
 ## 2026-09-14 — A full county is refused at checkout
 
 **Built.** `assertCountyHasRoom` in `netlify/lib/featured.mts`, called by

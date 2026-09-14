@@ -14,7 +14,7 @@
 // Refusing the whole purchase after Stripe has taken a card is worse.
 import type { Context } from '@netlify/functions';
 import type Stripe from 'stripe';
-import { admin, stripe, json, cityAvailability, nextPosition, rebuild } from '../lib/featured.mts';
+import { admin, stripe, json, cityAvailability, nextPosition, notifyOps, rebuild } from '../lib/featured.mts';
 
 export default async (req: Request, _context: Context) => {
   if (req.method !== 'POST') return json({ error: 'POST only.' }, 405);
@@ -78,6 +78,27 @@ async function fulfill(session: Stripe.Checkout.Session): Promise<void> {
   // Stripe delivers at least once; the second delivery finds this and stops.
   if (listing.stripe_subscription_id === subscriptionId && listing.tier === 'featured') return;
 
+  // A DIFFERENT subscription for a listing that is already featured is not a
+  // redelivery, it is a second sale. A checkout session lives 24 hours, and
+  // create-checkout only refuses an already-featured listing at the moment the
+  // session is made: open checkout, go back, open it again, complete both, and
+  // this row would keep one position while silently being billed twice. Cancel
+  // the newer one and keep the subscription that is already running.
+  if (listing.tier === 'featured' && listing.stripe_subscription_id && listing.stripe_subscription_id !== subscriptionId) {
+    const detail =
+      `${listing.license_number} (${listing.county}) completed a second checkout while already ` +
+      `featured on ${listing.stripe_subscription_id}. Cancelling the duplicate ${subscriptionId}; ` +
+      'the original is untouched. Check Stripe for any charge that already landed.';
+    console.error(detail);
+    try {
+      await stripe().subscriptions.cancel(subscriptionId);
+    } catch (err) {
+      console.error('Could not cancel the duplicate subscription', subscriptionId, err);
+    }
+    await notifyOps(`Duplicate featured subscription cancelled: ${listing.license_number}`, detail);
+    return;
+  }
+
   let wanted: string[] = [];
   try {
     wanted = JSON.parse(session.metadata?.cities ?? '[]');
@@ -88,23 +109,30 @@ async function fulfill(session: Stripe.Checkout.Session): Promise<void> {
   const granted = wanted.filter((c) => (open.get(c) ?? 0) > 0);
   const refused = wanted.filter((c) => !granted.includes(c));
   if (refused.length > 0) {
-    console.error(
-      `Listing ${listing.license_number} paid for ${wanted.join(', ')} but ${refused.join(', ')} filled ` +
-        `before fulfillment. Featured on ${granted.join(', ') || 'the county page only'}; sort out the rest by hand.`,
-    );
+    const detail =
+      `${listing.license_number} (${listing.county}) paid for ${wanted.join(', ')} but ` +
+      `${refused.join(', ')} filled before fulfillment. Featured on ` +
+      `${granted.join(', ') || 'the county page only'}. Subscription ${subscriptionId}.\n\n` +
+      'Free a city spot with set-tier.mjs, or refund. The free trial is 7 days, so there is ' +
+      'that long before the first charge.';
+    console.error(detail);
+    await notifyOps(`Featured city unavailable at fulfillment: ${listing.license_number}`, detail);
   }
 
   const position = listing.tier === 'featured' ? listing.featured_position : await nextPosition(db, listing.county);
   if (position === null) {
     // create-checkout refuses a full county, so reaching here means the last
     // position went between that check and this write, or the row was set by
-    // hand. They paid: they keep their city cards and this is logged loudly
-    // rather than written as a silent null, which is what used to happen.
-    console.error(
-      `Listing ${listing.license_number} paid but ${listing.county} had no free county position at ` +
-        `fulfillment. Featured on ${granted.join(', ') || 'no city pages'} with no county placement. ` +
-        'Free a position with set-tier.mjs or refund the subscription.',
-    );
+    // hand. They paid and they are not getting the county card they bought,
+    // so this reaches a person rather than a log line that expires.
+    const detail =
+      `${listing.license_number} (${listing.county}) paid but every county position was taken at ` +
+      `fulfillment. Featured on ${granted.join(', ') || 'no city pages'} with NO county placement. ` +
+      `Subscription ${subscriptionId}.\n\n` +
+      'Free a position with set-tier.mjs or refund. The free trial is 7 days, so there is that ' +
+      'long before the first charge.';
+    console.error(detail);
+    await notifyOps(`County full at fulfillment, card not delivered: ${listing.license_number}`, detail);
   }
   const { error: writeError } = await db
     .from('listings')
