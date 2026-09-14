@@ -362,6 +362,22 @@ footer p { font-size: 0.8rem; color: var(--slate); margin: 4px 0; max-width: 70c
 .logo-plate { background: #FFFFFF; border: 1px solid var(--line); border-radius: 4px; padding: 14px; margin-bottom: 14px; display: flex; align-items: center; justify-content: center; }
 .logo-plate img { max-width: 210px; max-height: 80px; width: auto; height: auto; object-fit: contain; }
 
+/* On a featured card the plate is a small tile in the top-right corner
+   (2026-09-14). With six cards on the county page a full-width plate made the
+   rows ragged and pushed the business name to the middle of the card. The
+   profile page keeps the full-size plate above. The card is a flex column so
+   its contact line sits at the bottom: grid rows stretch to the tallest card,
+   so every "Contact:" in a row lands on the same line. */
+.card.featured { display: flex; flex-direction: column; }
+.card.featured .logo-plate { position: absolute; top: 16px; right: 16px; width: 80px; height: 60px; margin: 0; padding: 5px; box-sizing: border-box; }
+.card.featured .logo-plate img { max-width: 100%; max-height: 100%; }
+.card.featured[data-logo] h3, .card.featured[data-logo] .city { padding-right: 96px; }
+.tag-more { color: var(--mustard-deep); font-weight: 600; text-decoration: none; }
+.card.featured .lic { margin-bottom: 16px; }
+.card.featured .contact { margin-top: auto; }
+.card.featured .contact-lines { flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+.contact-label { font-size: 0.82rem; color: var(--slate); font-weight: 500; }
+
 /* The statewide insurance page cannot know which county a reader is in, so it
    asks. Sized as a primary control rather than a form field, because choosing
    a county is the action the page is asking for. The homepage links every
