@@ -5,6 +5,56 @@ until you know why. Newest first.
 
 ---
 
+## 2026-09-14 — The duplicate-subscription branch decides from Stripe, not from ids
+
+**Built.** A third review found the fix for the double-subscription case
+had two failure modes of its own, both from comparing ids and acting
+without looking at what Stripe actually held.
+
+- **The remedy made the alert lie.** A failed cancel mailed "TWO live
+  subscriptions" and threw so Stripe would retry. Stripe retries for
+  three days. The moment Karen did what the email said and cancelled the
+  duplicate by hand, every remaining retry failed the cancel again —
+  Stripe refuses to cancel an already-cancelled subscription — and mailed
+  the same now-false warning, roughly ten times, each also 500-ing the
+  endpoint.
+- **It could cancel the subscription she kept.** If she resolved a double
+  sale by keeping the *newer* subscription and cancelling the original, a
+  redelivery arriving before `customer.subscription.deleted` was
+  processed still saw `tier='featured'` with a different id, and
+  cancelled the one she kept. The customer would be left with no card and
+  nothing billing.
+
+Both came from the same root: the branch compared ids and never asked
+Stripe for either subscription's status. It now retrieves both first.
+
+| state | action |
+|---|---|
+| the incoming one is already cancelled or gone | 200, nothing to do — this is what stops the retry storm |
+| the recorded one is dead, incoming is live | adopt the live one onto the listing, keep position and cities, mail |
+| both live | cancel the incoming duplicate, keep the running one, mail |
+| both live and the cancel fails | mail the truth and throw, so the retry tries again and goes quiet once it works |
+
+### Also from that review
+
+A `checkout.session.completed` that never fulfils now mails hello@ from
+the handler's outer catch. That is a customer who has paid and received
+nothing, and until now the only trace was a `console.error` in logs that
+expire in seven days. It covers the 23505 case and any alert dropped by a
+failed write.
+
+The build hook had no timeout, so the last step of a purchase could hang
+the invocation; it is bounded at 5 seconds like the other calls. The
+coming_soon skip in the smoke test matched a bare substring that is also
+a CSS selector, which would have silently skipped the cap check on every
+county page if the stylesheet were ever inlined; it matches the full
+class attribute now. A dead type assertion in the dashboard is gone.
+
+And the state is 314 city pages, not 315: two city spellings slugify to
+one page, so counting distinct names in the database overcounts by one.
+
+---
+
 ## 2026-09-14 — A lapsed licence pauses the billing, holds the spot 30 days, then releases it
 
 **Built.** `netlify/functions/licence-grace.mts`, a Netlify scheduled
@@ -156,9 +206,11 @@ asserts the wiring. Both were verified by breaking them.
 
 One shared template renders all 56 county pages, so a miss is silent
 everywhere at once. The cap and the promise are now checked on every
-county page, and a `data-tier="featured"` row in the plain table fails
-the build: a featured listing down there holds no county position, which
-means somebody is paying for a card they are not getting.
+county page, and a `data-tier="featured"` row in the plain table is
+reported as a warning: a featured listing down there holds no county
+position, which means somebody is paying for a card they are not getting.
+It is not a build failure, because no push can free a position — see
+below.
 
 ### Two more the second review found
 
@@ -326,7 +378,7 @@ or above it. Gulfport lists three inspectors; four dashed boxes above
 them made the advertisement bigger than the page it sat on and read as a
 page begging. Ten splits Pinellas where the data already splits it —
 Dunedin has 19 and Pinellas Park has 9, with nothing between — and puts
-about half the state's 315 city pages on two. Both values are even
+about half the state's 314 city pages on two. Both values are even
 because the grid is two columns.
 
 ### On diluting the inspector who already paid
@@ -667,7 +719,7 @@ site at all rather than on a page nobody should land on.
 ### Why now
 
 The revenue cap is inventory times price, and inventory is city pages.
-Four counties held 51 city pages; the state holds 315 across 56 live counties. Every other lever
+Four counties held 51 city pages; the state holds 314 across 56 live counties. Every other lever
 — price, spots per city, cities per buyer — moves the cap by a factor of
 two at most; geography moves it by six. The imports were an afternoon
 because the importer already refused a county whose code did not match

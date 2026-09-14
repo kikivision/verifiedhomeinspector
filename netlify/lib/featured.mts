@@ -307,7 +307,7 @@ export async function rebuild(): Promise<void> {
     return;
   }
   try {
-    const res = await fetch(hook, { method: 'POST' });
+    const res = await fetch(hook, { method: 'POST', signal: AbortSignal.timeout(5000) });
     if (!res.ok) console.error(`Build hook returned HTTP ${res.status}`);
   } catch (err) {
     console.error('Build hook failed:', err);

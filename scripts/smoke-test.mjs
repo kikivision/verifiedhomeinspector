@@ -215,7 +215,10 @@ for (const file of countyPages) {
   const page = pagePath(file);
   // A coming_soon county renders a placeholder panel and no featured row, so
   // there is no cap to check and no promise to state.
-  if (html.includes('coming-soon-panel')) { notes.push(`${page} is coming soon, featured checks skipped`); continue; }
+  // The full class attribute, not a bare substring: `.coming-soon-panel` is
+  // also a CSS selector in global.css, and an inlined stylesheet would have
+  // silently skipped the cap check on every county page while passing.
+  if (html.includes('class="claim coming-soon-panel"')) { notes.push(`${page} is coming soon, featured checks skipped`); continue; }
   const shown = (html.match(/card ad-slot/g) ?? []).length + (html.match(/class="card featured"/g) ?? []).length;
   check(shown <= cap, `${page} shows ${shown} featured positions, but the copy promises never more than ${cap}.`);
   check(html.includes(`${cap} spots per county, never more`), `${page} does not state the cap of ${cap}.`);

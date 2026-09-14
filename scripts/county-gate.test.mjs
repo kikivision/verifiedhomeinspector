@@ -110,9 +110,9 @@ check('null positions do not consume a spot',
 // The query itself, not just what is done with the answer. Each of these
 // filters is load-bearing and none of them is visible in the returned rows:
 // drop the county and every county shares one set of six positions; drop the
-// tier and a claimed listing's stale position blocks a sale; drop the
-// delisted filter and a lapsed licence holds a spot the dashboard says is
-// free. An earlier stub could not see any of this.
+// tier and a claimed listing's stale position blocks a sale. An earlier stub
+// could not see any of this. (Delisted is deliberately NOT filtered here; the
+// case below says why.)
 const probe = stubDb([1]);
 await nextPosition(probe, 'pinellas');
 for (const [what, needle] of [

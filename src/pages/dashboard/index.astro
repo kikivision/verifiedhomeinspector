@@ -568,7 +568,7 @@ const TRIAL_DAYS = 7;
         .select('license_number, city, featured_cities')
         .eq('county', listing.county)
         .eq('tier', 'featured')
-        .is('delisted_at', null) as { data: { license_number: string; city: string; featured_cities: string[] | null }[] | null };
+        .is('delisted_at', null);
       const { data: positionRows } = await supabase
         .from('listings')
         .select('featured_position')

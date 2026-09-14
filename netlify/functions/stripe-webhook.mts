@@ -51,6 +51,15 @@ export default async (req: Request, _context: Context) => {
     // database error and harmless for anything else: every write below is
     // idempotent.
     console.error(`Webhook ${event.type} failed:`, err);
+    // A checkout that cannot be fulfilled is a customer who has paid and
+    // received nothing, so it does not get to be only a log line. Stripe
+    // retries for three days; this mails on each, and stops when one succeeds.
+    if (event.type === 'checkout.session.completed') {
+      await notifyOps(`Checkout could not be fulfilled: ${event.id}`,
+        `${event.type} ${event.id} failed with: ${err instanceof Error ? err.message : String(err)}\n\n` +
+        'Stripe will retry for up to three days. If this keeps arriving, the customer has paid ' +
+        'and has no card on the site.');
+    }
     return json({ error: 'Handler failed.' }, 500);
   }
 };
@@ -82,37 +91,74 @@ async function fulfill(session: Stripe.Checkout.Session): Promise<void> {
   // redelivery, it is a second sale. A checkout session lives 24 hours, and
   // create-checkout only refuses an already-featured listing at the moment the
   // session is made: open checkout, go back, open it again, complete both, and
-  // this row would keep one position while silently being billed twice. Cancel
-  // the newer one and keep the subscription that is already running.
+  // this row would keep one position while silently being billed twice.
+  //
+  // Everything here decides from LIVE Stripe state rather than from ids alone.
+  // An earlier version compared ids and cancelled, which broke two ways: after
+  // Karen cancelled the duplicate by hand every redelivery for the next three
+  // days mailed "TWO live subscriptions" that was no longer true, and if she
+  // had instead kept the newer one and cancelled the original, a redelivery
+  // would have cancelled the one she kept and left the customer with no card.
   if (listing.tier === 'featured' && listing.stripe_subscription_id && listing.stripe_subscription_id !== subscriptionId) {
     const who = `${listing.license_number} (${listing.county})`;
-    const context =
-      `${who} completed a second checkout while already featured on ` +
-      `${listing.stripe_subscription_id}. The duplicate is ${subscriptionId}.`;
-    let cancelled = true;
-    try {
-      await stripe().subscriptions.cancel(subscriptionId);
-    } catch (err) {
-      cancelled = false;
-      console.error('Could not cancel the duplicate subscription', subscriptionId, err);
-    }
-    // Composed AFTER the attempt. Announcing the cancellation before trying it
-    // meant a Stripe outage produced an email saying it was handled while the
-    // customer quietly paid twice.
-    if (cancelled) {
-      console.error(`${context} Cancelled; the original is untouched.`);
-      await notifyOps(`Duplicate featured subscription cancelled: ${listing.license_number}`,
-        `${context}\n\nThe duplicate was cancelled and the original left running. ` +
-        'Check Stripe for any charge that already landed.');
+    const s = stripe();
+    const statusOf = async (id: string): Promise<string> => {
+      try {
+        return (await s.subscriptions.retrieve(id)).status;
+      } catch {
+        return 'missing';
+      }
+    };
+    const DEAD = ['canceled', 'incomplete_expired', 'missing'];
+    const [recorded, incoming] = await Promise.all([
+      statusOf(listing.stripe_subscription_id),
+      statusOf(subscriptionId),
+    ]);
+
+    // Already dealt with: by an earlier delivery of this same event, or by
+    // hand. Nothing to do, and answering 200 stops the retries.
+    if (DEAD.includes(incoming)) {
+      console.info(`${who}: duplicate ${subscriptionId} is already ${incoming}; nothing to do.`);
       return;
     }
-    await notifyOps(`COULD NOT cancel duplicate subscription: ${listing.license_number}`,
-      `${context}\n\nThe cancel call FAILED, so ${who} currently has TWO live subscriptions ` +
-      'and will be billed twice. Cancel the duplicate in Stripe by hand.');
-    // Thrown on purpose: a 500 makes Stripe redeliver, and redelivery re-enters
-    // this branch and retries the cancel. Answering 200 here would end the only
-    // chance of it succeeding on its own.
-    throw new Error(`Could not cancel duplicate subscription ${subscriptionId} for ${listing.license_number}`);
+
+    // The subscription on file is gone and this one is live, so this is the
+    // only subscription the customer has. Cancelling it would leave them
+    // paying nothing and showing nowhere. Adopt it and keep their placement.
+    if (DEAD.includes(recorded)) {
+      const { error: adoptError } = await db
+        .from('listings')
+        .update({ stripe_subscription_id: subscriptionId, stripe_customer_id: customerId ?? null })
+        .eq('id', listing.id);
+      if (adoptError) throw adoptError;
+      await notifyOps(`Featured subscription replaced: ${listing.license_number}`,
+        `${who} was featured on ${listing.stripe_subscription_id}, which is now ${recorded}. ` +
+        `Their live subscription ${subscriptionId} has been attached to the listing instead, and ` +
+        'their position and cities are unchanged. Nothing to do unless this looks wrong.');
+      return;
+    }
+
+    // Both live: a genuine double sale. Keep the one already running.
+    try {
+      await s.subscriptions.cancel(subscriptionId);
+    } catch (err) {
+      console.error('Could not cancel the duplicate subscription', subscriptionId, err);
+      await notifyOps(`COULD NOT cancel duplicate subscription: ${listing.license_number}`,
+        `${who} completed a second checkout while already featured on ` +
+        `${listing.stripe_subscription_id}. The duplicate ${subscriptionId} is live and the ` +
+        'cancel call FAILED, so they will be billed twice. Cancel it in Stripe by hand; this ' +
+        'retries on its own until then and goes quiet once the duplicate is cancelled.');
+      // Thrown on purpose: a 500 makes Stripe redeliver and the retry tries the
+      // cancel again. Once the duplicate is cancelled, by us or by hand, the
+      // check above returns 200 and the retries and the emails stop.
+      throw new Error(`Could not cancel duplicate subscription ${subscriptionId} for ${listing.license_number}`);
+    }
+    console.info(`${who}: cancelled duplicate ${subscriptionId}; ${listing.stripe_subscription_id} untouched.`);
+    await notifyOps(`Duplicate featured subscription cancelled: ${listing.license_number}`,
+      `${who} completed a second checkout while already featured on ` +
+      `${listing.stripe_subscription_id}. The duplicate ${subscriptionId} was cancelled and the ` +
+      'original left running. Check Stripe for any charge that already landed.');
+    return;
   }
 
   let wanted: string[] = [];
