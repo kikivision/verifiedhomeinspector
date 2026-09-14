@@ -65,7 +65,7 @@ check('empty county gives position 1', (await nextPosition(stubDb([]), 'pinellas
 // than leaving a hole in the row.
 check('gaps are reused before new numbers',
   (await nextPosition(stubDb([1, 3]), 'pinellas')) === 2,
-  'A cancelled position 2 must be the next one sold, or the row grows holes.');
+  'A canceled position 2 must be the next one sold, or the row grows holes.');
 check('sells the last free position',
   (await nextPosition(stubDb([1, 2, 3, 4, 5]), 'pinellas')) === COUNTY_FEATURED_CAP);
 

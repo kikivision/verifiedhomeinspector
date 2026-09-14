@@ -204,9 +204,10 @@ export async function nextPosition(db: SupabaseClient, county: string): Promise<
     // 23505 forever while Stripe retries and the trial runs out. Counting them
     // as taken is a refusal; ignoring them is a charge for nothing.
     //
-    // The cost is a lapsed licence holding a spot that renders nowhere while
-    // still being billed. That is a product decision (cancel? grace period?)
-    // and is listed as not-built in DECISIONS.md.
+    // The cost is a lapsed license holding a spot that renders nowhere. The
+    // billing half of that is handled: license-grace.mts pauses collection on
+    // the lapse and releases the spot after GRACE_DAYS. Until it does, the
+    // position stays counted here, which is the safe direction.
     .not('featured_position', 'is', null);
   if (error) throw new HttpError(500, error.message);
   const taken = new Set((data as { featured_position: number }[]).map((r) => r.featured_position));
@@ -249,12 +250,32 @@ export async function notifyOps(subject: string, text: string): Promise<void> {
 }
 
 /**
- * How long a featured spot is held after the licence stops appearing in the
- * DBPR extract. Decided 2026-09-14: one monthly import cycle. The lapse may
- * already be up to a month old when the import first sees it, so the window
- * from the inspector's side is longer than this number suggests.
+ * How long a featured spot is held after the license stops appearing in the
+ * DBPR extract, and when the warning goes out.
+ *
+ * 35, not 30, and the reason is arithmetic rather than generosity.
+ * `delisted_at` is only ever SET and only ever CLEARED by the monthly import
+ * (`0 13 1 * *`), so the only thing that can rescue a lapsed inspector is the
+ * next import — and consecutive imports are up to 31 days apart. A 30-day
+ * threshold cancels them BEFORE that import in every 31-day month: delisted
+ * 1 Aug 13:05, the daily job at 1 Sep sees 30.4 days and cancels, and the
+ * import that would have restored them runs that afternoon. Seven months of
+ * the year it released a customer who had already renewed. The threshold must
+ * clear the longest possible import gap, so 31 plus margin.
+ *
+ * The warning at 30 days exists because the arithmetic is not the only way
+ * this can go wrong: the import stops the whole run if one county trips its
+ * shrink guard, so a month can pass with no re-check at all. The warning mails
+ * a person while there are still days left to intervene.
  */
-export const GRACE_DAYS = 30;
+export const GRACE_DAYS = 35;
+export const GRACE_WARN_DAYS = 30;
+
+/** Who, if anyone, paused a subscription's collection. */
+export type PauseOwner = 'none' | 'ours' | 'theirs';
+
+/** Stamped on a pause so the daily job only ever lifts its own. */
+export const PAUSE_MARKER = 'license-grace';
 
 export interface GraceInput {
   license_number: string;
@@ -266,37 +287,68 @@ export interface GraceInput {
 }
 
 /**
- * What licence-grace should do with one featured listing. Pure on purpose: it
+ * What license-grace should do with one featured listing. Pure on purpose: it
  * decides about somebody's money, so it is separated from Stripe and tested
- * case by case in scripts/licence-grace.test.mjs.
+ * case by case in scripts/license-grace.test.mjs.
  *
- * `paused` is read live from Stripe rather than stored, which is what makes
+ * `pause` is read live from Stripe rather than stored, which is what makes
  * every branch idempotent — a second run the same day sees the state it just
- * set and returns 'none'.
+ * set and returns 'none'. It distinguishes a pause this job applied from one
+ * set by hand in the Stripe dashboard: lifting somebody else's pause, and
+ * mailing the inspector that billing has resumed, is not this job's business.
  */
-export function graceAction(l: GraceInput, paused: boolean, now: Date): 'pause' | 'resume' | 'cancel' | 'none' {
+export function graceAction(
+  l: GraceInput,
+  pause: PauseOwner,
+  now: Date,
+): 'pause' | 'resume' | 'cancel' | 'warn' | 'none' {
   // Never touch a subscription that is not attached to a live claimed listing.
   if (!l.stripe_subscription_id) return 'none';
 
   if (l.delisted_at === null) {
     // Back in the extract. import-dbpr clears delisted_at by itself, so this is
-    // the only signal needed, and it must not resume something never paused.
-    return paused ? 'resume' : 'none';
+    // the only signal needed. Only ever lift our own pause.
+    return pause === 'ours' ? 'resume' : 'none';
   }
 
   const since = Date.parse(l.delisted_at);
   // Defensive, not currently load-bearing: NaN >= GRACE_DAYS is already false,
   // so an unparseable date falls through to 'pause' either way. It is here
   // because inverting the comparison below — writing `days < GRACE_DAYS` and
-  // cancelling in the else — would silently turn a corrupt timestamp into a
-  // cancelled customer, and that edit looks harmless in a diff.
-  if (!Number.isFinite(since)) return paused ? 'none' : 'pause';
+  // canceling in the else — would silently turn a corrupt timestamp into a
+  // canceled customer, and that edit looks harmless in a diff.
+  if (!Number.isFinite(since)) return pause === 'none' ? 'pause' : 'none';
 
   const days = (now.getTime() - since) / 86_400_000;
-  // A future timestamp is clock skew, not a licence that lapsed ahead of time,
+  // A future timestamp is clock skew, not a license that lapsed ahead of time,
   // and negative days fail the check below rather than passing it.
   if (days >= GRACE_DAYS) return 'cancel';
-  return paused ? 'none' : 'pause';
+
+  // Stopping the billing comes before anything else: their card is already
+  // hidden, so every day unpaused is a day charged for nothing.
+  if (pause === 'none') return 'pause';
+  // Somebody paused this by hand. Leave it, and do not count down to a cancel
+  // on a subscription this job did not stop.
+  if (pause === 'theirs') return 'none';
+
+  // A one-day window, and the job runs daily, so this fires exactly once.
+  if (days >= GRACE_WARN_DAYS && days < GRACE_WARN_DAYS + 1) return 'warn';
+  return 'none';
+}
+
+/**
+ * Takes a featured card down and frees its county position. The one place this
+ * is written: `reconcile` calls it when a subscription ends, and license-grace
+ * calls it when it finds a canceled subscription on a row still marked
+ * featured — the state a missed `customer.subscription.deleted` leaves behind,
+ * where the position was held by nobody and nothing ever noticed.
+ */
+export async function releaseFeaturedSpot(db: SupabaseClient, listingId: string): Promise<void> {
+  const { error } = await db
+    .from('listings')
+    .update({ tier: 'claimed', featured_position: null, featured_cities: [], featured_since: null })
+    .eq('id', listingId);
+  if (error) throw error;
 }
 
 /** POSTs the Netlify build hook so the change shows on the site. Best effort. */

@@ -14,7 +14,7 @@
 // Refusing the whole purchase after Stripe has taken a card is worse.
 import type { Context } from '@netlify/functions';
 import type Stripe from 'stripe';
-import { admin, stripe, json, cityAvailability, nextPosition, notifyOps, rebuild } from '../lib/featured.mts';
+import { admin, stripe, json, cityAvailability, nextPosition, notifyOps, rebuild, releaseFeaturedSpot } from '../lib/featured.mts';
 
 export default async (req: Request, _context: Context) => {
   if (req.method !== 'POST') return json({ error: 'POST only.' }, 405);
@@ -94,19 +94,26 @@ async function fulfill(session: Stripe.Checkout.Session): Promise<void> {
   // this row would keep one position while silently being billed twice.
   //
   // Everything here decides from LIVE Stripe state rather than from ids alone.
-  // An earlier version compared ids and cancelled, which broke two ways: after
-  // Karen cancelled the duplicate by hand every redelivery for the next three
+  // An earlier version compared ids and canceled, which broke two ways: after
+  // Karen canceled the duplicate by hand every redelivery for the next three
   // days mailed "TWO live subscriptions" that was no longer true, and if she
-  // had instead kept the newer one and cancelled the original, a redelivery
-  // would have cancelled the one she kept and left the customer with no card.
+  // had instead kept the newer one and canceled the original, a redelivery
+  // would have canceled the one she kept and left the customer with no card.
   if (listing.tier === 'featured' && listing.stripe_subscription_id && listing.stripe_subscription_id !== subscriptionId) {
     const who = `${listing.license_number} (${listing.county})`;
     const s = stripe();
+    // Only a genuine "no such subscription" counts as missing. Swallowing every
+    // error here meant a Stripe blip read as "it does not exist": a failed read
+    // of the incoming one returned 200 and left the customer billed twice with
+    // no retry, and a failed read of the recorded one adopted over a live
+    // subscription that then billed forever with nothing pointing at it.
     const statusOf = async (id: string): Promise<string> => {
       try {
         return (await s.subscriptions.retrieve(id)).status;
-      } catch {
-        return 'missing';
+      } catch (err) {
+        const e = err as { type?: string; code?: string };
+        if (e?.type === 'StripeInvalidRequestError' && e?.code === 'resource_missing') return 'missing';
+        throw err;
       }
     };
     const DEAD = ['canceled', 'incomplete_expired', 'missing'];
@@ -123,14 +130,25 @@ async function fulfill(session: Stripe.Checkout.Session): Promise<void> {
     }
 
     // The subscription on file is gone and this one is live, so this is the
-    // only subscription the customer has. Cancelling it would leave them
+    // only subscription the customer has. Canceling it would leave them
     // paying nothing and showing nowhere. Adopt it and keep their placement.
     if (DEAD.includes(recorded)) {
-      const { error: adoptError } = await db
+      // Scoped to tier='featured': reconcile may have processed the recorded
+      // subscription's deleted event since the read above, and adopting onto a
+      // released row would leave a claimed listing carrying a live subscription.
+      const { data: adopted, error: adoptError } = await db
         .from('listings')
         .update({ stripe_subscription_id: subscriptionId, stripe_customer_id: customerId ?? null })
-        .eq('id', listing.id);
+        .eq('id', listing.id)
+        .eq('tier', 'featured')
+        .select('id');
       if (adoptError) throw adoptError;
+      if (!adopted || adopted.length === 0) {
+        // The row was released underneath us, so this is an ordinary purchase
+        // after a cancellation. Throwing lets Stripe redeliver into the normal
+        // fulfillment path, which will read the row fresh.
+        throw new Error(`Listing ${listing.license_number} was released while adopting ${subscriptionId}; retrying as a fresh purchase.`);
+      }
       await notifyOps(`Featured subscription replaced: ${listing.license_number}`,
         `${who} was featured on ${listing.stripe_subscription_id}, which is now ${recorded}. ` +
         `Their live subscription ${subscriptionId} has been attached to the listing instead, and ` +
@@ -147,16 +165,16 @@ async function fulfill(session: Stripe.Checkout.Session): Promise<void> {
         `${who} completed a second checkout while already featured on ` +
         `${listing.stripe_subscription_id}. The duplicate ${subscriptionId} is live and the ` +
         'cancel call FAILED, so they will be billed twice. Cancel it in Stripe by hand; this ' +
-        'retries on its own until then and goes quiet once the duplicate is cancelled.');
+        'retries on its own until then and goes quiet once the duplicate is canceled.');
       // Thrown on purpose: a 500 makes Stripe redeliver and the retry tries the
-      // cancel again. Once the duplicate is cancelled, by us or by hand, the
+      // cancel again. Once the duplicate is canceled, by us or by hand, the
       // check above returns 200 and the retries and the emails stop.
       throw new Error(`Could not cancel duplicate subscription ${subscriptionId} for ${listing.license_number}`);
     }
-    console.info(`${who}: cancelled duplicate ${subscriptionId}; ${listing.stripe_subscription_id} untouched.`);
-    await notifyOps(`Duplicate featured subscription cancelled: ${listing.license_number}`,
+    console.info(`${who}: canceled duplicate ${subscriptionId}; ${listing.stripe_subscription_id} untouched.`);
+    await notifyOps(`Duplicate featured subscription canceled: ${listing.license_number}`,
       `${who} completed a second checkout while already featured on ` +
-      `${listing.stripe_subscription_id}. The duplicate ${subscriptionId} was cancelled and the ` +
+      `${listing.stripe_subscription_id}. The duplicate ${subscriptionId} was canceled and the ` +
       'original left running. Check Stripe for any charge that already landed.');
     return;
   }
@@ -234,16 +252,9 @@ async function reconcile(subscription: Stripe.Subscription): Promise<void> {
   if (!listing || listing.tier !== 'featured') return;
 
   // Back to a plain claimed listing: their details stay, the placement goes.
-  const { error: writeError } = await db
-    .from('listings')
-    .update({
-      tier: 'claimed',
-      featured_position: null,
-      featured_cities: [],
-      featured_since: null,
-    })
-    .eq('id', listing.id);
-  if (writeError) throw writeError;
+  // Shared with license-grace, which needs the identical write when it finds a
+  // canceled subscription on a row this event never reached.
+  await releaseFeaturedSpot(db, listing.id);
   console.info(`Subscription ${subscription.id} ${subscription.status}; ${listing.license_number} back to claimed.`);
   await rebuild();
 }

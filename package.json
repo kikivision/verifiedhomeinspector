@@ -14,7 +14,7 @@
     "verify": "npm run test && npm run build && npm run smoke",
     "check": "astro check && tsc -p netlify/tsconfig.json",
     "brand": "node scripts/brand/build.mjs",
-    "test": "node scripts/attribution-labels.test.mjs && node scripts/county-gate.test.mjs && node scripts/licence-grace.test.mjs"
+    "test": "node scripts/attribution-labels.test.mjs && node scripts/county-gate.test.mjs && node scripts/license-grace.test.mjs"
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.7.4",

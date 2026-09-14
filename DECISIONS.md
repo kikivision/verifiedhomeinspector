@@ -13,24 +13,31 @@ without looking at what Stripe actually held.
 
 - **The remedy made the alert lie.** A failed cancel mailed "TWO live
   subscriptions" and threw so Stripe would retry. Stripe retries for
-  three days. The moment Karen did what the email said and cancelled the
+  three days. The moment Karen did what the email said and canceled the
   duplicate by hand, every remaining retry failed the cancel again —
-  Stripe refuses to cancel an already-cancelled subscription — and mailed
+  Stripe refuses to cancel an already-canceled subscription — and mailed
   the same now-false warning, roughly ten times, each also 500-ing the
   endpoint.
 - **It could cancel the subscription she kept.** If she resolved a double
-  sale by keeping the *newer* subscription and cancelling the original, a
+  sale by keeping the *newer* subscription and canceling the original, a
   redelivery arriving before `customer.subscription.deleted` was
   processed still saw `tier='featured'` with a different id, and
-  cancelled the one she kept. The customer would be left with no card and
+  canceled the one she kept. The customer would be left with no card and
   nothing billing.
 
 Both came from the same root: the branch compared ids and never asked
-Stripe for either subscription's status. It now retrieves both first.
+Stripe for either subscription's status. It now retrieves both first —
+and only a genuine `resource_missing` counts as gone. A fourth review
+caught that the first version swallowed *every* Stripe error into
+"missing", so a transient outage reading the incoming subscription
+returned 200 and left the customer billed twice with no retry, and a
+transient outage reading the recorded one adopted over a live
+subscription that would then bill forever with nothing pointing at it.
+Anything that is not `resource_missing` rethrows now, so Stripe retries.
 
 | state | action |
 |---|---|
-| the incoming one is already cancelled or gone | 200, nothing to do — this is what stops the retry storm |
+| the incoming one is canceled, or genuinely gone (`resource_missing`) | 200, nothing to do — this is what stops the retry storm |
 | the recorded one is dead, incoming is live | adopt the live one onto the listing, keep position and cities, mail |
 | both live | cancel the incoming duplicate, keep the running one, mail |
 | both live and the cancel fails | mail the truth and throw, so the retry tries again and goes quiet once it works |
@@ -55,16 +62,16 @@ one page, so counting distinct names in the database overcounts by one.
 
 ---
 
-## 2026-09-14 — A lapsed licence pauses the billing, holds the spot 30 days, then releases it
+## 2026-09-14 — A lapsed license pauses the billing, holds the spot 30 days, then releases it
 
-**Built.** `netlify/functions/licence-grace.mts`, a Netlify scheduled
+**Built.** `netlify/functions/license-grace.mts`, a Netlify scheduled
 function running daily. Closes the gap the county-gate review left open.
 
 ### The problem
 
 A delisted row renders on no page — that is the site's one promise kept
 honestly. But `import-dbpr.mjs` sets `delisted_at` and touches nothing
-else, so a *featured* inspector whose licence stopped appearing in the
+else, so a *featured* inspector whose license stopped appearing in the
 DBPR extract was invisible, still billed $50 a month, and still holding a
 county position nobody could buy. Every part of that is wrong in a
 different direction.
@@ -90,19 +97,35 @@ for a card nobody can see is the opposite of what the name on the site
 claims, and the amount of money involved is one month from one inspector.
 Decided by Karen, 2026-09-14.
 
-### Why 30 days
+### Why 35 days, and a warning at 30
 
-One monthly import cycle — the import runs `0 13 1 * *`, so a lapse is
-found on one run and released on the next if it is still gone. Note the
-lapse can already be up to a month old when the import first sees it, so
-the real window from the inspector's side is 30 to 60 days.
+Not 30, and the reason is arithmetic rather than generosity. `delisted_at`
+is only ever set and only ever cleared by the monthly import, and
+consecutive imports are up to 31 days apart. A 30-day threshold cancels
+the inspector BEFORE the import that could rescue them, in every 31-day
+month: delisted 1 Aug 13:05, the job on 1 Sep sees 30.4 days and cancels,
+and the import that would have restored them runs that afternoon. Seven
+months of the year it released a customer who had already renewed. A
+fourth review caught this before it shipped. The threshold has to clear
+the longest possible gap between imports, so 31 plus margin, and the job
+runs at 15:00 UTC — after the 13:00 import, not twelve hours ahead of it.
+
+The warning at 30 days exists because arithmetic is not the only way this
+goes wrong: the import stops the whole run if any county trips its shrink
+guard, so a month can pass with no re-check at all. The warning mails the
+inspector and Karen while there are still five days to intervene. It is a
+one-day window and the job runs daily, so it fires exactly once.
+
+The real window from the inspector's side is longer than 35 days either
+way, because the lapse can already be a month old when the import first
+sees it.
 
 ### Shape
 
 `graceAction` in `netlify/lib/featured.mts` is pure and decides all four
 outcomes; the function does the Stripe and email work around it. It
 decides about somebody's money, so it is tested case by case in
-`scripts/licence-grace.test.mjs`, including the boundary day, a corrupt
+`scripts/license-grace.test.mjs`, including the boundary day, a corrupt
 timestamp, a future timestamp, and a listing with no subscription. Three
 of those cases were verified by breaking the code and watching them fail.
 
@@ -110,12 +133,30 @@ Idempotent by reading the live `pause_collection` from Stripe rather than
 storing a flag: a second run the same day sees the state it just set and
 does nothing. That also means no migration.
 
+It only ever lifts **its own** pause. The pause is stamped
+`metadata.paused_by = 'license-grace'`, and a pause set by hand in the
+Stripe dashboard — a comped month, a dispute — is left alone, and does not
+count down to a cancellation either. Without that, the job would have
+un-paused Karen's own decisions overnight and mailed the inspector that
+billing had restarted.
+
+A subscription Stripe reports as already canceled on a row still marked
+featured is released rather than skipped. That is the state a missed
+`customer.subscription.deleted` leaves behind: a county position held by
+nobody, which nothing else would ever have noticed. The write is
+`releaseFeaturedSpot`, now shared with `reconcile`, so "one path" is true
+of the code and not just of the intention.
+
 ### What it will do today
 
 Nothing. Of the two featured listings, RMC has no Stripe subscription so
 it is filtered out of the query entirely, and Inspected PLLC is current
 and unpaused, which is `'none'`. The first time this function acts on
 anything, it will email.
+
+A scheduled function gets 30 seconds and each row can cost two Stripe
+calls, a user lookup and a mail, so it stops after six rows and says so in
+the summary; the rest are picked up by the next day's run.
 
 ---
 
@@ -145,7 +186,7 @@ Both fulfillment failure branches — every city refused, and no county
 position free — wrote `console.error` and nothing else. Netlify function
 logs expire in 7 days and nobody watches them; the free trial is 7 days.
 The first charge would have landed before anyone could have looked. Both
-now call `notifyOps`, which mails hello@ through Resend with the licence,
+now call `notifyOps`, which mails hello@ through Resend with the license,
 county, subscription id and what to do, and is best-effort so a failed
 send can never 500 the webhook into a Stripe retry and a double charge.
 
@@ -159,14 +200,14 @@ the second sees a different subscription id, proceeds, and overwrites
 billing, and its eventual `deleted` event matches no row. `fulfill` now
 cancels the duplicate, keeps the running subscription, and mails -- with
 the mail composed **after** the attempt, saying which actually happened.
-The first version built the "cancelled it" text before calling Stripe and
+The first version built the "canceled it" text before calling Stripe and
 sent it either way, so a Stripe outage would have produced an email
 saying it was handled while the customer paid twice. A failed cancel now
 mails the truth and throws, because a 500 makes Stripe redeliver and
 redelivery retries the cancel; a 200 would end the only chance of it
 succeeding on its own.
 
-### A lapsed licence holds a county position, and must keep holding it
+### A lapsed license holds a county position, and must keep holding it
 
 `nextPosition` did not filter `delisted_at`, though `cityAvailability`
 does and the dashboard's mirror did. The first fix added the filter to
@@ -187,9 +228,9 @@ without the delisted filter and cities with it, which is the line
 `county-gate.test.mjs` pins the absence of that filter, with the reason,
 so it does not get "fixed" again.
 
-**Not built, and a real gap:** a featured inspector whose licence lapses
+**Not built, and a real gap:** a featured inspector whose license lapses
 keeps paying for a card that renders on no page, and holds a spot nobody
-can buy. Cancelling the subscription, a grace period, or simply mailing
+can buy. Canceling the subscription, a grace period, or simply mailing
 Karen are all product decisions. `import-dbpr.mjs` is where it would go,
 at the point it sets `delisted_at` on a `tier='featured'` row.
 
@@ -255,7 +296,7 @@ copy and in fulfillment, and the sale ignored it.
 - **A race for the last spot.** `create-checkout` checks, then Stripe
   takes a card, then the webhook fulfills. If the last position goes in
   between, `nextPosition` returns null. That used to be written as a
-  silent null `featured_position`; it is now logged with the licence
+  silent null `featured_position`; it is now logged with the license
   number, the county and what to do (free a position with `set-tier.mjs`
   or refund). They keep the city cards they paid for.
 - **`set-tier.mjs`**, which is the deliberate hand-operated escape hatch
@@ -270,7 +311,7 @@ vanishing from the page.
 ### Tested by breaking it
 
 `scripts/county-gate.test.mjs` stubs the database and pins the cases that
-matter: an empty county sells position 1, a cancelled position 2 is
+matter: an empty county sells position 1, a canceled position 2 is
 reused before 3 so the row grows no holes, the sixth spot sells, the
 seventh is refused with a 409, an over-full county is still refused, and a
 null position never consumes a spot. Removing the throw and an

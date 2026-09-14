@@ -10,7 +10,7 @@
  *   node scripts/set-tier.mjs HI3532 claimed \
  *     --business "Inspect Florida LLC" --phone "(727) 222-5955"
  *   node scripts/set-tier.mjs HI3532 featured --position 3
- *   node scripts/set-tier.mjs HI3532 unclaimed        # they cancelled, or revoke a claim
+ *   node scripts/set-tier.mjs HI3532 unclaimed        # they canceled, or revoke a claim
  *   node scripts/set-tier.mjs HI3532 claimed --dry-run
  *
  * Flags:
@@ -191,7 +191,7 @@ async function main() {
   }
 
   if (tier === 'unclaimed') {
-    // Cancelling returns the row to what an import would produce, so the next
+    // Canceling returns the row to what an import would produce, so the next
     // import has nothing to disagree with. Their details go rather than linger
     // on a listing they no longer pay for.
     //

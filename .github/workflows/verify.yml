@@ -48,7 +48,7 @@ jobs:
           echo "Required secrets are present."
 
       # Pure-logic tests: no network, no build, so they run first and a broken
-      # county gate, licence-grace decision or attribution label fails in
+      # county gate, license-grace decision or attribution label fails in
       # seconds rather than after a five-minute build. They import .ts
       # directly, which needs the type stripping Node has had on by default
       # since 22.18.
