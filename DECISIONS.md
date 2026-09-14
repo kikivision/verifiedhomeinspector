@@ -5,6 +5,86 @@ until you know why. Newest first.
 
 ---
 
+## 2026-09-14 — The waitlist is a queue per city, and paying inspectors are in it too
+
+**Decided. Not built.** Build it when any Pinellas city page fills, when
+the county reaches six, or when a featured inspector asks to change
+cities — whichever comes first. Supersedes the shape in the 2026-09-11
+entry, which still holds for what the full-city card says; this entry is
+what happens after someone joins.
+
+### The case that decided it
+
+Buyer six in Pinellas picks Tarpon Springs, Dunedin and Seminole because
+St. Petersburg and Clearwater are full. A Clearwater slot frees. Today
+nothing tells him, nothing tells us, and he could not act on it anyway:
+his dashboard offers Manage billing, which is Stripe, and Stripe knows
+nothing about cities; `create-checkout` refuses him as already featured.
+The slot goes to whoever checks out next, possibly someone who joined
+after him. The waitlist was imagined as a line of people with no spot.
+The people most likely to be in it already pay us.
+
+### How it works
+
+- **One queue per city page.** A row is (listing, city, joined_at, and
+  for a featured inspector, which of their current cities the new one
+  replaces). One row per listing per city. Joined from the dashboard: a
+  city marked "(full)" stays clickable and asks "replace which?" if the
+  inspector is featured, or reads "invite me when it opens" if claimed.
+  The public full-city card (2026-09-11 entry) sends a claimed inspector
+  to the same place after they claim.
+- **A slot frees** in `reconcile` (cancellation), in a swap (below), or
+  by `set-tier.mjs`. Whoever frees it runs the same promote step: first
+  row in that city's queue by `joined_at`.
+- **Promoting a featured inspector is an instant, free swap.** Update
+  `featured_cities` (drop the named city, add the freed one, still at
+  most `MAX_FEATURED_CITIES`), rebuild, email "You're on Clearwater now;
+  Seminole is released." Nothing is charged, so no fresh yes is needed.
+  The dropped city is now free: run promote again for it. Swaps cascade,
+  and the cascade is bounded because each listing holds at most three.
+- **Promoting a claimed inspector is an invite.** Email with a checkout
+  link and a hold window (72 hours to start). Checkout honors the hold by
+  treating the reserved slot as theirs; if it lapses, the next row is
+  promoted. Never charge a stored card: "nothing is charged until it is
+  live and you have seen it" has been promised since the first county
+  page (see `create-checkout.mts`).
+- **Order is joined_at, featured or not.** No priority rule. A featured
+  inspector's promotion completes at once while a claimed one's waits on
+  a hold, so the incumbent gets the practical edge without a special
+  case to explain.
+- **A separate county queue** for the six county positions, for claimed
+  inspectors only; featured inspectors already hold one. Promote on the
+  same trigger, invite-only, same hold. `create-checkout` must refuse a
+  full county the way it refuses a full city today, and the county page
+  must slice at `FEATURED_CAP`, or nothing is ever scarce and nobody
+  joins.
+
+### Build first: self-serve city changes
+
+Changing cities into a city that already has room is the same write as a
+swap, minus the queue: availability check, update `featured_cities`,
+rebuild, email. Listed as "not built, contact form for now" on
+2026-09-12. It is the prerequisite for the swap step and fixes buyer six
+on its own on any day he happens to look; the queue is what makes him not
+have to look.
+
+### Why it matters beyond fairness
+
+Queue length per city is the pricing instrument the 2026-09-11 entry
+wanted, one level finer. Six waiting on Clearwater and none on Tarpon
+Springs says which pages are worth more than $50, which the county queue
+alone never could.
+
+### What is deliberately not in it
+
+No prorating, no partial months, no price differences by city or
+position, no rising-over-time within the six. Position is the lowest
+open number at fulfillment and stays yours while you stay; when position
+one cancels the next buyer takes it. None of that is stated on the site
+yet, and should not be until the row holds four or more cards.
+
+---
+
 ## 2026-09-14 — The county page holds six featured spots, not four
 
 **Built.** `FEATURED_CAP` on the county page, `COUNTY_POSITIONS` in
