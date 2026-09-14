@@ -181,6 +181,7 @@ const TRIAL_DAYS = 7;
                   <p class="dash-muted" id="featuredCityNote">Loading open spots…</p>
                   <div class="dash-checks" id="featuredCityChecks"></div>
                 </fieldset>
+                <p class="dash-muted" id="featuredFullNote" hidden></p>
                 <button type="button" class="btn-primary" id="featuredBtn" disabled>Start featured — $50/month</button>
                 <p class="dash-muted" id="featuredNote"></p>
               </div>
@@ -257,7 +258,7 @@ const TRIAL_DAYS = 7;
     import { getCounty } from '../../lib/counties';
     import { inspectorPath } from '../../lib/slug';
     import { badgeSvg } from '../../lib/badge';
-    import { MIN_CITY_LISTINGS, CITY_FEATURED_CAP, MAX_FEATURED_CITIES, featuredCities } from '../../lib/cities';
+    import { MIN_CITY_LISTINGS, CITY_FEATURED_CAP, COUNTY_FEATURED_CAP, MAX_FEATURED_CITIES, featuredCities } from '../../lib/cities';
     import { submitNetlifyForm } from '../../lib/netlify-forms';
     import { trackEvent } from '../../lib/gtag';
 
@@ -560,10 +561,19 @@ const TRIAL_DAYS = 7;
       const counts = await getCityCountsForCounty(listing.county);
       const { data: featuredRows } = await supabase
         .from('listings')
-        .select('license_number, city, featured_cities')
+        .select('license_number, city, featured_cities, featured_position')
         .eq('county', listing.county)
         .eq('tier', 'featured')
         .is('delisted_at', null);
+      // create-checkout refuses a full county. Saying so here, before they
+      // pick cities, is the difference between an explanation and a rejected
+      // button. The server check is the real gate; this only mirrors it.
+      const positionsTaken = new Set(
+        ((featuredRows ?? []) as { featured_position: number | null }[])
+          .map((r) => r.featured_position)
+          .filter((p) => p !== null),
+      );
+      const countyFull = positionsTaken.size >= COUNTY_FEATURED_CAP;
       const open = new Map<string, number>();
       for (const [city, n] of counts) if (n >= MIN_CITY_LISTINGS) open.set(city, CITY_FEATURED_CAP);
       for (const r of (featuredRows ?? []) as { license_number: string; city: string; featured_cities: string[] | null }[]) {
@@ -594,6 +604,14 @@ const TRIAL_DAYS = 7;
       note.textContent = cities.length > 0
         ? `Pick up to ${MAX_FEATURED_CITIES}. Your card also shows on the county page.`
         : 'No city pages in this county yet; your card shows on the county page.';
+      const fullNote = $('#featuredFullNote');
+      fullNote.hidden = !countyFull;
+      if (countyFull) {
+        const name = getCounty(listing.county)?.name ?? 'this county';
+        fullNote.textContent =
+          `All ${COUNTY_FEATURED_CAP} featured spots in ${name} are taken right now. `
+          + 'Email hello@verifiedhomeinspector.com and I will tell you the moment one opens.';
+      }
       enforceCityLimit();
       cityChecksFeatured.addEventListener('change', enforceCityLimit);
     }
@@ -608,7 +626,7 @@ const TRIAL_DAYS = 7;
         if (!i.checked && !i.disabled) i.disabled = chosen.length >= MAX_FEATURED_CITIES;
         if (!i.checked && i.disabled && chosen.length < MAX_FEATURED_CITIES && i.nextSibling?.textContent?.includes('open')) i.disabled = false;
       });
-      featuredBtn.disabled = chosen.length === 0;
+      featuredBtn.disabled = chosen.length === 0 || !$('#featuredFullNote').hidden;
     }
 
     featuredBtn.addEventListener('click', async () => {

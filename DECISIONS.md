@@ -5,6 +5,64 @@ until you know why. Newest first.
 
 ---
 
+## 2026-09-14 — A full county is refused at checkout
+
+**Built.** `assertCountyHasRoom` in `netlify/lib/featured.mts`, called by
+`create-checkout` before Stripe and before the city check, because a full
+county cannot be sold whatever cities are open and "Pinellas is full" is a
+clearer refusal than "Clearwater has no spot". It throws 409 naming the
+number of spots. The dashboard mirrors it: when every position is taken
+the buy button is disabled and the card says so with an email address,
+before the inspector picks cities rather than after they click.
+
+This is the piece the 2026-09-11 and 2026-09-14 waitlist entries were
+waiting on. Nothing was scarce before it: the county cap existed in the
+copy and in fulfillment, and the sale ignored it.
+
+### The two ways a seventh card could still appear, and what happens now
+
+- **A race for the last spot.** `create-checkout` checks, then Stripe
+  takes a card, then the webhook fulfills. If the last position goes in
+  between, `nextPosition` returns null. That used to be written as a
+  silent null `featured_position`; it is now logged with the licence
+  number, the county and what to do (free a position with `set-tier.mjs`
+  or refund). They keep the city cards they paid for.
+- **`set-tier.mjs`**, which is the deliberate hand-operated escape hatch
+  and stays one.
+
+In both cases the county page no longer breaks its promise: the featured
+row renders only listings that hold a position, sliced at
+`COUNTY_FEATURED_CAP`, and anything past that drops into the rows below,
+where it still shows as claimed with its contact details rather than
+vanishing from the page.
+
+### Tested by breaking it
+
+`scripts/county-gate.test.mjs` stubs the database and pins the cases that
+matter: an empty county sells position 1, a cancelled position 2 is
+reused before 3 so the row grows no holes, the sixth spot sells, the
+seventh is refused with a 409, an over-full county is still refused, and a
+null position never consumes a spot. Removing the throw and an
+off-by-one in the position loop were both introduced on purpose and both
+failed the test. It runs in `npm run verify` and in CI before the build,
+along with the attribution-label test that had no runner until now.
+
+### Two small things this forced
+
+`HttpError` no longer uses a `public status` parameter property, and
+`featured.mts` imports `../../src/lib/cities.ts` with its extension, as
+`cities.ts` now does for `./slug.ts`. Node's type stripper rejects
+parameter properties and extensionless specifiers, and without both
+changes the module cannot be imported by a test at all. The netlify
+tsconfig already set `allowImportingTsExtensions`.
+
+### Still not built
+
+The waitlist itself. A refused inspector is told to email, which is where
+the 2026-09-11 entry said the list should land until it has a table.
+
+---
+
 ## 2026-09-14 — The featured numbers live in one file, and the smoke test holds the prose to them
 
 **Built.** `src/lib/cities.ts` is now the only place a featured-inventory

@@ -16,7 +16,7 @@
 //   URL                        set by Netlify itself: the site's canonical URL
 import Stripe from 'stripe';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { CITY_FEATURED_CAP, COUNTY_FEATURED_CAP, MAX_FEATURED_CITIES, MIN_CITY_LISTINGS } from '../../src/lib/cities';
+import { CITY_FEATURED_CAP, COUNTY_FEATURED_CAP, MAX_FEATURED_CITIES, MIN_CITY_LISTINGS } from '../../src/lib/cities.ts';
 
 /** How long a new featured card runs before the first charge. */
 export const TRIAL_DAYS = 7;
@@ -26,8 +26,15 @@ export const TRIAL_DAYS = 7;
 const COUNTY_POSITIONS = COUNTY_FEATURED_CAP;
 
 export class HttpError extends Error {
-  constructor(public status: number, message: string) {
+  status: number;
+
+  // Written out rather than as a `public status` parameter property, which
+  // node's type stripper refuses: scripts/county-gate.test.mjs imports this
+  // module directly, and a parameter property makes the whole file
+  // unimportable outside the bundler. Same class either way.
+  constructor(status: number, message: string) {
     super(message);
+    this.status = status;
   }
 }
 
@@ -161,6 +168,22 @@ export async function assertCitiesAvailable(db: SupabaseClient, listing: Listing
     if (open.get(city)! <= 0) throw new HttpError(409, `${city} has no featured spot open right now.`);
   }
   return wanted;
+}
+
+/**
+ * Throws if every county-page position is taken, and returns the one this
+ * listing would get. Called before Stripe for the same reason
+ * assertCitiesAvailable is: a county page holds COUNTY_POSITIONS cards and
+ * the copy on it promises never more, so a sale past that is a promise we
+ * cannot keep and a card the buyer cannot be given. Refusing costs one sale;
+ * taking the money costs the promise on every county page.
+ */
+export async function assertCountyHasRoom(db: SupabaseClient, listing: ListingRow): Promise<number> {
+  const position = await nextPosition(db, listing.county);
+  if (position === null) {
+    throw new HttpError(409, `All ${COUNTY_POSITIONS} featured spots in this county are taken right now.`);
+  }
+  return position;
 }
 
 /** Lowest free county-page position, or null if all are taken. */

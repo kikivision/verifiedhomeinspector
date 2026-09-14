@@ -26,8 +26,18 @@ const county = getCounty(countySlug!)!;
 // this route to Astro's server-rendered mode is the fix, not a rewrite.
 const listings: Listing[] = county.status === 'live' ? await getListingsForCounty(county.slug) : [];
 
-const featured = listings.filter((l) => l.tier === 'featured');
-const nonFeatured = listings.filter((l) => l.tier !== 'featured');
+// A county position is what earns a place in the featured row, and the copy
+// on this page promises never more than COUNTY_FEATURED_CAP of them.
+// create-checkout refuses a full county, so a card beyond the cap or without
+// a position can now only come from set-tier.mjs or from losing a race for
+// the last spot at fulfillment. Either way it drops to the rows below, where
+// it still shows as claimed with its contact details, rather than breaking
+// the promise in public or vanishing from the page entirely.
+const featured = listings
+  .filter((l) => l.tier === 'featured' && l.featured_position !== null)
+  .slice(0, COUNTY_FEATURED_CAP);
+const inFeaturedRow = new Set(featured.map((l) => l.id));
+const nonFeatured = listings.filter((l) => !inFeaturedRow.has(l.id));
 // Cities actually present in the data, so the filter can never offer a city
 // with nothing behind it.
 const cities = [...new Set(nonFeatured.map((l) => l.city))].sort((a, b) => a.localeCompare(b));

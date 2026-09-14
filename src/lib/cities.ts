@@ -1,5 +1,5 @@
 import type { Listing } from './supabase';
-import { slugify } from './slug';
+import { slugify } from './slug.ts';
 
 /**
  * A city gets its own page only with this many listings. The DBPR extract

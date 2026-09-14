@@ -95,6 +95,17 @@ async function fulfill(session: Stripe.Checkout.Session): Promise<void> {
   }
 
   const position = listing.tier === 'featured' ? listing.featured_position : await nextPosition(db, listing.county);
+  if (position === null) {
+    // create-checkout refuses a full county, so reaching here means the last
+    // position went between that check and this write, or the row was set by
+    // hand. They paid: they keep their city cards and this is logged loudly
+    // rather than written as a silent null, which is what used to happen.
+    console.error(
+      `Listing ${listing.license_number} paid but ${listing.county} had no free county position at ` +
+        `fulfillment. Featured on ${granted.join(', ') || 'no city pages'} with no county placement. ` +
+        'Free a position with set-tier.mjs or refund the subscription.',
+    );
+  }
   const { error: writeError } = await db
     .from('listings')
     .update({

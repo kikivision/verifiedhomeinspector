@@ -5,12 +5,14 @@
 // subscription with a free first week, so the card is live before anything is
 // charged — which is what "nothing is charged until it is live and you have
 // seen it" has promised since the first county page. Everything that decides
-// whether the sale is allowed (claimed listing, cities with open spots, no
-// more than three) is checked here, before Stripe, so a full city is refused
-// before anyone types a card number. Fulfilment is the webhook's job.
+// whether the sale is allowed (claimed listing, a county with a free
+// position, cities with open spots, no more than three) is checked here,
+// before Stripe, so a full county or city is refused before anyone types a
+// card number. Fulfilment is the webhook's job.
 import type { Context } from '@netlify/functions';
 import {
-  admin, stripe, siteUrl, json, errorResponse, callerListing, assertCitiesAvailable, HttpError, TRIAL_DAYS,
+  admin, stripe, siteUrl, json, errorResponse, callerListing, assertCitiesAvailable,
+  assertCountyHasRoom, HttpError, TRIAL_DAYS,
 } from '../lib/featured.mts';
 
 /** `{ customer }` when the stored customer is this inspector, else `{ customer_email }`. */
@@ -44,6 +46,10 @@ export default async (req: Request, _context: Context) => {
       throw new HttpError(400, 'This license no longer appears in the DBPR extract, so it cannot be featured.');
     }
     const body = (await req.json().catch(() => ({}))) as { cities?: string[] };
+    // The county first: a full county cannot be sold at all, whatever cities
+    // are open, and saying so before the city list is a clearer refusal than
+    // "Clearwater has no spot" when the real answer is that the county does not.
+    await assertCountyHasRoom(db, listing);
     const cities = await assertCitiesAvailable(db, listing, body.cities ?? []);
 
     const priceId = process.env.STRIPE_PRICE_FEATURED;

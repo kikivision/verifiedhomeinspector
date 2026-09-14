@@ -11,9 +11,10 @@
     "preview": "astro preview",
     "astro": "astro",
     "smoke": "node scripts/smoke-test.mjs",
-    "verify": "npm run build && npm run smoke",
+    "verify": "npm run test && npm run build && npm run smoke",
     "check": "astro check && tsc -p netlify/tsconfig.json",
-    "brand": "node scripts/brand/build.mjs"
+    "brand": "node scripts/brand/build.mjs",
+    "test": "node scripts/attribution-labels.test.mjs && node scripts/county-gate.test.mjs"
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.7.4",
