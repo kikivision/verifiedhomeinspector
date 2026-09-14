@@ -15,7 +15,7 @@ import ListingRows from '../../../../components/ListingRows.astro';
 import ListingEvents from '../../../../components/ListingEvents.astro';
 import { counties, getCounty, searchName } from '../../../../lib/counties';
 import { getAllListings, isClaimed, type Listing } from '../../../../lib/supabase';
-import { cityPagesFor, cityPath, featuredCities, CITY_FEATURED_CAP, CITY_FEATURED_TARGET, type CityPage } from '../../../../lib/cities';
+import { cityPagesFor, cityPath, featuredCities, cityFeaturedTarget, CITY_FEATURED_CAP, type CityPage } from '../../../../lib/cities';
 import { inspectorPath } from '../../../../lib/slug';
 
 export async function getStaticPaths() {
@@ -69,8 +69,9 @@ const county = getCounty(page.county)!;
 const city = page.city;
 const featuredIds = new Set(featured.map((l) => l.id));
 const rows = page.listings.filter((l) => !featuredIds.has(l.id));
-// Drawn from the target, not the cap: see CITY_FEATURED_TARGET.
-const openSpots = Math.max(0, CITY_FEATURED_TARGET - featured.length);
+// Drawn from the target, not the cap, and a small city shows two rather
+// than four: see cityFeaturedTarget.
+const openSpots = Math.max(0, cityFeaturedTarget(page.listings.length) - featured.length);
 const tableContext = `city_${county.slug}_${page.slug}_table`;
 
 const title = `Home Inspectors in ${city}, FL | Verified Home Inspector`;

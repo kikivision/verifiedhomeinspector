@@ -28,11 +28,31 @@ export const MIN_CITY_LISTINGS = 3;
  */
 export const CITY_FEATURED_CAP = 6;
 /**
- * How many "featured spots open" cards an empty city page draws. Below the
- * cap on purpose, same as the county page: the copy states the ceiling, the
- * page does not draw six dashed boxes to prove it.
+ * How many featured positions a city page shows while spots are open — the
+ * open-slot cards are this many less whatever is already sold. Below the cap
+ * on purpose, same as the county page: the copy states the ceiling, the page
+ * does not draw six dashed boxes to prove it. Both values are EVEN because
+ * .featured-grid is two columns; an odd one leaves a visible hole.
+ *
+ * A small city shows two, not four. Gulfport lists three inspectors, so four
+ * dashed boxes above them made the advertisement bigger than the page it sat
+ * on. The cap is unchanged there: a small city can still fill to six if six
+ * inspectors pay for it. This only governs how many empty boxes we draw
+ * before anyone has.
  */
 export const CITY_FEATURED_TARGET = 4;
+export const CITY_FEATURED_TARGET_SMALL = 2;
+/**
+ * Under this many listings a city page is "small". Ten splits Pinellas where
+ * the data already splits it: Dunedin has 19 and Pinellas Park has 9, with
+ * nothing between. About half the state's 315 city pages fall below it.
+ */
+export const SMALL_CITY_LISTINGS = 10;
+
+/** Featured positions to show on a city page with this many listings. */
+export function cityFeaturedTarget(listingCount: number): number {
+  return listingCount < SMALL_CITY_LISTINGS ? CITY_FEATURED_TARGET_SMALL : CITY_FEATURED_TARGET;
+}
 
 /**
  * How many city pages one featured listing may name. Decided 2026-09-12:

@@ -36,12 +36,21 @@ It also removes most of the need for the city-swap machinery in the
 waitlist entry above: the buyer who would have wanted to upgrade to
 Clearwater now simply gets Clearwater.
 
-### Small cities need no smaller cap
+### Small cities need no smaller cap, but they do draw fewer empty boxes
 
-A city page holds at most as many featured cards as inspectors who named
-it, and nobody picks Gulfport over Clearwater. Those pages stay small on
-their own, so the cap can be one number everywhere and the copy can stay
-one sentence.
+The cap is one number everywhere and the copy stays one sentence: a city
+page holds at most as many featured cards as inspectors who named it, and
+nobody picks Gulfport over Clearwater, so those pages stay small on their
+own and can still fill to six if six inspectors pay.
+
+What does vary is how many "spot open" cards an unsold page draws.
+`cityFeaturedTarget` returns 2 under `SMALL_CITY_LISTINGS` (10) and 4 at
+or above it. Gulfport lists three inspectors; four dashed boxes above
+them made the advertisement bigger than the page it sat on and read as a
+page begging. Ten splits Pinellas where the data already splits it —
+Dunedin has 19 and Pinellas Park has 9, with nothing between — and puts
+about half the state's 315 city pages on two. Both values are even
+because the grid is two columns.
 
 ### On diluting the inspector who already paid
 

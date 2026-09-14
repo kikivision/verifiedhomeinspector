@@ -594,9 +594,11 @@ check(cityPages.length >= 40,
   `Only ${cityPages.length} city pages were built; the four counties hold more than 40 cities with three or more listings.`);
 const citiesSource = await readFile('src/lib/cities.ts', 'utf8');
 const cityCap = Number(citiesSource.match(/CITY_FEATURED_CAP = (\d+)/)?.[1] ?? NaN);
-const cityTarget = Number(citiesSource.match(/CITY_FEATURED_TARGET = (\d+)/)?.[1] ?? NaN);
+// The target varies by page size (cityFeaturedTarget), so the row is bounded
+// by the smallest target below and the cap above rather than one number.
+const cityTarget = Number(citiesSource.match(/CITY_FEATURED_TARGET_SMALL = (\d+)/)?.[1] ?? NaN);
 check(Number.isInteger(cityCap) && Number.isInteger(cityTarget),
-  'Could not read CITY_FEATURED_CAP / CITY_FEATURED_TARGET from lib/cities.ts.');
+  'Could not read CITY_FEATURED_CAP / CITY_FEATURED_TARGET_SMALL from lib/cities.ts.');
 for (const path of cityPages) {
   const html = faqHtml.get(path);
   const page = pagePath(path);
@@ -610,7 +612,7 @@ for (const path of cityPages) {
     // than the cap the copy promises.
     const shown = cards + slots;
     check(shown >= Math.min(cityTarget, cityCap),
-      `${page} shows ${shown} featured positions, but CITY_FEATURED_TARGET is ${cityTarget}.`);
+      `${page} shows ${shown} featured positions, fewer than the smallest target of ${cityTarget}.`);
     check(shown <= cityCap,
       `${page} shows ${shown} featured positions, but the copy promises never more than ${cityCap}.`);
     check(html.includes(`${cityCap} spots per city, never more`),
