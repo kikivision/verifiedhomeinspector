@@ -78,9 +78,13 @@ check('refusal names the number of spots',
   new RegExp(`All ${COUNTY_FEATURED_CAP} featured spots`).test(err?.message ?? ''),
   `message was ${JSON.stringify(err?.message)}`);
 
-// The database CHECK constraint makes a 7 impossible today, so this is a
-// guard against the constraint being relaxed without this code following.
-check('a position above the cap is still refused', (await refused(stubDb([...full, 7]))) !== null);
+// A stored position above the cap must not be read as "nothing in 1..6 is
+// taken". The earlier version of this case fed [...full, 7], which every
+// implementation refuses because all six are already taken — it proved
+// nothing. [7] alone is the case that bites: six spots stand empty.
+check('a position above the cap does not block the free ones',
+  (await nextPosition(stubDb([7]), 'pinellas')) === 1,
+  'A 7 is out of range, not a holder of position 1.');
 
 // A failed query must surface, not read as an empty county and sell position 1.
 let queryError = null;
@@ -114,12 +118,22 @@ await nextPosition(probe, 'pinellas');
 for (const [what, needle] of [
   ['scope to the county', 'eq county pinellas'],
   ['count only featured rows', 'eq tier featured'],
-  ['ignore delisted licences', 'is delisted_at null'],
   ['read the listings table', 'from listings'],
 ]) {
   check(`nextPosition must ${what}`, probe.calls.includes(needle),
     `The query was: ${probe.calls.join(' | ')}`);
 }
+
+// The absence of a filter, pinned deliberately. A delisted featured row still
+// occupies (county, featured_position) in uniq_featured_slot_per_county, and
+// import-dbpr sets delisted_at without touching tier or position. Filtering
+// here was tried on 2026-09-14 and is the wrong direction: it hands out a
+// position the index already holds, so the gate passes, the card is taken, and
+// the UPDATE in fulfill fails 23505 while Stripe retries and the trial expires.
+// Counting a delisted row as taken refuses the sale, which is the safe answer.
+check('nextPosition must NOT skip delisted rows',
+  !probe.calls.includes('is delisted_at null'),
+  `The query was: ${probe.calls.join(' | ')}. See DECISIONS.md 2026-09-14.`);
 
 if (failures.length > 0) {
   console.error(`\nCounty gate failed ${failures.length} check(s):\n`);

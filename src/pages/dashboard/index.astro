@@ -559,17 +559,27 @@ const TRIAL_DAYS = 7;
       if (!listing) return;
       const note = $('#featuredCityNote');
       const counts = await getCityCountsForCounty(listing.county);
+      // Two reads: cities exclude delisted rows (they render nowhere, so they
+      // hold no city card), positions include them (the unique index does, so
+      // the position is not free to sell). nextPosition on the server draws the
+      // same line; a mirror that disagreed offered a spot the server refused.
       const { data: featuredRows } = await supabase
         .from('listings')
-        .select('license_number, city, featured_cities, featured_position')
+        .select('license_number, city, featured_cities')
         .eq('county', listing.county)
         .eq('tier', 'featured')
-        .is('delisted_at', null);
+        .is('delisted_at', null) as { data: { license_number: string; city: string; featured_cities: string[] | null }[] | null };
+      const { data: positionRows } = await supabase
+        .from('listings')
+        .select('featured_position')
+        .eq('county', listing.county)
+        .eq('tier', 'featured')
+        .not('featured_position', 'is', null);
       // create-checkout refuses a full county. Saying so here, before they
       // pick cities, is the difference between an explanation and a rejected
       // button. The server check is the real gate; this only mirrors it.
       const positionsTaken = new Set(
-        ((featuredRows ?? []) as { featured_position: number | null }[])
+        ((positionRows ?? []) as { featured_position: number | null }[])
           .map((r) => r.featured_position)
           .filter((p) => p !== null),
       );

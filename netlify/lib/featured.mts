@@ -12,6 +12,8 @@
 //   STRIPE_PRICE_FEATURED      price_… for the $50/month founding-rate price
 //   PUBLIC_SUPABASE_URL        already set for the build
 //   SUPABASE_SERVICE_ROLE_KEY  never PUBLIC_, never in the repo
+//   RESEND_API_KEY             so notifyOps can mail hello@ when a paid card
+//                              cannot be delivered as sold
 //   NETLIFY_BUILD_HOOK         so a purchase rebuilds the site
 //   URL                        set by Netlify itself: the site's canonical URL
 import Stripe from 'stripe';
@@ -193,11 +195,18 @@ export async function nextPosition(db: SupabaseClient, county: string): Promise<
     .select('featured_position')
     .eq('county', county)
     .eq('tier', 'featured')
-    // A licence that stopped appearing in the DBPR extract is not rendered on
-    // any page, so it must not hold a position either. Without this the
-    // dashboard (which does filter delisted) offered a spot the server then
-    // refused as full. cityAvailability has always filtered it.
-    .is('delisted_at', null)
+    // Deliberately NOT filtering delisted_at, though cityAvailability does.
+    // `uniq_featured_slot_per_county` constrains (county, featured_position)
+    // for every tier='featured' row with a position, delisted or not, and
+    // import-dbpr sets delisted_at without touching tier or position. Skipping
+    // those rows here hands out a position the index already holds: the sale
+    // passes the gate, the card is taken, and the UPDATE in fulfill fails
+    // 23505 forever while Stripe retries and the trial runs out. Counting them
+    // as taken is a refusal; ignoring them is a charge for nothing.
+    //
+    // The cost is a lapsed licence holding a spot that renders nowhere while
+    // still being billed. That is a product decision (cancel? grace period?)
+    // and is listed as not-built in DECISIONS.md.
     .not('featured_position', 'is', null);
   if (error) throw new HttpError(500, error.message);
   const taken = new Set((data as { featured_position: number }[]).map((r) => r.featured_position));
@@ -222,6 +231,9 @@ export async function notifyOps(subject: string, text: string): Promise<void> {
   try {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
+      // Bounded: an unbounded call here holds the webhook open, Stripe gives up
+      // and redelivers, and the redelivery repeats whatever this was reporting.
+      signal: AbortSignal.timeout(5000),
       headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         from: 'Verified Home Inspector <hello@mail.verifiedhomeinspector.com>',

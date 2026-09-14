@@ -213,12 +213,18 @@ const countyPages = (await htmlFiles(join(DIST, 'fl')))
 for (const file of countyPages) {
   const html = await readFile(file, 'utf8');
   const page = pagePath(file);
+  // A coming_soon county renders a placeholder panel and no featured row, so
+  // there is no cap to check and no promise to state.
+  if (html.includes('coming-soon-panel')) { notes.push(`${page} is coming soon, featured checks skipped`); continue; }
   const shown = (html.match(/card ad-slot/g) ?? []).length + (html.match(/class="card featured"/g) ?? []).length;
   check(shown <= cap, `${page} shows ${shown} featured positions, but the copy promises never more than ${cap}.`);
   check(html.includes(`${cap} spots per county, never more`), `${page} does not state the cap of ${cap}.`);
-  check(!/data-tier="featured"/.test(html),
-    `${page} has a featured listing in the plain table.`,
-    'It holds no county position, so it paid for a card it is not getting. Give it one with set-tier.mjs.');
+  // A warning, not a failure: this is a data state, and a push has no power to
+  // fix it — the listing is down here precisely because no position was free.
+  // The webhook already mails hello@ when it happens.
+  if (/data-tier="featured"/.test(html)) {
+    notes.push(`${page} has a featured listing in the plain table: it holds no county position, so someone is paying for a card they are not getting`);
+  }
 }
 
 // create-checkout must actually call the gate. Everything else here tests

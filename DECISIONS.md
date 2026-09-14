@@ -43,15 +43,41 @@ open it again, complete both: the first fulfilment features the listing,
 the second sees a different subscription id, proceeds, and overwrites
 `stripe_subscription_id`. The first subscription is orphaned and keeps
 billing, and its eventual `deleted` event matches no row. `fulfill` now
-cancels the duplicate, keeps the running subscription, and mails.
+cancels the duplicate, keeps the running subscription, and mails -- with
+the mail composed **after** the attempt, saying which actually happened.
+The first version built the "cancelled it" text before calling Stripe and
+sent it either way, so a Stripe outage would have produced an email
+saying it was handled while the customer paid twice. A failed cancel now
+mails the truth and throws, because a 500 makes Stripe redeliver and
+redelivery retries the cancel; a 200 would end the only chance of it
+succeeding on its own.
 
-### A lapsed licence held a county position
+### A lapsed licence holds a county position, and must keep holding it
 
 `nextPosition` did not filter `delisted_at`, though `cityAvailability`
-always has and the dashboard's mirror of it does. A featured inspector
-whose licence stopped appearing in the DBPR extract kept a position that
-renders nowhere: the page would show five cards while the server refused
-a sixth sale as full. It filters now.
+does and the dashboard's mirror did. The first fix added the filter to
+`nextPosition`. That was the wrong direction, and a second review caught
+it before it shipped: `uniq_featured_slot_per_county` constrains
+`(county, featured_position)` for every `tier='featured'` row with a
+position, delisted or not, and `import-dbpr.mjs` sets `delisted_at`
+without touching tier or position. Skipping those rows hands out a
+position the index already holds -- the gate passes, the card is taken,
+the UPDATE in `fulfill` fails 23505, and Stripe retries that same failure
+for three days while the 7-day trial runs out. A safe 409 became a charge
+for nothing.
+
+So the position stays counted, and the **dashboard** was changed to agree
+with the server rather than the other way round: it reads positions
+without the delisted filter and cities with it, which is the line
+`nextPosition` and `cityAvailability` already drew.
+`county-gate.test.mjs` pins the absence of that filter, with the reason,
+so it does not get "fixed" again.
+
+**Not built, and a real gap:** a featured inspector whose licence lapses
+keeps paying for a card that renders on no page, and holds a spot nobody
+can buy. Cancelling the subscription, a grace period, or simply mailing
+Karen are all product decisions. `import-dbpr.mjs` is where it would go,
+at the point it sets `delisted_at` on a `tier='featured'` row.
 
 ### The test was pretending to test the query
 
@@ -64,11 +90,25 @@ asserts the wiring. Both were verified by breaking them.
 
 ### And the smoke test only ever looked at Pinellas
 
-One shared template renders all 57 county pages, so a miss is silent
+One shared template renders all 56 county pages, so a miss is silent
 everywhere at once. The cap and the promise are now checked on every
 county page, and a `data-tier="featured"` row in the plain table fails
 the build: a featured listing down there holds no county position, which
 means somebody is paying for a card they are not getting.
+
+### Two more the second review found
+
+`notifyOps` had no timeout, and both alerts were sent before the row was
+written -- so a hung Resend call would hold the webhook open until Stripe
+gave up, and the redelivery would repeat the whole thing. The fetch is
+bounded at 5 seconds and the alerts are collected and sent after the
+UPDATE succeeds.
+
+The stranded-featured check was a build failure. A featured listing in
+the plain table is a data state, and no push can fix it: the listing is
+down there precisely because no position was free to give it. It is a
+warning now. `notifyOps` is the signal that matters, and blocking every
+unrelated deploy was the wrong lever.
 
 ### Not changed
 
@@ -563,7 +603,7 @@ site at all rather than on a page nobody should land on.
 ### Why now
 
 The revenue cap is inventory times price, and inventory is city pages.
-Four counties held 51 city pages; the state holds 317. Every other lever
+Four counties held 51 city pages; the state holds 315 across 56 live counties. Every other lever
 — price, spots per city, cities per buyer — moves the cap by a factor of
 two at most; geography moves it by six. The imports were an afternoon
 because the importer already refused a county whose code did not match

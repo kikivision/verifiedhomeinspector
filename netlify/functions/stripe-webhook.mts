@@ -85,18 +85,34 @@ async function fulfill(session: Stripe.Checkout.Session): Promise<void> {
   // this row would keep one position while silently being billed twice. Cancel
   // the newer one and keep the subscription that is already running.
   if (listing.tier === 'featured' && listing.stripe_subscription_id && listing.stripe_subscription_id !== subscriptionId) {
-    const detail =
-      `${listing.license_number} (${listing.county}) completed a second checkout while already ` +
-      `featured on ${listing.stripe_subscription_id}. Cancelling the duplicate ${subscriptionId}; ` +
-      'the original is untouched. Check Stripe for any charge that already landed.';
-    console.error(detail);
+    const who = `${listing.license_number} (${listing.county})`;
+    const context =
+      `${who} completed a second checkout while already featured on ` +
+      `${listing.stripe_subscription_id}. The duplicate is ${subscriptionId}.`;
+    let cancelled = true;
     try {
       await stripe().subscriptions.cancel(subscriptionId);
     } catch (err) {
+      cancelled = false;
       console.error('Could not cancel the duplicate subscription', subscriptionId, err);
     }
-    await notifyOps(`Duplicate featured subscription cancelled: ${listing.license_number}`, detail);
-    return;
+    // Composed AFTER the attempt. Announcing the cancellation before trying it
+    // meant a Stripe outage produced an email saying it was handled while the
+    // customer quietly paid twice.
+    if (cancelled) {
+      console.error(`${context} Cancelled; the original is untouched.`);
+      await notifyOps(`Duplicate featured subscription cancelled: ${listing.license_number}`,
+        `${context}\n\nThe duplicate was cancelled and the original left running. ` +
+        'Check Stripe for any charge that already landed.');
+      return;
+    }
+    await notifyOps(`COULD NOT cancel duplicate subscription: ${listing.license_number}`,
+      `${context}\n\nThe cancel call FAILED, so ${who} currently has TWO live subscriptions ` +
+      'and will be billed twice. Cancel the duplicate in Stripe by hand.');
+    // Thrown on purpose: a 500 makes Stripe redeliver, and redelivery re-enters
+    // this branch and retries the cancel. Answering 200 here would end the only
+    // chance of it succeeding on its own.
+    throw new Error(`Could not cancel duplicate subscription ${subscriptionId} for ${listing.license_number}`);
   }
 
   let wanted: string[] = [];
@@ -108,6 +124,9 @@ async function fulfill(session: Stripe.Checkout.Session): Promise<void> {
   const open = await cityAvailability(db, listing.county, listing.license_number);
   const granted = wanted.filter((c) => (open.get(c) ?? 0) > 0);
   const refused = wanted.filter((c) => !granted.includes(c));
+  // Alerts are collected here and sent after the write below: the row is what
+  // matters, and a notification ahead of it is one a Stripe redelivery repeats.
+  const alerts: { subject: string; text: string }[] = [];
   if (refused.length > 0) {
     const detail =
       `${listing.license_number} (${listing.county}) paid for ${wanted.join(', ')} but ` +
@@ -116,7 +135,7 @@ async function fulfill(session: Stripe.Checkout.Session): Promise<void> {
       'Free a city spot with set-tier.mjs, or refund. The free trial is 7 days, so there is ' +
       'that long before the first charge.';
     console.error(detail);
-    await notifyOps(`Featured city unavailable at fulfillment: ${listing.license_number}`, detail);
+    alerts.push({ subject: `Featured city unavailable at fulfillment: ${listing.license_number}`, text: detail });
   }
 
   const position = listing.tier === 'featured' ? listing.featured_position : await nextPosition(db, listing.county);
@@ -132,7 +151,7 @@ async function fulfill(session: Stripe.Checkout.Session): Promise<void> {
       'Free a position with set-tier.mjs or refund. The free trial is 7 days, so there is that ' +
       'long before the first charge.';
     console.error(detail);
-    await notifyOps(`County full at fulfillment, card not delivered: ${listing.license_number}`, detail);
+    alerts.push({ subject: `County full at fulfillment, card not delivered: ${listing.license_number}`, text: detail });
   }
   const { error: writeError } = await db
     .from('listings')
@@ -147,6 +166,7 @@ async function fulfill(session: Stripe.Checkout.Session): Promise<void> {
     })
     .eq('id', listing.id);
   if (writeError) throw writeError;
+  for (const a of alerts) await notifyOps(a.subject, a.text);
   await rebuild();
 }
 
