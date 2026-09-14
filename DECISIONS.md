@@ -5,6 +5,70 @@ until you know why. Newest first.
 
 ---
 
+## 2026-09-14 — A lapsed licence pauses the billing, holds the spot 30 days, then releases it
+
+**Built.** `netlify/functions/licence-grace.mts`, a Netlify scheduled
+function running daily. Closes the gap the county-gate review left open.
+
+### The problem
+
+A delisted row renders on no page — that is the site's one promise kept
+honestly. But `import-dbpr.mjs` sets `delisted_at` and touches nothing
+else, so a *featured* inspector whose licence stopped appearing in the
+DBPR extract was invisible, still billed $50 a month, and still holding a
+county position nobody could buy. Every part of that is wrong in a
+different direction.
+
+### What happens now
+
+| state | action |
+|---|---|
+| lapsed, billing running | pause Stripe collection, mail the inspector and hello@ |
+| back in the extract, paused | resume collection; the position never moved |
+| lapsed `GRACE_DAYS` (30) or more | cancel the subscription |
+
+The cancel does nothing else on purpose: the existing
+`customer.subscription.deleted` webhook drops the row to claimed, frees
+the position, clears the cities and rebuilds. That path already existed
+and was already the one tested, so releasing a spot after grace and
+releasing one after a voluntary cancellation are the same code.
+
+### Why pause rather than keep billing
+
+Their card is hidden the moment they are delisted. Charging $50 a month
+for a card nobody can see is the opposite of what the name on the site
+claims, and the amount of money involved is one month from one inspector.
+Decided by Karen, 2026-09-14.
+
+### Why 30 days
+
+One monthly import cycle — the import runs `0 13 1 * *`, so a lapse is
+found on one run and released on the next if it is still gone. Note the
+lapse can already be up to a month old when the import first sees it, so
+the real window from the inspector's side is 30 to 60 days.
+
+### Shape
+
+`graceAction` in `netlify/lib/featured.mts` is pure and decides all four
+outcomes; the function does the Stripe and email work around it. It
+decides about somebody's money, so it is tested case by case in
+`scripts/licence-grace.test.mjs`, including the boundary day, a corrupt
+timestamp, a future timestamp, and a listing with no subscription. Three
+of those cases were verified by breaking the code and watching them fail.
+
+Idempotent by reading the live `pause_collection` from Stripe rather than
+storing a flag: a second run the same day sees the state it just set and
+does nothing. That also means no migration.
+
+### What it will do today
+
+Nothing. Of the two featured listings, RMC has no Stripe subscription so
+it is filtered out of the query entirely, and Inspected PLLC is current
+and unpaused, which is `'none'`. The first time this function acts on
+anything, it will email.
+
+---
+
 ## 2026-09-14 — What a review of the county gate found, and what changed
 
 **Built.** A second model reviewed the gate after it shipped and found
