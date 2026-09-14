@@ -5,6 +5,46 @@ until you know why. Newest first.
 
 ---
 
+## 2026-09-14 — The featured numbers live in one file, and the smoke test holds the prose to them
+
+**Built.** `src/lib/cities.ts` is now the only place a featured-inventory
+number is written: `COUNTY_FEATURED_CAP`, `COUNTY_FEATURED_TARGET`,
+`COUNTY_POSITION_LIMIT`, `CITY_FEATURED_CAP`, `CITY_FEATURED_TARGET`,
+`CITY_FEATURED_TARGET_SMALL`, `SMALL_CITY_LISTINGS`, `MAX_FEATURED_CITIES`
+and `MIN_CITY_LISTINGS`. The county page and `netlify/lib/featured.mts`
+import from it rather than declaring their own. `set-tier.mjs` still keeps
+copies, because importing the module would pull the Supabase client into a
+CLI script, and the smoke test compares them.
+
+### Why
+
+The caps moved from four to six across six files in one evening. Each move
+touched a constant in one place and an English word in another: "Six spots
+per city, never more" is hardcoded prose on the sales page, in the featured
+dialog, on the dashboard and in the terms page, and none of it is derived
+from the constant. A missed one is a promise broken in public with nothing
+failing and no error anywhere.
+
+### What now fails the build
+
+- A cap the copy does not state, on the county page, city pages, the sales
+  page, the featured dialog, the dashboard or the terms page. The prose
+  spells the number out, so the check spells it too.
+- `COUNTY_FEATURED_CAP` above `COUNTY_POSITION_LIMIT`. The schema checks
+  `featured_position between 1 and 6`; a cap above that writes a position
+  the database rejects at fulfillment, after the card is charged. Raising
+  it needs the migration first.
+- An odd target. Both grids are two columns, so an odd count leaves a
+  visible hole where a card should be.
+- `set-tier.mjs` drifting from `lib/cities.ts`.
+- The county page redeclaring `FEATURED_CAP` or `FEATURED_TARGET` locally.
+
+Each of the five was verified by breaking it on purpose and watching the
+smoke test fail, then restoring. A guard nobody has seen fail is a guard
+nobody knows works.
+
+---
+
 ## 2026-09-14 — City pages hold six too, so buyers five and six get real cities
 
 **Built.** `CITY_FEATURED_CAP` is 6, matching the county page.

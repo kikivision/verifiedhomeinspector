@@ -55,6 +55,26 @@ export function cityFeaturedTarget(listingCount: number): number {
 }
 
 /**
+ * The county page's ceiling, and the range `featured_position` is assigned
+ * from: positions are 1..this. Raised from four to six on 2026-09-14; see
+ * DECISIONS.md. This file is the ONE place these numbers live — the county
+ * page, the fulfillment library and the smoke test all read it, and
+ * `set-tier.mjs` keeps a copy the smoke test compares against this one.
+ *
+ * The schema checks `featured_position between 1 and 6`, so raising this
+ * above 6 needs a migration first. The smoke test fails if it is.
+ */
+export const COUNTY_FEATURED_CAP = 6;
+/** Highest `featured_position` the database will currently accept. */
+export const COUNTY_POSITION_LIMIT = 6;
+/**
+ * How many featured positions the county page shows while spots are open.
+ * Below the cap on purpose, and even, for the same reasons as the city
+ * targets above.
+ */
+export const COUNTY_FEATURED_TARGET = 4;
+
+/**
  * How many city pages one featured listing may name. Decided 2026-09-12:
  * $50/month buys the county page plus up to three city pages the inspector
  * chooses, which is a home base and the two or three towns next to it. More

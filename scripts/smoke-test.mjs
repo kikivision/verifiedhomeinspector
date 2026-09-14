@@ -174,10 +174,20 @@ check(listingRows > 0, 'Pinellas page renders no listings.',
 
 const featuredSlots = (county.match(/card ad-slot/g) ?? []).length;
 const claimedFeatured = (county.match(/class="card featured"/g) ?? []).length;
+// Every featured-inventory number lives in lib/cities.ts. These checks exist
+// so the constants, the eight places that render them and the English prose
+// that spells them out can never drift apart: the numbers moved from four to
+// six on 2026-09-14 across six files, and a missed one is a promise broken in
+// public with nothing failing.
+const citiesSrc = await readFile('src/lib/cities.ts', 'utf8');
+const constant = (name) => Number(citiesSrc.match(new RegExp(`${name} = (\\d+)`))?.[1] ?? NaN);
+const cap = constant('COUNTY_FEATURED_CAP');
+const target = constant('COUNTY_FEATURED_TARGET');
+check(Number.isInteger(cap) && Number.isInteger(target),
+  'Could not read COUNTY_FEATURED_CAP / COUNTY_FEATURED_TARGET from lib/cities.ts.');
 const countySource = await readFile('src/pages/fl/[county]/index.astro', 'utf8');
-const cap = Number(countySource.match(/const FEATURED_CAP = (\d+)/)?.[1] ?? NaN);
-const target = Number(countySource.match(/const FEATURED_TARGET = (\d+)/)?.[1] ?? NaN);
-check(Number.isInteger(cap) && Number.isInteger(target), 'Could not read FEATURED_CAP / FEATURED_TARGET from the county page.');
+check(!/const FEATURED_(CAP|TARGET) = \d/.test(countySource),
+  'The county page declares its own FEATURED_CAP or FEATURED_TARGET; these live in lib/cities.ts.');
 if (Number.isInteger(cap) && Number.isInteger(target)) {
   // The row draws open-slot cards up to the target, and paid cards past the
   // target still render, so it is never smaller than the target. The copy
@@ -592,13 +602,54 @@ for (const file of badges) {
 const cityPages = pages.filter((p) => /^\/fl\/[a-z-]+\/[a-z0-9-]+\/$/.test(pagePath(p)));
 check(cityPages.length >= 40,
   `Only ${cityPages.length} city pages were built; the four counties hold more than 40 cities with three or more listings.`);
-const citiesSource = await readFile('src/lib/cities.ts', 'utf8');
-const cityCap = Number(citiesSource.match(/CITY_FEATURED_CAP = (\d+)/)?.[1] ?? NaN);
+const cityCap = constant('CITY_FEATURED_CAP');
 // The target varies by page size (cityFeaturedTarget), so the row is bounded
 // by the smallest target below and the cap above rather than one number.
-const cityTarget = Number(citiesSource.match(/CITY_FEATURED_TARGET_SMALL = (\d+)/)?.[1] ?? NaN);
+const cityTarget = constant('CITY_FEATURED_TARGET_SMALL');
 check(Number.isInteger(cityCap) && Number.isInteger(cityTarget),
   'Could not read CITY_FEATURED_CAP / CITY_FEATURED_TARGET_SMALL from lib/cities.ts.');
+
+// The schema checks `featured_position between 1 and 6`. A cap above that
+// writes a position the database rejects, at fulfillment, after the card is
+// charged.
+const positionLimit = constant('COUNTY_POSITION_LIMIT');
+check(cap <= positionLimit,
+  `COUNTY_FEATURED_CAP is ${cap}, above the ${positionLimit} the featured_position check allows.`,
+  'Migrate the check constraint in verified-home-inspector-schema.sql first.');
+
+// Both grids are two columns, so an odd count leaves a visible hole.
+for (const [name, n] of [['COUNTY_FEATURED_TARGET', target], ['CITY_FEATURED_TARGET', constant('CITY_FEATURED_TARGET')], ['CITY_FEATURED_TARGET_SMALL', cityTarget]]) {
+  check(n % 2 === 0, `${name} is ${n}; the featured grid is two columns, so it must be even.`);
+}
+
+// set-tier.mjs cannot import lib/cities.ts without pulling in the Supabase
+// client, so it keeps its own copies. They have to agree.
+const setTier = await readFile('scripts/set-tier.mjs', 'utf8');
+for (const [name, expected] of [['FEATURED_CAP', cap], ['CITY_FEATURED_CAP', cityCap]]) {
+  const found = Number(setTier.match(new RegExp(`^const ${name} = (\\d+)`, 'm'))?.[1] ?? NaN);
+  check(found === expected,
+    `set-tier.mjs has ${name} = ${found}, but lib/cities.ts says ${expected}.`);
+}
+
+// The prose spells the numbers out, so a changed constant silently leaves the
+// old word behind. WORDS covers every value these caps can sensibly take.
+const WORDS = { 2: 'two', 3: 'three', 4: 'four', 5: 'five', 6: 'six', 7: 'seven', 8: 'eight' };
+const say = (n) => WORDS[n] ?? String(n);
+const capWord = say(cityCap);
+const copyClaims = [
+  ['for-inspectors', forInspectors, `${capWord} spots per city, never more`],
+  ['dashboard', dashboard, `${capWord} spots per city, never`],
+  ['the featured dialog on the Pinellas page', county, `${capWord} spots per city, never more`],
+  ['terms', await readFile(join(DIST, 'terms', 'index.html'), 'utf8').catch(() => null),
+    `at most ${say(cap)} featured cards`],
+];
+for (const [where, html, claim] of copyClaims) {
+  if (html === null) { check(false, `Could not read the built ${where} page to check its featured copy.`); continue; }
+  check(html.toLowerCase().includes(claim.toLowerCase()),
+    `${where} does not say "${claim}", so its copy disagrees with lib/cities.ts.`);
+}
+check(cap === cityCap || !(await readFile(join(DIST, 'terms', 'index.html'), 'utf8').catch(() => '')).includes('each county page holds at most'),
+  'The terms page states one number for city and county pages, but the two caps now differ.');
 for (const path of cityPages) {
   const html = faqHtml.get(path);
   const page = pagePath(path);

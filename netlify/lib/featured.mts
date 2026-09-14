@@ -16,14 +16,14 @@
 //   URL                        set by Netlify itself: the site's canonical URL
 import Stripe from 'stripe';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { CITY_FEATURED_CAP, MAX_FEATURED_CITIES, MIN_CITY_LISTINGS } from '../../src/lib/cities';
+import { CITY_FEATURED_CAP, COUNTY_FEATURED_CAP, MAX_FEATURED_CITIES, MIN_CITY_LISTINGS } from '../../src/lib/cities';
 
 /** How long a new featured card runs before the first charge. */
 export const TRIAL_DAYS = 7;
 
-/** The county page's ceiling; positions are 1..this. Matches FEATURED_CAP on
- *  the county page and the `between 1 and 6` check on `featured_position`. */
-const COUNTY_POSITIONS = 6;
+/** The county page's ceiling; positions are 1..this. Defined once in
+ *  lib/cities.ts, which the county page reads too. */
+const COUNTY_POSITIONS = COUNTY_FEATURED_CAP;
 
 export class HttpError extends Error {
   constructor(public status: number, message: string) {

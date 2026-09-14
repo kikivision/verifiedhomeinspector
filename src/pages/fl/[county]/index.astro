@@ -6,7 +6,7 @@ import ListingRows from '../../../components/ListingRows.astro';
 import ListingEvents from '../../../components/ListingEvents.astro';
 import { counties, getCounty, searchName } from '../../../lib/counties';
 import { getListingsForCounty, type Listing } from '../../../lib/supabase';
-import { cityPagesFor, cityPath } from '../../../lib/cities';
+import { cityPagesFor, cityPath, COUNTY_FEATURED_CAP, COUNTY_FEATURED_TARGET } from '../../../lib/cities';
 
 export function getStaticPaths() {
   return counties.map((c) => ({ params: { county: c.slug } }));
@@ -33,21 +33,12 @@ const nonFeatured = listings.filter((l) => l.tier !== 'featured');
 const cities = [...new Set(nonFeatured.map((l) => l.city))].sort((a, b) => a.localeCompare(b));
 // Cities with pages of their own — three or more listings; see lib/cities.ts.
 const cityPages = cityPagesFor(county.slug, listings);
-// Six featured spots on the county page, and the copy says "never more than
-// six": an inspector buying one has to know they will not be one of twenty.
-// Raised from four on 2026-09-14 (see DECISIONS.md): the rows below the
-// featured grid are free claimed and unclaimed listings, so two more paid
-// cards pushing them down costs nobody anything. The database allows
-// positions up to 6 and .featured-grid is two columns, so any EVEN cap fills
-// its rows; an odd one leaves a visible hole where a card should be.
-const FEATURED_CAP = 6;
-// How many "This spot could be yours" cards the page shows while spots are
-// open. Deliberately below the cap: the copy states the ceiling, the page
-// does not draw six empty boxes to prove it.
-const FEATURED_TARGET = 4;
+// Both numbers live in lib/cities.ts, which is the one source for every
+// featured-inventory count; see the comments there for why six and four.
+const FEATURED_CAP = COUNTY_FEATURED_CAP;
 // Never negative: a paid card past the target still renders, it just leaves
 // no open-slot card behind it.
-const openFeaturedSlots = Math.max(0, FEATURED_TARGET - featured.length);
+const openFeaturedSlots = Math.max(0, COUNTY_FEATURED_TARGET - featured.length);
 ---
 
 <Layout
