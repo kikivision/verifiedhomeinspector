@@ -5,6 +5,57 @@ until you know why. Newest first.
 
 ---
 
+## 2026-09-14 — The county page holds six featured spots, not four
+
+**Built.** `FEATURED_CAP` on the county page, `COUNTY_POSITIONS` in
+`netlify/lib/featured.mts` and `FEATURED_CAP` in `set-tier.mjs` are 6.
+The open-slot copy and the terms page say "never more than six." The page
+still draws only `FEATURED_TARGET` (4) "This spot could be yours" cards:
+the copy states the ceiling, the page does not draw six empty boxes to
+prove it. The smoke test now checks the rendered row against both
+numbers and that the copy states the cap. City pages are unchanged at
+four. The `featured_position` check in the schema already allowed 1–6.
+Reverses "four on the county page" in the 2026-09-12 city-pages entry.
+
+### Why
+
+The four was chosen so that paid cards would not push the listings below
+them too far down the page. That mattered when every row below the
+featured grid was the product. It is not any more: since self-serve
+claims (2026-09-12) the rows below are free claimed and unclaimed
+listings, so two more paid cards above them cost nobody anything.
+
+The county cap is the binding constraint on featured, and it binds long
+before the city slots do. Pinellas has 56 city slots and had 4 county
+positions, 2 taken on 2026-09-14 by the first paying subscriber and the
+one comped card. Statewide: 1,260 city slots against 224 county
+positions. Raising the county cap to six moves the statewide ceiling from
+224 to 336 positions ($16,800/month at $50 and full occupancy, from
+$11,200) and Pinellas from $200 to $300 a month, without touching the
+city promise.
+
+Inspectors think in counties: they service the whole county and see the
+county spot as the product, with the three city pages as a bonus. Both
+paying/comped cards in Pinellas picked St. Petersburg and Clearwater
+among their three, so the big cities fill at about the same time the
+county does. The fifth and sixth buyers will get the county page and
+three cities from the 19-to-30-inspector tier (Largo, Palm Harbor, Tarpon
+Springs, Seminole, Dunedin), not the two largest. That is real value and
+it is shown honestly: the dashboard lists every city with "(N open)" or
+"(full)" before checkout, and `create-checkout` refuses a full city
+before Stripe. The first four getting the best cities is the reward for
+being early, which is the same story the founding rate tells.
+
+### What is still not built
+
+Nothing enforces the six at checkout: `create-checkout` checks city
+availability only, and `nextPosition` returns null past six, which the
+webhook writes without an error. The county page also renders every
+featured row rather than slicing at the cap. Both are part of the
+waitlist build in the 2026-09-11 entry, which is now scoped to the
+county-full case as well as the city-full one. Two of six Pinellas
+positions are taken, so the seventh buyer is at least four sales away.
+
 ## 2026-09-12 — The request button is gone: the site does what the ad says
 
 **Built.** No "Request this inspector" button on featured cards, listing

@@ -174,16 +174,20 @@ check(listingRows > 0, 'Pinellas page renders no listings.',
 
 const featuredSlots = (county.match(/card ad-slot/g) ?? []).length;
 const claimedFeatured = (county.match(/class="card featured"/g) ?? []).length;
-const capMatch = (await readFile('src/pages/fl/[county]/index.astro', 'utf8'))
-  .match(/const FEATURED_CAP = (\d+)/);
-const cap = capMatch ? Number(capMatch[1]) : null;
-check(cap !== null, 'Could not read FEATURED_CAP from the county page.');
-if (cap !== null) {
-  // At least the cap: paid cards past the advertised count still render, so
-  // the row can be larger than the cap but never smaller.
+const countySource = await readFile('src/pages/fl/[county]/index.astro', 'utf8');
+const cap = Number(countySource.match(/const FEATURED_CAP = (\d+)/)?.[1] ?? NaN);
+const target = Number(countySource.match(/const FEATURED_TARGET = (\d+)/)?.[1] ?? NaN);
+check(Number.isInteger(cap) && Number.isInteger(target), 'Could not read FEATURED_CAP / FEATURED_TARGET from the county page.');
+if (Number.isInteger(cap) && Number.isInteger(target)) {
+  // The row draws open-slot cards up to the target, and paid cards past the
+  // target still render, so it is never smaller than the target. The copy
+  // says "never more than" the cap, so it is never larger than that either.
+  const shown = featuredSlots + claimedFeatured;
+  check(shown >= target, `Pinellas page shows ${shown} featured positions, but FEATURED_TARGET is ${target}.`);
+  check(shown <= cap, `Pinellas page shows ${shown} featured positions, but the copy promises never more than ${cap}.`);
   check(
-    featuredSlots + claimedFeatured >= cap,
-    `Pinellas page shows ${featuredSlots + claimedFeatured} featured positions, but FEATURED_CAP is ${cap}.`,
+    county.includes(`is one of ${cap} spots above all of them`),
+    `The county page's open-slot copy does not state the cap of ${cap}.`,
   );
 }
 

@@ -38,10 +38,10 @@
 import { SPECIALTIES } from '../src/lib/specialties.ts';
 
 const TIERS = ['unclaimed', 'claimed', 'featured'];
-// The county page's ceiling (FEATURED_TARGET there): positions 1-4. The page
-// advertises two open slots while building out, but a paid card past two still
-// renders, so the script allows the ceiling rather than the advertised count.
-const FEATURED_CAP = 4;
+// The county page's ceiling (FEATURED_CAP there): positions 1-6. The page
+// draws fewer open-slot cards than that (FEATURED_TARGET), but a paid card past
+// the target still renders, so the script allows the ceiling, not the drawn count.
+const FEATURED_CAP = 6;
 // Kept in step with the same names in src/lib/cities.ts.
 const CITY_FEATURED_CAP = 4;
 const MAX_FEATURED_CITIES = 3;

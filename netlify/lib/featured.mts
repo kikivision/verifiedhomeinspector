@@ -21,8 +21,9 @@ import { CITY_FEATURED_CAP, MAX_FEATURED_CITIES, MIN_CITY_LISTINGS } from '../..
 /** How long a new featured card runs before the first charge. */
 export const TRIAL_DAYS = 7;
 
-/** The county page's ceiling; positions are 1..this. Matches FEATURED_TARGET. */
-const COUNTY_POSITIONS = 4;
+/** The county page's ceiling; positions are 1..this. Matches FEATURED_CAP on
+ *  the county page and the `between 1 and 6` check on `featured_position`. */
+const COUNTY_POSITIONS = 6;
 
 export class HttpError extends Error {
   constructor(public status: number, message: string) {

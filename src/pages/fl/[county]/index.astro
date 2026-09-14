@@ -33,17 +33,21 @@ const nonFeatured = listings.filter((l) => l.tier !== 'featured');
 const cities = [...new Set(nonFeatured.map((l) => l.city))].sort((a, b) => a.localeCompare(b));
 // Cities with pages of their own — three or more listings; see lib/cities.ts.
 const cityPages = cityPagesFor(county.slug, listings);
-// Four featured spots on the county page, and the copy says "never more than
-// four": an inspector buying one has to know they will not be one of twenty.
-// The database allows positions up to 6 and .featured-grid is two columns, so
-// any EVEN cap fills its rows; an odd one leaves a visible hole where a card
-// should be. (A cap of 2 with a target of 4 was shown here for one day on
-// 2026-09-12; the cap was always meant to be four.)
-const FEATURED_CAP = 4;
+// Six featured spots on the county page, and the copy says "never more than
+// six": an inspector buying one has to know they will not be one of twenty.
+// Raised from four on 2026-09-14 (see DECISIONS.md): the rows below the
+// featured grid are free claimed and unclaimed listings, so two more paid
+// cards pushing them down costs nobody anything. The database allows
+// positions up to 6 and .featured-grid is two columns, so any EVEN cap fills
+// its rows; an odd one leaves a visible hole where a card should be.
+const FEATURED_CAP = 6;
+// How many "This spot could be yours" cards the page shows while spots are
+// open. Deliberately below the cap: the copy states the ceiling, the page
+// does not draw six empty boxes to prove it.
 const FEATURED_TARGET = 4;
-// Never negative: a third paid card renders (Stripe can sell one before the
-// cap moves), it just leaves no open-slot card behind it.
-const openFeaturedSlots = Math.max(0, FEATURED_CAP - featured.length);
+// Never negative: a paid card past the target still renders, it just leaves
+// no open-slot card behind it.
+const openFeaturedSlots = Math.max(0, FEATURED_TARGET - featured.length);
 ---
 
 <Layout
@@ -116,7 +120,7 @@ const openFeaturedSlots = Math.max(0, FEATURED_CAP - featured.length);
                 <h3 style="font-size:1rem;">This spot could be yours</h3>
                 <p style="color:var(--slate);font-size:0.88rem;margin:0;">
                   {nonFeatured.length} licensed inspectors are listed in {county.name}. Featured
-                  is one of {FEATURED_TARGET} spots above all of them — never more — and it
+                  is one of {FEATURED_CAP} spots above all of them — never more — and it
                   also puts your card at the top of up to three city pages you choose.
                 </p>
                 <button type="button" class="btn-primary featured-btn" data-county={county.slug} style="font-size:0.85rem;padding:8px 16px;">
