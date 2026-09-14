@@ -592,9 +592,11 @@ for (const file of badges) {
 const cityPages = pages.filter((p) => /^\/fl\/[a-z-]+\/[a-z0-9-]+\/$/.test(pagePath(p)));
 check(cityPages.length >= 40,
   `Only ${cityPages.length} city pages were built; the four counties hold more than 40 cities with three or more listings.`);
-const cityCapMatch = (await readFile('src/lib/cities.ts', 'utf8')).match(/CITY_FEATURED_CAP = (\d+)/);
-const cityCap = cityCapMatch ? Number(cityCapMatch[1]) : null;
-check(cityCap !== null, 'Could not read CITY_FEATURED_CAP from lib/cities.ts.');
+const citiesSource = await readFile('src/lib/cities.ts', 'utf8');
+const cityCap = Number(citiesSource.match(/CITY_FEATURED_CAP = (\d+)/)?.[1] ?? NaN);
+const cityTarget = Number(citiesSource.match(/CITY_FEATURED_TARGET = (\d+)/)?.[1] ?? NaN);
+check(Number.isInteger(cityCap) && Number.isInteger(cityTarget),
+  'Could not read CITY_FEATURED_CAP / CITY_FEATURED_TARGET from lib/cities.ts.');
 for (const path of cityPages) {
   const html = faqHtml.get(path);
   const page = pagePath(path);
@@ -602,9 +604,17 @@ for (const path of cityPages) {
   check(rowCount >= 2, `${page} renders ${rowCount} listing rows; a city page needs at least three listings less its featured cards.`);
   const cards = (html.match(/class="card featured"/g) ?? []).length;
   const slots = (html.match(/card ad-slot/g) ?? []).length;
-  if (cityCap !== null) {
-    check(cards + slots === cityCap,
-      `${page} shows ${cards + slots} featured positions, but CITY_FEATURED_CAP is ${cityCap}.`);
+  if (Number.isInteger(cityCap) && Number.isInteger(cityTarget)) {
+    // Open-slot cards are drawn up to the target and paid cards past it still
+    // render, so the row is never smaller than the target and never larger
+    // than the cap the copy promises.
+    const shown = cards + slots;
+    check(shown >= Math.min(cityTarget, cityCap),
+      `${page} shows ${shown} featured positions, but CITY_FEATURED_TARGET is ${cityTarget}.`);
+    check(shown <= cityCap,
+      `${page} shows ${shown} featured positions, but the copy promises never more than ${cityCap}.`);
+    check(html.includes(`${cityCap} spots per city, never more`),
+      `${page} does not state the cap of ${cityCap} spots per city.`);
   }
   check(/<form[^>]*name=['"]featured-inquiry['"]/.test(html) && /name="city"/.test(html),
     `${page} has no featured-inquiry form carrying the city.`);

@@ -5,6 +5,57 @@ until you know why. Newest first.
 
 ---
 
+## 2026-09-14 — City pages hold six too, so buyers five and six get real cities
+
+**Built.** `CITY_FEATURED_CAP` is 6, matching the county page.
+`CITY_FEATURED_TARGET` stays 4 and is what the city page draws open-slot
+cards from, so an empty Gulfport shows four dashed boxes rather than six
+on a page with three inspectors. The copy says "6 spots per city, never
+more" on city pages, the sales page, the featured dialog, the dashboard
+and the terms page, which now reads "each city page and each county page
+holds at most six." `set-tier.mjs` and the smoke test follow. Reverses
+"four cards per city" in the 2026-09-12 entry, hours after the county
+cap moved to six.
+
+### Why
+
+With the county at six and each buyer naming three cities, four per city
+left the fifth and sixth buyers shut out of the only cities they wanted.
+In Pinellas, St. Petersburg and Clearwater were both full after four
+buyers; five and six would have paid $50 for Tarpon Springs and Dunedin.
+At six they get St. Petersburg and Clearwater like everyone else. The
+point of the product is that a paying inspector gets the cities they
+actually work in, not that we learn which cities are scarce.
+
+This deliberately gives up the per-city waitlist signal: six buyers
+naming three cities each is eighteen demands, and three cities at six
+slots is eighteen slots, so in the concentrated case no city queue ever
+forms. That is the trade, taken on purpose. Making people wait was never
+the goal, and the county queue at buyer seven is the signal that matters.
+It also removes most of the need for the city-swap machinery in the
+waitlist entry above: the buyer who would have wanted to upgrade to
+Clearwater now simply gets Clearwater.
+
+### Small cities need no smaller cap
+
+A city page holds at most as many featured cards as inspectors who named
+it, and nobody picks Gulfport over Clearwater. Those pages stay small on
+their own, so the cap can be one number everywhere and the copy can stay
+one sentence.
+
+### On diluting the inspector who already paid
+
+Inspected PLLC bought at 3:32pm on 2026-09-14, hours before both cap
+changes, under copy that said four. Doing this on day one, with one
+paying inspector, is the cheapest it will ever be; five months from now
+it is a promise taken back from a dozen people. He also keeps
+`featured_position` 1, which orders the county page and every city page
+he is on, so the extra cards land below him and nothing reshuffles: the
+terms already promise that an inspector already featured keeps their
+placement, and nothing in the code ever reassigns a held position.
+
+---
+
 ## 2026-09-14 — The featured card: logo in the corner, contact on the bottom line, six specialties
 
 **Built.** Three changes to `FeaturedCard.astro` and its CSS, all forced

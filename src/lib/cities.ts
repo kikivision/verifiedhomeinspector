@@ -13,15 +13,25 @@ import { slugify } from './slug';
 export const MIN_CITY_LISTINGS = 3;
 
 /**
- * How many featured cards a city page holds: four, and the copy says "never
- * more than four" on every page that sells one. An inspector buying a spot
+ * How many featured cards a city page holds: six, and the copy says "never
+ * more than six" on every page that sells one. An inspector buying a spot
  * has to know they will never be one of twenty; the value of the spot is
  * that number. Raising this is a promise taken back and needs a DECISIONS
- * entry, not an edit. (It was briefly two "while we build out" on
- * 2026-09-12; that was a misreading of the county page's cap/target split,
- * and the cap was always meant to be four.)
+ * entry, not an edit — see the 2026-09-14 entry, which raised it from four
+ * alongside the county page so the fifth and sixth buyers in a county can
+ * still get the cities they actually work in. (It was briefly two "while we
+ * build out" on 2026-09-12; that was a misreading of the cap/target split.)
+ *
+ * Small cities need no smaller cap: a city page holds at most as many
+ * featured cards as inspectors who chose it, and nobody chooses Gulfport
+ * over Clearwater, so those pages stay small on their own.
  */
-export const CITY_FEATURED_CAP = 4;
+export const CITY_FEATURED_CAP = 6;
+/**
+ * How many "featured spots open" cards an empty city page draws. Below the
+ * cap on purpose, same as the county page: the copy states the ceiling, the
+ * page does not draw six dashed boxes to prove it.
+ */
 export const CITY_FEATURED_TARGET = 4;
 
 /**

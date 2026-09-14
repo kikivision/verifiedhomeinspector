@@ -43,7 +43,7 @@ const TIERS = ['unclaimed', 'claimed', 'featured'];
 // the target still renders, so the script allows the ceiling, not the drawn count.
 const FEATURED_CAP = 6;
 // Kept in step with the same names in src/lib/cities.ts.
-const CITY_FEATURED_CAP = 4;
+const CITY_FEATURED_CAP = 6;
 const MAX_FEATURED_CITIES = 3;
 
 function parseArgs(argv) {
