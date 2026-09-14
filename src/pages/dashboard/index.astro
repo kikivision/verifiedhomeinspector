@@ -153,6 +153,17 @@ const TRIAL_DAYS = 7;
           </form>
 
           <aside class="dash-side">
+            {/* What is still empty on the page, kept current after every save.
+                Two of the first three claimers stopped right after the phone
+                number; one status line was not enough of a prompt. Mirrors
+                missingItems() in netlify/functions/claim-welcome.mts — keep
+                the two lists in step. */}
+            <div class="card dash-help dash-checklist" id="checklistCard" hidden>
+              <h3 id="checklistTitle">Complete your page</h3>
+              <p class="dash-muted" id="checklistNote"></p>
+              <ul id="checklistItems"></ul>
+            </div>
+
             <div class="card featured dash-featured">
               <div class="badge">Featured</div>
 
@@ -342,6 +353,75 @@ const TRIAL_DAYS = 7;
       ).map((i) => i.value);
     }
 
+    // ----- checklist --------------------------------------------------------
+    // Each entry: what the homeowner sees, whether it is filled in, and the
+    // form field to jump to. The logo has no field — it is emailed in and
+    // added by hand (see logo_path in src/lib/supabase.ts) — so it links to
+    // the inbox instead.
+    interface ChecklistItem {
+      label: string;
+      done: boolean;
+      field?: string;
+      mailto?: boolean;
+    }
+    function checklistFor(l: Listing): ChecklistItem[] {
+      return [
+        { label: 'Phone number', done: !!l.phone, field: 'phone' },
+        { label: 'Website', done: !!l.website, field: 'website' },
+        {
+          label: 'Cities you serve — you appear on each of those city pages too',
+          done: l.service_cities.length > 0,
+          field: 'service_cities',
+        },
+        { label: 'Services — 4-point, wind mitigation, full inspections', done: l.specialties.length > 0, field: 'specialties' },
+        { label: 'Years in business', done: l.years_experience !== null, field: 'years_experience' },
+        { label: 'About your business — a few sentences in your own words', done: !!l.about, field: 'about' },
+        { label: 'Logo — email us the file and we add it to your card', done: !!l.logo_path, mailto: true },
+      ];
+    }
+    function renderChecklist(l: Listing) {
+      const items = checklistFor(l);
+      const remaining = items.filter((i) => !i.done).length;
+      $('#checklistTitle').textContent = remaining === 0 ? 'Your page is complete' : 'Complete your page';
+      $('#checklistNote').textContent =
+        remaining === 0
+          ? 'Everything a homeowner looks for is filled in.'
+          : `${items.length - remaining} of ${items.length} done. Each one takes about a minute.`;
+      const list = $('#checklistItems');
+      list.replaceChildren(
+        ...items.map((item) => {
+          const li = document.createElement('li');
+          li.className = item.done ? 'is-done' : '';
+          const mark = document.createElement('span');
+          mark.className = 'dash-checklist-mark';
+          mark.setAttribute('aria-hidden', 'true');
+          mark.textContent = item.done ? '✓' : '○';
+          li.append(mark);
+          if (item.done) {
+            li.append(item.label);
+          } else if (item.mailto) {
+            const a = document.createElement('a');
+            a.href = `mailto:hello@verifiedhomeinspector.com?subject=${encodeURIComponent(`Logo for ${l.license_number}`)}`;
+            a.textContent = item.label;
+            li.append(a);
+          } else {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'dash-linkbtn';
+            btn.textContent = item.label;
+            btn.addEventListener('click', () => {
+              const target = editForm.querySelector<HTMLElement>(`[name="${item.field}"]`);
+              target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              target?.focus({ preventScroll: true });
+            });
+            li.append(btn);
+          }
+          return li;
+        }),
+      );
+      $('#checklistCard').hidden = false;
+    }
+
     async function showEdit() {
       if (!listing) return;
       const county = getCounty(listing.county);
@@ -388,6 +468,7 @@ const TRIAL_DAYS = 7;
           return label;
         }),
       );
+      renderChecklist(listing);
       show('edit');
     }
 
@@ -416,6 +497,7 @@ const TRIAL_DAYS = 7;
       $('#editName').textContent = listing.business_name || listing.licensee_name;
       field('website').value = listing.website ?? '';
       saveNote.textContent = 'Saved. The county page updates after the next rebuild.';
+      renderChecklist(listing);
       say('');
       trackEvent('listing_saved', { license_number: listing.license_number });
     });

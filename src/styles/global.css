@@ -452,6 +452,16 @@ footer p { font-size: 0.8rem; color: var(--slate); margin: 4px 0; max-width: 70c
 .dash-linkbtn { font-family: 'IBM Plex Sans', sans-serif; background: none; border: none; padding: 0; text-align: left; color: var(--slate); font-size: 0.88rem; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
 .dash-danger { color: #A33A2E; }
 
+/* "Complete your page" on the dashboard: one line per thing a homeowner sees,
+   ticked as it is filled in. Undone items are buttons that jump to the field. */
+.dash-checklist ul { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.dash-checklist li { display: flex; align-items: flex-start; gap: 8px; font-size: 0.88rem; color: var(--navy); line-height: 1.35; }
+.dash-checklist li.is-done { color: var(--slate); }
+.dash-checklist-mark { flex: none; width: 1.1em; font-weight: 600; color: var(--mustard-deep); }
+.dash-checklist li.is-done .dash-checklist-mark { color: var(--green); }
+.dash-checklist .dash-linkbtn { color: var(--navy); font-size: 0.88rem; line-height: 1.35; }
+.dash-checklist a { color: var(--navy); }
+
 /* Contact on a claimed row or card: a phone number that dials and a website
    that opens. Shown only on claimed and featured listings. */
 .row-contact { display: flex; flex-direction: column; gap: 2px; }

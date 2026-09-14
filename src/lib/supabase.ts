@@ -81,6 +81,11 @@ export interface Listing {
    * without the column treat it as null.
    */
   contact_source?: 'public' | 'inspector' | null;
+  /**
+   * When the post-claim welcome email went out (netlify/functions/
+   * claim-welcome.mts). Optional for the same reason as the columns above.
+   */
+  welcome_sent_at?: string | null;
   created_at: string;
 }
 
