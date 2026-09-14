@@ -72,6 +72,10 @@ interface Props {
 const { listing: l, neighbors, cityHasPage, countyCities } = Astro.props;
 const county = getCounty(l.county)!;
 const claimed = isClaimed(l);
+// Whether the facts strip carries a Services line: only when the pills below
+// are not showing the same list. An unclaimed row that somehow carries
+// specialties still gets the fact, because the pills are claimed-only.
+const servicesFact = !(claimed && l.specialties.length > 0);
 const publicContact = hasPublicContact(l);
 const name = l.business_name || l.licensee_name;
 const pageContext = `inspector_${county.slug}`;
@@ -157,13 +161,21 @@ const schema = claimed
           <a href="https://www.myfloridalicense.com/wl11.asp?mode=0" target="_blank" rel="noopener noreferrer">Check the state record</a>
         </p>
 
-        <div class="profile-facts">
-          <div class="fact">
-            <span class="k">Services</span>
-            <span class:list={['v', { muted: l.specialties.length === 0 }]}>
-              {l.specialties.length > 0 ? l.specialties.join(' · ') : 'Not yet listed'}
-            </span>
-          </div>
+        {/* The services fact and the pills below are the same list. When the
+            pills render, the fact would print it twice and push About down the
+            page, so it only appears where the pills cannot: an unclaimed
+            listing, or a claimed one with nothing chosen yet, where "Not yet
+            listed" is the prompt to go and choose. --fact-cols keeps the row
+            filled rather than leaving a gap where the fact was. */}
+        <div class="profile-facts" style={`--fact-cols:${servicesFact ? 3 : 2}`}>
+          {servicesFact && (
+            <div class="fact">
+              <span class="k">Services</span>
+              <span class:list={['v', { muted: l.specialties.length === 0 }]}>
+                {l.specialties.length > 0 ? l.specialties.join(' · ') : 'Not yet listed'}
+              </span>
+            </div>
+          )}
           <div class="fact">
             <span class="k">Serves</span>
             <span class:list={['v', { muted: l.service_cities.length === 0 }]}>
