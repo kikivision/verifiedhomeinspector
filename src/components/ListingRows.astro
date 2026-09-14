@@ -47,12 +47,14 @@ const { listings, county, pageContext } = Astro.props;
     </div>
     <div>{l.city}</div>
     <div class="lic-num">{l.license_number}</div>
+    {/* Empty rather than a dash placeholder for a listing with no services.
+        The dash was drawn as a bordered pill — .list-row .tag out-specifies
+        the transparent border .tag-empty asked for — so every unclaimed row
+        carried what looked like a broken button. The div stays even when it
+        has nothing in it: it is a grid cell, and dropping it would slide the
+        remaining columns left. */}
     <div class="tags">
-      {l.specialties.length > 0 ? (
-        l.specialties.map((s) => <span class="tag">{s}</span>)
-      ) : (
-        <span class="tag tag-empty">—</span>
-      )}
+      {l.specialties.map((s) => <span class="tag">{s}</span>)}
     </div>
     {isClaimed(l) ? (
       <div class="row-contact">

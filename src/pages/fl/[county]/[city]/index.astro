@@ -25,25 +25,35 @@ export async function getStaticPaths() {
   return live.flatMap((countySlug) => {
     const countyListings = all.filter((l) => l.county === countySlug);
     const pages = cityPagesFor(countySlug, countyListings);
-    return pages.map((page) => ({
+    return pages.map((page) => {
+      // Featured anywhere in the county whose featured cities include this
+      // one. countyListings is already in featured-position order.
+      const featured = countyListings
+        .filter((l) => l.tier === 'featured' && featuredCities(l).includes(page.city))
+        .slice(0, CITY_FEATURED_CAP);
+      const featuredHere = new Set(featured.map((l) => l.id));
+      return {
       params: { county: countySlug, city: page.slug },
       props: {
         page,
-        // Featured anywhere in the county whose featured cities include this
-        // one. countyListings is already in featured-position order.
-        featured: countyListings
-          .filter((l) => l.tier === 'featured' && featuredCities(l).includes(page.city))
-          .slice(0, CITY_FEATURED_CAP),
+        featured,
         // Claimed inspectors based in another city who chose this one on
-        // their dashboard. Unclaimed listings have no such list.
+        // their dashboard. Unclaimed listings have no such list. Anyone whose
+        // paid card is already at the top of this page is left out: they were
+        // appearing twice, once gold and once as a plain card below.
         alsoServes: countyListings.filter(
-          (l) => isClaimed(l) && l.city !== page.city && l.service_cities.includes(page.city),
+          (l) =>
+            isClaimed(l) &&
+            l.city !== page.city &&
+            l.service_cities.includes(page.city) &&
+            !featuredHere.has(l.id),
         ),
         otherCities: pages
           .filter((p) => p.city !== page.city)
           .map((p) => ({ city: p.city, count: p.listings.length })),
       },
-    }));
+      };
+    });
   });
 }
 
@@ -146,9 +156,25 @@ if (description.length > 160) description = `${description.slice(0, 157).trimEnd
           {alsoServes.map((n) => (
             <a class="card neighbor" href={inspectorPath(n.county, n.city, n.license_number, n.licensee_name)}>
               <div class="name">{n.business_name || n.licensee_name}</div>
+              {/* The licensee, as the state records them, the way the table
+                  rows and the profile page carry it. Skipped when the card is
+                  already showing that name as its heading. */}
+              {n.business_name && <div class="dash-muted">{n.licensee_name} · Licensed home inspector</div>}
               <div class="dash-muted">Based in {n.city} · {n.license_number}</div>
               <div class="neighbor-status">
-                <span class="claimed-mark">Claimed</span>
+                {/* Says where they ARE featured, never implying they are
+                    featured here — this section is the unpaid one, and the
+                    four paid spots above it are what someone buys for this
+                    city. A featured listing with no county position is
+                    featured only on its own city pages, so it says so
+                    without naming a county it is not at the top of. */}
+                {n.tier === 'featured' ? (
+                  <span class="featured-mark">
+                    {n.featured_position ? `Featured in ${searchName(county)}` : 'Featured'}
+                  </span>
+                ) : (
+                  <span class="claimed-mark">Claimed</span>
+                )}
                 {n.phone && <span class="row-phone">{n.phone}</span>}
               </div>
             </a>

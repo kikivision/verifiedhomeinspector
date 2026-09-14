@@ -139,8 +139,11 @@ select, .search-bar input { font-family: 'IBM Plex Sans', sans-serif; padding: 1
 .list-row.is-claimed { background: var(--paper-raised); box-shadow: inset 3px 0 0 var(--green); }
 .claimed-status { display: flex; flex-direction: column; gap: 3px; align-items: flex-start; }
 .claimed-mark { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--green); }
+/* Same weight as the claimed mark, not the gold pill a paid card wears: on a
+   neighbor card it states where an inspector is featured, and must not read
+   as a paid placement on the page it is sitting on. */
+.featured-mark { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--mustard-deep); }
 .claimed-note { font-size: 0.78rem; color: var(--slate); }
-.tag-empty { border-color: transparent; color: var(--line); }
 .list-row .lic-num { color: var(--slate); font-size: 0.85rem; }
 .list-row .tags { margin: 0; }
 .list-row .tag { background: transparent; border: 1px solid var(--line); color: var(--slate); }
@@ -321,6 +324,10 @@ footer p { font-size: 0.8rem; color: var(--slate); margin: 4px 0; max-width: 70c
   .section { padding: 24px 0; }
   .featured-grid { grid-template-columns: 1fr; }
   .list-row { grid-template-columns: 1fr; gap: 4px; }
+  /* Stacked, an empty services cell is a 4px gap with nothing in it. Safe to
+     drop only here: on the desktop grid it is a column, and hiding it would
+     pull contact and hire one column to the left. */
+  .list-row .tags:empty { display: none; }
   /* Rows stack on a phone, so the request button gets its own line and a tap
      target that clears the 44px guideline rather than the 32px it needs on a
      desktop row. */
