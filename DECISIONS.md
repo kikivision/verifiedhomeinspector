@@ -5,6 +5,35 @@ until you know why. Newest first.
 
 ---
 
+## 2026-09-14 — The featured card: logo in the corner, contact on the bottom line, six specialties
+
+**Built.** Three changes to `FeaturedCard.astro` and its CSS, all forced
+by the county page going to six cards.
+
+- **The logo is an 80x60 tile in the top-right corner**, not a
+  full-width plate above the name. At full width the plate was the
+  dominant thing on the card, pushed the business name to the middle,
+  and made the grid ragged: RMC's card was much taller than the card
+  beside it, and a square or tall logo made it worse. The profile page
+  keeps the full-size plate. `data-logo` on the card pads the name clear
+  of the tile; it is a data attribute rather than a class because the
+  smoke test counts exact `class="card featured"` strings.
+- **The contact block is pinned to the bottom of the card** and labelled
+  "Contact:". Grid rows stretch to their tallest card, so every contact
+  line in a row now sits on the same baseline. The label is a real
+  `<span>`, not CSS `content`, so a screen reader announces it. The cost
+  is some air inside the shorter cards, which is the price of alignment.
+- **Cards show six specialties, then "+N more"** linking to the
+  inspector's own page. Inspected PLLC lists eleven, which wrapped to
+  four rows of tags and doubled the card's height while the card beside
+  it had three. Six fills two rows beside the logo tile.
+
+The row is still only as short as its tallest card, so one inspector
+with a long list still sets the height of their row. Six is the ceiling
+on that.
+
+---
+
 ## 2026-09-14 — The waitlist is a queue per city, and paying inspectors are in it too
 
 **Decided. Not built.** Build it when any Pinellas city page fills, when
