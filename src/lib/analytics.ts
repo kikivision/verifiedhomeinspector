@@ -13,6 +13,7 @@
 // anyone else's event history back out through this same client.
 
 import { createClient } from '@supabase/supabase-js';
+import { visitSource } from './attribution';
 
 const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
@@ -67,6 +68,9 @@ export async function logListingEvent(
       listing_id: listingId,
       event_type: eventType,
       page_context: pageContext,
+      // Which channel brought them, captured when they landed. Without it the
+      // table can say a listing was called but not whether an ad paid for it.
+      source: visitSource(),
     });
   } catch (err) {
     // Never let analytics failure break the actual user action (revealing

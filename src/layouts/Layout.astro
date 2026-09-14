@@ -181,11 +181,18 @@ const ogImage = new URL('/og-image.png', Astro.site);
 
   <script>
     import { initAnalytics } from '../lib/gtag';
+    import { captureSource } from '../lib/attribution';
 
     // Every page, not just the county listing. The two form success pages are
     // the only proof a submission actually completed, and until this moved here
     // they loaded with no analytics at all — so those page views were invisible.
     initAnalytics();
+
+    // Also every page, and for the same reason: an ad sends a homeowner to a
+    // city page, they click through to an inspector, and the campaign
+    // parameters are gone from the URL long before they tap the phone number.
+    // Whatever page they land on is where the source has to be recorded.
+    captureSource();
 
     const navToggle = document.getElementById('navToggle');
     const primaryNav = document.getElementById('primaryNav');

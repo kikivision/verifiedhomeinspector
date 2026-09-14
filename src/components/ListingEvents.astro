@@ -14,6 +14,7 @@
 <script>
   import { logListingEvent } from '../lib/analytics';
   import { trackEvent } from '../lib/gtag';
+  import { visitSource } from '../lib/attribution';
 
   // A tap on a phone number is the measure of what a listing does for an
   // inspector. Logged before the dial, which the browser handles on its own;
@@ -23,7 +24,9 @@
     link.addEventListener('click', () => {
       const { listingId, pageContext } = link.dataset;
       if (listingId) logListingEvent(listingId, 'click_phone', pageContext ?? 'unknown');
-      trackEvent('click_phone', { page_context: pageContext });
+      // GA4 gets the same label the database row carries, so a number quoted
+      // from one can be checked against the other rather than argued about.
+      trackEvent('click_phone', { page_context: pageContext, visit_source: visitSource() });
     });
   });
 
