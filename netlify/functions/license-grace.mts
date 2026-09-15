@@ -121,7 +121,27 @@ function inspectorEmail(
   };
 }
 
-export default async (): Promise<Response> => {
+export default async (req: Request): Promise<Response> => {
+  // OFF UNLESS EXPLICITLY ENABLED. Removing the `schedule` to stop this running
+  // did the opposite: a scheduled function has no public URL, but a function
+  // WITHOUT a schedule is an ordinary HTTP endpoint, so dropping the schedule
+  // published a URL that anybody could call to pause, cancel and email
+  // customers. This guard is what actually makes it inert, and it stays after
+  // the schedule is restored, because a scheduled function is still reachable
+  // by anything inside Netlify.
+  //
+  // To enable: set LICENSE_GRACE_ENABLED=true in Netlify, AND restore the
+  // schedule line at the foot of this file. Both, deliberately.
+  if (process.env.LICENSE_GRACE_ENABLED !== 'true') {
+    return new Response('license-grace is disabled; set LICENSE_GRACE_ENABLED=true to turn it on', { status: 403 });
+  }
+  // A scheduled invocation carries no secret, so once enabled the only defence
+  // against a stranger triggering a run is that it is idempotent and reports
+  // everything it does. It is both, but a POST-only door costs nothing.
+  if (req.method !== 'POST' && req.headers.get('x-nf-event') !== 'schedule') {
+    return new Response('POST only', { status: 405 });
+  }
+
   const db = admin();
   const { data, error } = await db
     .from('listings')
