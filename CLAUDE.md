@@ -33,7 +33,7 @@ because something looked correct in the diff and was wrong in the output:
 - A `description` prop was passed to a layout that never declared or rendered
   it, so every page shipped with no meta description. Astro drops unknown props
   silently.
-- `trackEvent` ran before the layout had initialised gtag, because Astro bundles
+- `trackEvent` ran before the layout had initialized gtag, because Astro bundles
   each page's script separately and guarantees no order between them. The event
   threw into a catch and was lost. The init call was present in the bundle; it
   simply ran too late.

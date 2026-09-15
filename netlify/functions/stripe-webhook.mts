@@ -185,6 +185,26 @@ async function fulfill(session: Stripe.Checkout.Session): Promise<void> {
   } catch {
     wanted = [];
   }
+  // The plain path, reached when the listing is not already featured. A
+  // redelivery of an old checkout — Stripe retries for three days, and the
+  // dashboard can resend by hand — would otherwise re-feature a listing whose
+  // spot has since been released, on a subscription that is now dead, taking a
+  // county position for a card nobody is paying for.
+  try {
+    const status = (await stripe().subscriptions.retrieve(subscriptionId)).status;
+    if (status === 'canceled' || status === 'incomplete_expired' || status === 'unpaid') {
+      console.info(`Ignoring ${session.id}: subscription ${subscriptionId} is ${status}.`);
+      return;
+    }
+  } catch (err) {
+    const e = err as { type?: string; code?: string };
+    if (e?.type === 'StripeInvalidRequestError' && e?.code === 'resource_missing') {
+      console.info(`Ignoring ${session.id}: subscription ${subscriptionId} no longer exists.`);
+      return;
+    }
+    throw err;
+  }
+
   const open = await cityAvailability(db, listing.county, listing.license_number);
   const granted = wanted.filter((c) => (open.get(c) ?? 0) > 0);
   const refused = wanted.filter((c) => !granted.includes(c));

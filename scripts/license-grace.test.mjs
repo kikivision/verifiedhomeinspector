@@ -77,18 +77,26 @@ check('still warns after a missed run', act(row({ delisted_at: daysAgo(GRACE_WAR
 check('does not warn twice', act(row({ delisted_at: daysAgo(GRACE_WARN_DAYS + 3) }), 'ours', NOW, true), 'none');
 
 // The boundary. GRACE_DAYS exactly is up: the spot goes.
-// warned=true on the boundary cases so they isolate the cancel, not the warn:
-// past GRACE_WARN_DAYS an unwarned row correctly returns 'warn' first.
+// warned=true on the boundary cases so they isolate the cancel, not the warn.
 check('one day short of the grace period', act(row({ delisted_at: daysAgo(GRACE_DAYS - 1) }), 'ours', NOW, true), 'none');
-check('grace period reached exactly', act(row({ delisted_at: daysAgo(GRACE_DAYS) }), 'ours'), 'cancel');
-check('long past the grace period', act(row({ delisted_at: daysAgo(120) }), 'ours'), 'cancel');
-// Never paused and never warned, even long past the grace period: pause first.
-// Reaching here means every pause write failed for 35 days, or this ran for the
-// first time against an already-lapsed subscriber. Releasing somebody who was
-// never told is not a grace period, so the sequence pause -> warn -> cancel
-// always happens, whatever the calendar says.
-check('past grace but never paused or warned, pauses first', act(row({ delisted_at: daysAgo(GRACE_DAYS + 1) }), 'none'), 'pause');
-check('past grace, never paused but already warned, cancels', act(row({ delisted_at: daysAgo(GRACE_DAYS + 1) }), 'none', NOW, true), 'cancel');
+check('grace period reached exactly, once warned', act(row({ delisted_at: daysAgo(GRACE_DAYS) }), 'ours', NOW, true), 'cancel');
+check('long past the grace period, once warned', act(row({ delisted_at: daysAgo(120) }), 'ours', NOW, true), 'cancel');
+// The contract, walked in order. A subscriber first seen already 40 days
+// lapsed must be paused, then warned, then released — three runs — not paused
+// one morning and released the next after a pause email promising 35 days.
+const LATE = { delisted_at: daysAgo(GRACE_DAYS + 5) };
+check('first run on a long-lapsed subscriber: pause', act(row(LATE), 'none'), 'pause');
+check('second run, paused but not warned: warn, NOT cancel', act(row(LATE), 'ours'), 'warn');
+check('third run, paused and warned: cancel', act(row(LATE), 'ours', NOW, true), 'cancel');
+// Even at exactly the boundary, an unwarned row warns rather than cancels.
+check('grace boundary without a warning warns first', act(row({ delisted_at: daysAgo(GRACE_DAYS) }), 'ours'), 'warn');
+// Warned but never paused: they know it is coming, so it goes ahead, and the
+// release email says plainly that billing should have stopped and did not.
+check('past grace, warned, but the pause never took: cancels and says so', act(row(LATE), 'none', NOW, true), 'cancel');
+// A pause that keeps failing before any warning holds the spot rather than
+// releasing a customer on the strength of a broken automation. Ops is mailed
+// every day it fails.
+check('unpaused and unwarned past grace: pause first, never release', act(row(LATE), 'none'), 'pause');
 
 // The bug this threshold exists for. delisted_at is set and cleared ONLY by the
 // monthly import, and consecutive imports are up to 31 days apart, so a

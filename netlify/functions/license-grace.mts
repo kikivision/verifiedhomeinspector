@@ -171,6 +171,16 @@ export default async (): Promise<Response> => {
         if (sub.status === 'unpaid') {
           try {
             await s.subscriptions.cancel(l.stripe_subscription_id!);
+            // Canceling stops collection but leaves the open invoice payable
+            // through the link in Stripe's dunning email, so an inspector could
+            // still pay $50 for a spot that no longer exists.
+            const open = typeof sub.latest_invoice === 'string' ? sub.latest_invoice : sub.latest_invoice?.id;
+            if (open) {
+              try { await s.invoices.voidInvoice(open); } catch (err) {
+                console.error(`license-grace: could not void ${open} for ${l.license_number}`, err);
+                failed.push(`${l.license_number}: invoice ${open} is still payable for a released spot; void it in Stripe`);
+              }
+            }
           } catch (err) {
             console.error(`license-grace: could not cancel unpaid ${l.license_number}`, err);
             failed.push(`${l.license_number} (${l.county}) is unpaid and the cancel failed; cancel it in Stripe by hand`);
@@ -179,8 +189,20 @@ export default async (): Promise<Response> => {
         }
         await releaseFeaturedSpot(db, l.id);
         released = true;
-        done.push(`released ${l.license_number} (${l.county}) — subscription ${sub.status}, position freed`);
-        await tellInspector(db, l, 'cancel', false, done);
+        const lapsed = l.delisted_at !== null;
+        done.push(`released ${l.license_number} (${l.county}) — subscription ${sub.status}, position freed` +
+          (lapsed ? ', license was lapsed' : ', LICENSE WAS CURRENT so this was an ordinary cancellation'));
+        // Only mail when the license actually lapsed. This branch also catches
+        // an ordinary voluntary cancellation whose webhook was late or missed,
+        // and the release letter says "your license has not appeared for 35
+        // days" — which would have been sent to a paying customer who simply
+        // canceled, on a current license. Stripe sends its own cancellation
+        // receipt for that case; a second, false letter from us is worse than
+        // silence. wasPaused comes from the subscription we just read rather
+        // than being hard-coded false, which claimed a refund was owed.
+        if (lapsed) {
+          await tellInspector(db, l, 'cancel', sub.metadata?.paused_by === PAUSE_MARKER, done);
+        }
         continue;
       }
       // 'lifted' is stamped with its OWN marker the first time it is seen, so
@@ -189,6 +211,18 @@ export default async (): Promise<Response> => {
       // person had deliberately set. Derivation is pure and tested.
       pause = pauseOwnerOf(Boolean(sub.pause_collection), sub.metadata?.paused_by);
       warned = Boolean(sub.metadata?.[WARN_MARKER]);
+      // Stamped HERE, the moment 'lifted' is first seen, because graceAction
+      // returns 'none' for a lifted pause and the loop short-circuits on that:
+      // a marker written after the action block was unreachable, and a person
+      // who lifted our pause and later re-paused it by hand would still have
+      // been read as us and canceled at day 35.
+      if (pause === 'lifted' && sub.metadata?.paused_by === PAUSE_MARKER) {
+        try {
+          await s.subscriptions.update(l.stripe_subscription_id!, { metadata: { paused_by: LIFTED_MARKER } });
+        } catch (err) {
+          console.error(`license-grace: could not stamp the lifted marker on ${l.license_number}`, err);
+        }
+      }
     } catch (err) {
       // Never silent: a row that cannot be read is a county position held by
       // something nobody can see, and a log line expires in seven days.
@@ -231,14 +265,6 @@ export default async (): Promise<Response> => {
       console.error(`license-grace: ${action} failed for ${l.license_number}`, err);
       failed.push(`${action} failed for ${l.license_number} (${l.county}) on ${l.stripe_subscription_id} — do it by hand`);
       continue;
-    }
-
-    // A pause we saw lifted keeps a marker of its own so it is never mistaken
-    // for ours again. Written after the fact so a failed write does not claim it.
-    if (pause === 'lifted' && action !== 'clear') {
-      try {
-        await s.subscriptions.update(l.stripe_subscription_id!, { metadata: { paused_by: LIFTED_MARKER } });
-      } catch { /* cosmetic; the next run retries */ }
     }
 
     if (action === 'clear') {

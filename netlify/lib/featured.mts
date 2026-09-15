@@ -47,7 +47,11 @@ function env(name: string): string {
 }
 
 export function stripe(): Stripe {
-  return new Stripe(env('STRIPE_SECRET_KEY'));
+  // stripe-node defaults to an 80-second timeout. Netlify kills a function at
+  // 30 (10 for a background one), so a single hung call takes the whole
+  // invocation down and loses whatever it was going to report. 10 seconds is
+  // far longer than a healthy Stripe call and far shorter than the ceiling.
+  return new Stripe(env('STRIPE_SECRET_KEY'), { timeout: 10_000, maxNetworkRetries: 1 });
 }
 
 export function admin(): SupabaseClient {
@@ -359,17 +363,20 @@ export function graceAction(
 
   const days = (now.getTime() - since) / 86_400_000;
 
-  // Stopping the billing comes before anything else, including the cancel:
-  // their card is already hidden, so every day unpaused is a day charged for
-  // nothing. Reaching GRACE_DAYS having never been paused means every pause
-  // write failed (ops was mailed each time) or this ran for the first time
-  // against an already-lapsed subscriber. Either way, releasing somebody who
-  // was never paused and never warned is not a grace period, it is a surprise.
-  if (pause === 'none' && !warned) return 'pause';
-
+  // THE ORDER IS THE CONTRACT: pause, then warn, then cancel, always, whatever
+  // the calendar says. An earlier version put the cancel above the warn, so a
+  // subscriber first seen already 40 days lapsed was paused one morning and
+  // released the next — having been told, in the pause email, that the spot was
+  // held for 35 days. The cancel requires a warning to have been sent.
+  //
   // A future timestamp is clock skew, not a license that lapsed ahead of time,
   // and negative days fail this check rather than passing it.
-  if (days >= GRACE_DAYS) return 'cancel';
+  if (days >= GRACE_DAYS && warned) return 'cancel';
+
+  // Stopping the billing is the most urgent thing: their card is already
+  // hidden, so every day unpaused is a day charged for nothing. If this write
+  // keeps failing the spot stays held and ops is mailed every day, which is the
+  // right way round — a broken automation should not release a paying customer.
   if (pause === 'none') return 'pause';
 
   // Warn once, tracked by a marker on the subscription rather than by a

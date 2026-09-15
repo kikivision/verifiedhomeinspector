@@ -11,7 +11,7 @@ export interface County {
    * search term earns its keep. Everything else — the county tag above the H1,
    * the county selector, the hidden field on every form — stays on `name`, so
    * the precise geography is still on the page and a form submission still
-   * arrives labelled with a real county.
+   * arrives labeled with a real county.
    */
   metro?: string;
 }

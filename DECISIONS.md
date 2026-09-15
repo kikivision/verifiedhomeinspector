@@ -170,15 +170,21 @@ re-paused them and re-sent the pause email every morning; `'lifted'` is
 the fourth pause state, left alone, and tidied once they are current
 again so a later lapse still pauses.
 
-### The budget counts work, not rows
+### The budget: ordered rows and a wall clock
 
 Rows come back from PostgREST in heap order with no ORDER BY, and the
-first version counted every row read against the six-row budget. With a
+first version counted every row read against a six-row budget. With a
 seventh subscriber anywhere in Florida the same six would have been
 examined every day and the seventh never looked at — the exact defect
 this function exists to prevent, back silently. The query orders by
-`delisted_at` so lapsed rows come first, and only rows that produce a
-Stripe write or an email count against the budget.
+`delisted_at` so lapsed rows come first.
+
+The count itself is gone. A long tail of no-op rows could still run past
+Netlify's 30 seconds and kill the run mid-loop, after the Stripe writes
+had landed and before anything was reported, so it is a 20-second wall
+clock that reports what it did not reach. And `stripe()` now sets a
+10-second timeout: stripe-node defaults to 80, which outlives the
+function ceiling on its own and made any budget advisory.
 
 ### Round five: two majors, and a rule about who gets canceled
 
@@ -197,19 +203,46 @@ featured. An unpaid subscription is canceled before the spot is released, in
 both `reconcile` and the daily job, and `releaseFeaturedSpot` now clears
 `stripe_subscription_id` so no claimed row points at a live one.
 
-**Nobody is canceled who was never paused and never warned.** Reaching 35
-days unpaused means every pause write failed — ops was mailed each time — or
-this ran for the first time against an already-lapsed subscriber. Releasing
-in that state is not a grace period, it is a surprise, so pause, warn,
-cancel always happens in that order whatever the calendar says.
+**Nobody is canceled who was never warned.** The cancel is gated on the
+warning marker, so the order is pause, then warn, then cancel — three runs
+minimum — whatever the calendar says. The first version of this rule only
+guarded the unpaused case, so a subscriber first seen already 40 days
+lapsed was paused one morning and released the next, having been promised
+in the pause email that the spot was held for 35 days. A pause write that
+keeps failing holds the spot indefinitely with a daily ops mail, which is
+the right way round: a broken automation should not release a customer.
 
 Two smaller ones. The budget was a row count, and a long tail of no-op rows
 could still run past Netlify's 30 seconds and kill the run mid-loop after
 the Stripe writes had landed; it is a 20-second wall clock now. And a pause
 this job saw lifted by hand kept our marker, so a *second* hand action —
 pausing it again from the dashboard — read as ours and would have been
-canceled at day 35. A lifted pause carries its own marker, and a later hand
-pause reads as theirs.
+canceled at day 35. A lifted pause is stamped with its own marker the
+moment it is first seen, which matters: the first attempt at this wrote the
+marker after the action block, and `graceAction` returns `'none'` for a
+lifted pause, so the loop short-circuited before it and the write was
+unreachable. Nothing in production ever carried the marker and the bug was
+still live.
+
+### Round six: a false letter to the one paying customer
+
+The dead-subscription branch — the one that catches a row still marked
+featured whose subscription Stripe says is over — was given an inspector
+email in round five. It never reads `delisted_at`, so it sent the release
+letter, *"your license has not appeared in the DBPR list for 35 days"*, to
+anybody whose subscription ended for any reason. The likeliest trigger is
+the most ordinary one: a customer cancels through the billing portal, the
+webhook is late by more than the gap to 15:00 UTC, and the daily job mails
+the one live paying subscriber to say his license lapsed. It also hard-coded
+"billing should have been paused and was not", claiming a refund was owed.
+It now mails only when the license actually lapsed, and reads the pause
+state from the subscription in front of it.
+
+A redelivered `checkout.session.completed` could also re-feature a listing
+whose spot had since been released, on a subscription that was by then dead
+— Stripe retries for three days and the dashboard can resend by hand. The
+duplicate branch already checked the subscription was live; the plain path
+did not, and now does.
 
 ### What it will do today
 
@@ -512,7 +545,7 @@ by the county page going to six cards.
   keeps the full-size plate. `data-logo` on the card pads the name clear
   of the tile; it is a data attribute rather than a class because the
   smoke test counts exact `class="card featured"` strings.
-- **The contact block is pinned to the bottom of the card** and labelled
+- **The contact block is pinned to the bottom of the card** and labeled
   "Contact:". Grid rows stretch to their tallest card, so every contact
   line in a row now sits on the same baseline. The label is a real
   `<span>`, not CSS `content`, so a screen reader announces it. The cost
@@ -1140,7 +1173,7 @@ homeowner and the person they want to call, which costs real leads on a
 phone where tapping to call is what people do.
 
 `listing_events.event_type` already includes `click_phone`, so this is a
-`tel:` link that logs before dialling, not a new system.
+`tel:` link that logs before dialing, not a new system.
 
 ### Why the order is forced
 
