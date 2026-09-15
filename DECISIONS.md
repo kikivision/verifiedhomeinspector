@@ -62,6 +62,78 @@ one page, so counting distinct names in the database overcounts by one.
 
 ---
 
+## 2026-09-14 — Where license-grace actually stands, and what is left
+
+**Read this before touching `netlify/functions/license-grace.mts`.**
+
+### State
+
+Deployed, **disabled**, and it takes two deliberate acts to enable:
+
+1. Set `LICENSE_GRACE_ENABLED=true` in Netlify (it is not set).
+2. Restore the commented `schedule` line at the foot of the file.
+
+Verified live: the URL returns 403 and the environment variable is absent.
+
+### Why the guard exists, which is the lesson worth keeping
+
+The first attempt at disabling it removed the `schedule` and asserted, in a
+commit message and in this file, that the function therefore could not run.
+That is backwards. A **scheduled** function has no public URL; a function
+**without** a schedule is an ordinary HTTP endpoint. Unscheduling it
+published `/.netlify/functions/license-grace` to the internet, where anyone
+could invoke a job that pauses billing, cancels subscriptions and emails
+customers. A `curl` returned 200 and it ran against production.
+
+The guard stays after the schedule is restored. "Nothing can call it" was
+the assumption that was wrong, and it should not be load-bearing again.
+
+### Outstanding defects, from the seventh review round
+
+None can fire while the function is disabled. All four are in the lapse
+letters and the unpaid path:
+
+1. **The release letter always claims 35 days.** It is sent whenever a
+   lapsed row's subscription is found dead, so an inspector paused on day 3
+   who then cancels through the portal is told his license "has not appeared
+   for 35 days". It can also send twice — once from the cancel action, once
+   from the dead-subscription branch the next day if the webhook is missed.
+   Suggested: stamp `license_grace_canceled_at` before canceling, and send
+   nothing when `cancellation_details.reason === 'cancellation_requested'`.
+2. **`reconcile` does not void the open invoice.** The commit message and an
+   entry above claim a canceled unpaid subscription has its invoice voided.
+   Only the fallback in license-grace does. Stripe's cancel stops automatic
+   collection but leaves the hosted invoice payable, so an inspector can pay
+   $50 for a spot that is already released. Extract cancel-and-void into
+   `featured.mts` and call it from both places.
+3. **The three-run walk sends false letters.** For a row first seen already
+   past 35 days the sequence is pause, warn, cancel on consecutive days, and
+   the letters say "held for 35 days", then "you have not been charged", then
+   released — none of which is true on that walk. Fix by measuring grace from
+   `max(delisted_at, paused_at)` rather than from the lapse.
+4. **It voids the wrong invoice.** `latest_invoice` on an unpaid subscription
+   more than a cycle old is a *draft*; voiding throws, ops is told an invoice
+   is "still payable" when it is a draft, and the genuinely open one is never
+   touched. List `status: 'open'` invoices for the subscription instead.
+
+Smaller: `maxNetworkRetries: 1` retries `subscriptions.cancel`, which is a
+DELETE and so unkeyed, and a retried-after-success cancel reports a false
+"cancel failed" to ops. `wasPaused` is wrong when a person deliberately
+resumed billing, offering a refund for billing they chose to keep running.
+
+### The recommendation
+
+Do not fix these four on the current design. Six review rounds found real
+defects here and the last three found them in the *fixes*; the function has
+six decision outcomes and four pause states, and governs one subscription.
+Cut it back to **pause and email only**, with spots released by hand from
+`set-tier.mjs`. That deletes the cancel path, where nearly every finding has
+been, along with the warn markers and most of the state. The pure decision
+would fit in about fifteen lines and `scripts/license-grace.test.mjs` would
+shrink with it.
+
+---
+
 ## 2026-09-14 — license-grace is deployed and deliberately not scheduled
 
 **Built, held.** `netlify/functions/license-grace.mts` exports
