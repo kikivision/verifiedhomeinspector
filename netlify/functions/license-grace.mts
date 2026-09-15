@@ -318,7 +318,23 @@ async function tellInspector(
   }
 }
 
-// 15:00 UTC, deliberately after the monthly DBPR import at 13:00 on the 1st.
-// At 00:00 the job ran before the one thing that could clear delisted_at, so a
-// cancel and its rescue could land on the same morning in the wrong order.
-export const config: Config = { schedule: '0 15 * * *' };
+// DELIBERATELY NOT SCHEDULED, 2026-09-14. Everything below is written, typed,
+// tested and deployed, and it cannot run: without a `schedule` Netlify never
+// invokes it, and a scheduled function has no public URL, so nothing else can
+// either. This is a pause on the automation, not on the code.
+//
+// Why: six review rounds found real defects here and the last two found them in
+// the *fixes*, not the original — which says this is too much machinery for a
+// feature currently governing one subscription. It stops billing, restarts
+// billing and cancels subscriptions with nobody watching, so it does not get to
+// run on trust. The county gate, the webhook fixes and the page work shipped
+// with it and are live; only this is held.
+//
+// To turn it on, restore the line below and nothing else. 15:00 UTC is
+// deliberate: at 00:00 the job ran before the monthly DBPR import at 13:00 on
+// the 1st, which is the only thing that can clear delisted_at, so a cancel and
+// the import that would have rescued that inspector landed on the same morning
+// in the wrong order.
+//
+//   export const config: Config = { schedule: '0 15 * * *' };
+export const config: Config = {};

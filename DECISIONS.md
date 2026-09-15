@@ -62,6 +62,58 @@ one page, so counting distinct names in the database overcounts by one.
 
 ---
 
+## 2026-09-14 — license-grace is deployed and deliberately not scheduled
+
+**Built, held.** `netlify/functions/license-grace.mts` exports
+`config: Config = {}` instead of a `schedule`. Netlify never invokes a
+scheduled function without one, and a scheduled function has no public URL,
+so nothing can invoke it either. The code below it is complete, typed,
+tested and on production; it simply cannot run.
+
+### Why
+
+Six review rounds went over this evening's work. Every round found a real
+defect. The county gate stabilised after round three — the last three
+rounds found nothing in it — and everything since has been in this
+function, increasingly in the *fixes* rather than in the original:
+
+- Round four: a 30-day threshold canceled inspectors hours before the
+  monthly import that would have rescued them, seven months a year.
+- Round five: `unpaid` released a spot while leaving a live subscription on
+  a claimed row; a failed Stripe read was skipped in silence forever.
+- Round six: the fix for the hand-pause case was unreachable dead code, and
+  the release letter went to anybody whose subscription ended, telling a
+  paying customer on a current license that it had lapsed 35 days ago.
+
+Three rounds of that pattern is the signal, not the bugs themselves: six
+decision outcomes and four pause states, stopping and restarting billing
+and canceling subscriptions unattended, for a feature governing exactly one
+subscription today. The gate, the webhook fixes and the page work do not
+deserve to wait behind it, and it does not deserve to run on trust.
+
+### To turn it on
+
+Restore the one commented line at the foot of the file and nothing else.
+Before doing that, the honest options are: let one review round come back
+clean, or cut the function back to pause-and-email with spots released by
+hand — which removes the cancel path, where nearly every finding has been.
+
+### What is live without it
+
+Everything else in the same eight commits: `assertCountyHasRoom` refusing a
+full county before Stripe, the county page slicing at the cap, `notifyOps`
+mailing hello@ when a paid card cannot be delivered, the duplicate-
+subscription guard, the dead-subscription guard on redelivered checkouts,
+`releaseFeaturedSpot` clearing `stripe_subscription_id`, the 10-second
+Stripe timeout, and the six-spot caps with the card layout.
+
+A lapsed featured license therefore still does what it did this morning:
+nothing. The inspector keeps paying for a card that renders nowhere and
+holds a county position. That is the gap this function closes, and it is
+worth closing soon.
+
+---
+
 ## 2026-09-14 — A lapsed license pauses the billing, holds the spot 35 days, then releases it
 
 **Built.** `netlify/functions/license-grace.mts`, a Netlify scheduled
