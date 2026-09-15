@@ -8,7 +8,7 @@
 // whether the sale is allowed (claimed listing, a county with a free
 // position, cities with open spots, no more than three) is checked here,
 // before Stripe, so a full county or city is refused before anyone types a
-// card number. Fulfilment is the webhook's job.
+// card number. Fulfillment is the webhook's job.
 import type { Context } from '@netlify/functions';
 import {
   admin, stripe, siteUrl, json, errorResponse, callerListing, assertCitiesAvailable,

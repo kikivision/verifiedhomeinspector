@@ -287,7 +287,7 @@ footer p { font-size: 0.8rem; color: var(--slate); margin: 4px 0; max-width: 70c
   .nav-toggle[aria-expanded='true'] .nav-toggle-bars::before,
   .nav-toggle[aria-expanded='true'] .nav-toggle-bars::after { background: var(--paper-raised); }
   /* Middle bar hides, outer two rotate into an X, so the button reads as close
-     rather than as the same menu button in a different colour. */
+     rather than as the same menu button in a different color. */
   .nav-toggle[aria-expanded='true'] .nav-toggle-bars { background: transparent; }
   .nav-toggle[aria-expanded='true'] .nav-toggle-bars::before { top: 0; transform: rotate(45deg); }
   .nav-toggle[aria-expanded='true'] .nav-toggle-bars::after { top: 0; transform: rotate(-45deg); }
@@ -382,7 +382,7 @@ footer p { font-size: 0.8rem; color: var(--slate); margin: 4px 0; max-width: 70c
    asks. Sized as a primary control rather than a form field, because choosing
    a county is the action the page is asking for. The homepage links every
    county in its own browse section, so nothing crawlable is lost here. */
-/* A link in the hero paragraph inherits the paragraph's colour and loses its
+/* A link in the hero paragraph inherits the paragraph's color and loses its
    underline, so a citation rendered as plain text — which defeats the point of
    citing anything. These are the only links in a hero on the site. */
 .hero p a { color: var(--mustard-deep); text-decoration: underline; text-underline-offset: 2px; }
@@ -396,7 +396,7 @@ footer p { font-size: 0.8rem; color: var(--slate); margin: 4px 0; max-width: 70c
 }
 
 /* Inspector Q&A inside the navy claim panel. The heading needs an explicit
-   colour: the global h1,h2,h3 rule paints headings --navy, which is this
+   color: the global h1,h2,h3 rule paints headings --navy, which is this
    panel's own background, so without this it renders navy on navy and is
    invisible. .claim h1,h2 already carry their own override for the same
    reason; h3 had no reason to exist inside the panel until now.

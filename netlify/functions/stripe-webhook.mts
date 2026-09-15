@@ -251,9 +251,26 @@ async function reconcile(subscription: Stripe.Subscription): Promise<void> {
   if (error) throw error;
   if (!listing || listing.tier !== 'featured') return;
 
+  // 'unpaid' is not 'gone'. Stripe keeps an unpaid subscription alive and
+  // generating invoices, so releasing the spot without canceling leaves a
+  // claimed row whose owner can still pay the open invoice and reasonably think
+  // they are featured — while the daily job, which reads tier='featured', never
+  // looks at them again. Cancel it, so recovery is a fresh purchase through the
+  // county gate.
+  if (subscription.status === 'unpaid') {
+    try {
+      await stripe().subscriptions.cancel(subscription.id);
+    } catch (err) {
+      console.error(`Could not cancel unpaid subscription ${subscription.id}`, err);
+      await notifyOps(`Unpaid subscription could not be canceled: ${listing.license_number}`,
+        `${listing.license_number} went unpaid and the cancel failed, so it is still live and still ` +
+        `invoicing while their spot is released. Cancel ${subscription.id} in Stripe by hand.`);
+    }
+  }
+
   // Back to a plain claimed listing: their details stay, the placement goes.
   // Shared with license-grace, which needs the identical write when it finds a
-  // canceled subscription on a row this event never reached.
+  // dead subscription on a row this event never reached.
   await releaseFeaturedSpot(db, listing.id);
   console.info(`Subscription ${subscription.id} ${subscription.status}; ${listing.license_number} back to claimed.`);
   await rebuild();

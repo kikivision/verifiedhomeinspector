@@ -231,7 +231,7 @@ for (const file of countyPages) {
 }
 
 // create-checkout must actually call the gate. Everything else here tests
-// assertCountyHasRoom's behaviour; nothing tested that it is wired in, and
+// assertCountyHasRoom's behavior; nothing tested that it is wired in, and
 // deleting the call left every check green.
 const checkoutSrc = await readFile('netlify/functions/create-checkout.mts', 'utf8');
 check(/await assertCountyHasRoom\(/.test(checkoutSrc),

@@ -44,6 +44,6 @@ because something looked correct in the diff and was wrong in the output:
   comment above it asserted the opposite.
 
 When a path cannot be tested — no credentials, no data yet — say so rather than
-writing a comment that implies it was checked. A comment claiming behaviour
+writing a comment that implies it was checked. A comment claiming behavior
 nobody verified is worse than no comment, because it stops the next person
 looking.

@@ -284,6 +284,9 @@ export type PauseOwner = 'none' | 'ours' | 'theirs' | 'lifted';
 /** Stamped on a pause so the daily job only ever lifts its own. */
 export const PAUSE_MARKER = 'license-grace';
 
+/** Stamped on a pause this job set that a person has since removed by hand. */
+export const LIFTED_MARKER = 'license-grace-lifted';
+
 /** Stamped when the warning has been sent, so a skipped run cannot lose it. */
 export const WARN_MARKER = 'license_grace_warned_at';
 
@@ -294,6 +297,22 @@ export interface GraceInput {
   delisted_at: string | null;
   claimed_by: string | null;
   stripe_subscription_id: string | null;
+}
+
+/**
+ * Who owns the pause on a subscription, from its live Stripe state. Pure so it
+ * can be tested: the four states are derived from two independent facts and
+ * getting the combination wrong is how a hand-set pause gets canceled.
+ *
+ * Takes only what it reads, so a test needs no Stripe object.
+ */
+export function pauseOwnerOf(paused: boolean, pausedBy: string | undefined): PauseOwner {
+  if (pausedBy === PAUSE_MARKER) return paused ? 'ours' : 'lifted';
+  // Our marker, rewritten once we have seen a person remove our pause. It stays
+  // 'lifted' whether or not it is paused again, so a second hand action is never
+  // mistaken for ours.
+  if (pausedBy === LIFTED_MARKER) return 'lifted';
+  return paused ? 'theirs' : 'none';
 }
 
 /**
@@ -339,12 +358,18 @@ export function graceAction(
   if (!Number.isFinite(since)) return pause === 'none' ? 'pause' : 'none';
 
   const days = (now.getTime() - since) / 86_400_000;
-  // A future timestamp is clock skew, not a license that lapsed ahead of time,
-  // and negative days fail the check below rather than passing it.
-  if (days >= GRACE_DAYS) return 'cancel';
 
-  // Stopping the billing comes before anything else: their card is already
-  // hidden, so every day unpaused is a day charged for nothing.
+  // Stopping the billing comes before anything else, including the cancel:
+  // their card is already hidden, so every day unpaused is a day charged for
+  // nothing. Reaching GRACE_DAYS having never been paused means every pause
+  // write failed (ops was mailed each time) or this ran for the first time
+  // against an already-lapsed subscriber. Either way, releasing somebody who
+  // was never paused and never warned is not a grace period, it is a surprise.
+  if (pause === 'none' && !warned) return 'pause';
+
+  // A future timestamp is clock skew, not a license that lapsed ahead of time,
+  // and negative days fail this check rather than passing it.
+  if (days >= GRACE_DAYS) return 'cancel';
   if (pause === 'none') return 'pause';
 
   // Warn once, tracked by a marker on the subscription rather than by a
@@ -365,7 +390,19 @@ export function graceAction(
 export async function releaseFeaturedSpot(db: SupabaseClient, listingId: string): Promise<void> {
   const { error } = await db
     .from('listings')
-    .update({ tier: 'claimed', featured_position: null, featured_cities: [], featured_since: null })
+    .update({
+      tier: 'claimed',
+      featured_position: null,
+      featured_cities: [],
+      featured_since: null,
+      // Cleared too. Leaving it behind left a claimed row pointing at a
+      // subscription that could still be billing — an inspector paying $50 a
+      // month for a card that is not on the site, invisible to the daily job
+      // (it reads tier='featured') and able to buy a second subscription
+      // because create-checkout only refuses a listing already featured.
+      // stripe_customer_id stays, so a later purchase reuses the same customer.
+      stripe_subscription_id: null,
+    })
     .eq('id', listingId);
   if (error) throw error;
 }

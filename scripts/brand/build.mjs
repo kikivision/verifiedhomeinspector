@@ -183,7 +183,7 @@ await png(read('logo-stacked.svg'), OUT, 'logo-stacked-800.png', 800);
 await png(read('logo-stacked-reverse.svg'), OUT, 'logo-stacked-reverse-800.png', 800);
 await png(read('wordmark.svg'), OUT, 'wordmark-1200.png', 1200);
 
-// Square avatar for social profiles and Stripe: full-bleed tile, house centred
+// Square avatar for social profiles and Stripe: full-bleed tile, house centered
 // with room around it, because platforms crop to circles.
 const avatarSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="1024" height="1024"><rect width="64" height="64" fill="${TILE}"/><g transform="translate(8 8) scale(0.75)"><path d="${HOUSE}" fill="${MUSTARD}"/></g></svg>\n`;
 write(OUT, 'avatar-square.svg', avatarSvg);
@@ -239,7 +239,7 @@ await png(avatarSvg, PUBLIC, 'apple-touch-icon.png', 180);
   const W = 1200, H = 630, X = 86;
   const hex = (pts) => `<polygon points="${pts}" fill="none" stroke="${PAPER_RAISED}" stroke-opacity="0.10" stroke-width="2"/>`;
   const wm = wordmark({ size: 40, mainColor: PAPER_RAISED, accentColor: MUSTARD, x: X + 60 + 22, baseline: 0 });
-  // Vertical rhythm from the HTML: the block is centred; these are its measured offsets.
+  // Vertical rhythm from the HTML: the block is centered; these are its measured offsets.
   const markTop = 92;
   const wmBaseline = markTop + 30 + 40 * 0.34;
   const h1 = paragraphPath(fraunces, 'Find a licensed home inspector in Florida', 66, X, markTop + 60 + 40 + 66 * 0.78, 17 * 66 * 0.5, 66 * 1.1, -66 * 0.015);

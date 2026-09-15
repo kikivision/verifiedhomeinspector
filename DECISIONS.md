@@ -44,7 +44,7 @@ Anything that is not `resource_missing` rethrows now, so Stripe retries.
 
 ### Also from that review
 
-A `checkout.session.completed` that never fulfils now mails hello@ from
+A `checkout.session.completed` that never fulfills now mails hello@ from
 the handler's outer catch. That is a customer who has paid and received
 nothing, and until now the only trace was a `console.error` in logs that
 expire in seven days. It covers the 23505 case and any alert dropped by a
@@ -81,8 +81,12 @@ different direction.
 | state | action |
 |---|---|
 | lapsed, billing running | pause Stripe collection, mail the inspector and hello@ |
-| back in the extract, paused | resume collection; the position never moved |
+| back in the extract, paused by us | resume collection; the position never moved |
+| back in the extract, our marker but no pause | clear the stale marker, tell nobody |
+| lapsed `GRACE_WARN_DAYS` (30) | warn the inspector and hello@, once, marker-tracked |
 | lapsed `GRACE_DAYS` (35) or more | cancel the subscription |
+| paused or un-paused by hand | nothing, in either direction, ever |
+| Stripe says canceled, unpaid or expired | release the spot; an unpaid one is canceled first |
 
 The cancel does nothing else on purpose: the existing
 `customer.subscription.deleted` webhook drops the row to claimed, frees
@@ -113,8 +117,9 @@ runs at 15:00 UTC — after the 13:00 import, not twelve hours ahead of it.
 The warning at 30 days exists because arithmetic is not the only way this
 goes wrong: the import stops the whole run if any county trips its shrink
 guard, so a month can pass with no re-check at all. The warning mails the
-inspector and Karen while there are still five days to intervene. It is a
-one-day window and the job runs daily, so it fires exactly once.
+inspector and Karen while there are still five days to intervene. It is
+tracked by a marker on the Stripe subscription, so a skipped run cannot
+lose it and it still sends only once.
 
 The real window from the inspector's side is longer than 35 days either
 way, because the lapse can already be a month old when the import first
@@ -175,6 +180,37 @@ this function exists to prevent, back silently. The query orders by
 `delisted_at` so lapsed rows come first, and only rows that produce a
 Stripe write or an email count against the budget.
 
+### Round five: two majors, and a rule about who gets canceled
+
+A row whose Stripe `retrieve` failed was skipped with a `console.error` and
+nothing else — no ops mail, no counter, not even a line in the summary. A
+county position held by something nobody could see, every day, silently.
+Failures are their own bucket now, under a NEEDS A PERSON heading.
+
+`unpaid` was treated as "gone". It is not: Stripe keeps an unpaid
+subscription alive and generating invoices, so releasing the spot without
+canceling left a *claimed* row whose owner could still pay the open invoice
+and reasonably believe they were featured — while the daily job, which reads
+`tier='featured'`, never looked at them again, and `create-checkout` would
+have sold them a second subscription because the listing was no longer
+featured. An unpaid subscription is canceled before the spot is released, in
+both `reconcile` and the daily job, and `releaseFeaturedSpot` now clears
+`stripe_subscription_id` so no claimed row points at a live one.
+
+**Nobody is canceled who was never paused and never warned.** Reaching 35
+days unpaused means every pause write failed — ops was mailed each time — or
+this ran for the first time against an already-lapsed subscriber. Releasing
+in that state is not a grace period, it is a surprise, so pause, warn,
+cancel always happens in that order whatever the calendar says.
+
+Two smaller ones. The budget was a row count, and a long tail of no-op rows
+could still run past Netlify's 30 seconds and kill the run mid-loop after
+the Stripe writes had landed; it is a 20-second wall clock now. And a pause
+this job saw lifted by hand kept our marker, so a *second* hand action —
+pausing it again from the dashboard — read as ours and would have been
+canceled at day 35. A lifted pause carries its own marker, and a later hand
+pause reads as theirs.
+
 ### What it will do today
 
 Nothing. Of the two featured listings, RMC has no Stripe subscription so
@@ -183,8 +219,8 @@ and unpaused, which is `'none'`. The first time this function acts on
 anything, it will email.
 
 A scheduled function gets 30 seconds and each row can cost two Stripe
-calls, a user lookup and a mail, so it stops after six rows and says so in
-the summary; the rest are picked up by the next day's run.
+calls, a user lookup and a mail, so it works to a 20-second wall clock and
+reports anything it did not reach, which is first in line the next day.
 
 ---
 
@@ -222,7 +258,7 @@ send can never 500 the webhook into a Stripe retry and a double charge.
 
 `create-checkout` refuses an already-featured listing when the session is
 created, and a Stripe session lives 24 hours. Open checkout, press back,
-open it again, complete both: the first fulfilment features the listing,
+open it again, complete both: the first fulfillment features the listing,
 the second sees a different subscription id, proceeds, and overwrites
 `stripe_subscription_id`. The first subscription is orphaned and keeps
 billing, and its eventual `deleted` event matches no row. `fulfill` now
@@ -297,7 +333,7 @@ unrelated deploy was the wrong lever.
 
 ### Not changed
 
-`featured_cities: []` at fulfilment still falls back to the listing's own
+`featured_cities: []` at fulfillment still falls back to the listing's own
 mailing city, a city the inspector never chose. It needs distinguishing
 "never set" from "set to nothing" in the schema, and with the gate in
 place it takes two races to reach. The notification above means a person

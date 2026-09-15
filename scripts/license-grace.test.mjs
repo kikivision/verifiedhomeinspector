@@ -10,7 +10,7 @@
  *
  * Usage:  node scripts/license-grace.test.mjs
  */
-import { graceAction, GRACE_DAYS, GRACE_WARN_DAYS } from '../netlify/lib/featured.mts';
+import { graceAction, pauseOwnerOf, PAUSE_MARKER, LIFTED_MARKER, GRACE_DAYS, GRACE_WARN_DAYS } from '../netlify/lib/featured.mts';
 
 // graceAction(listing, pause, warned, now). `warned` is a marker on the Stripe
 // subscription, so a skipped run cannot lose the warning.
@@ -82,7 +82,13 @@ check('does not warn twice', act(row({ delisted_at: daysAgo(GRACE_WARN_DAYS + 3)
 check('one day short of the grace period', act(row({ delisted_at: daysAgo(GRACE_DAYS - 1) }), 'ours', NOW, true), 'none');
 check('grace period reached exactly', act(row({ delisted_at: daysAgo(GRACE_DAYS) }), 'ours'), 'cancel');
 check('long past the grace period', act(row({ delisted_at: daysAgo(120) }), 'ours'), 'cancel');
-check('past grace and never paused', act(row({ delisted_at: daysAgo(GRACE_DAYS + 1) }), 'none'), 'cancel');
+// Never paused and never warned, even long past the grace period: pause first.
+// Reaching here means every pause write failed for 35 days, or this ran for the
+// first time against an already-lapsed subscriber. Releasing somebody who was
+// never told is not a grace period, so the sequence pause -> warn -> cancel
+// always happens, whatever the calendar says.
+check('past grace but never paused or warned, pauses first', act(row({ delisted_at: daysAgo(GRACE_DAYS + 1) }), 'none'), 'pause');
+check('past grace, never paused but already warned, cancels', act(row({ delisted_at: daysAgo(GRACE_DAYS + 1) }), 'none', NOW, true), 'cancel');
 
 // The bug this threshold exists for. delisted_at is set and cleared ONLY by the
 // monthly import, and consecutive imports are up to 31 days apart, so a
@@ -108,6 +114,23 @@ check('unparseable delisted_at, already paused', act(row({ delisted_at: 'not a d
 
 // A future timestamp is clock skew, not a license that lapsed in the future.
 check('future delisted_at does not cancel', act(row({ delisted_at: daysAgo(-5) }), 'none'), 'pause');
+
+// The derivation of the pause state from Stripe, which decides which branch of
+// everything above is taken. It was inline and untested, so the pure decisions
+// were covered and the thing feeding them was not.
+check('no pause, no marker', pauseOwnerOf(false, undefined), 'none');
+check('paused by a person', pauseOwnerOf(true, undefined), 'theirs');
+check('paused by us', pauseOwnerOf(true, PAUSE_MARKER), 'ours');
+check('our marker but the pause is gone', pauseOwnerOf(false, PAUSE_MARKER), 'lifted');
+// The two-hand-action case: a person lifted our pause, then paused it again
+// themselves. Reading that as ours is how the job would cancel a pause
+// somebody deliberately set.
+check('re-paused by hand after lifting ours', pauseOwnerOf(true, LIFTED_MARKER), 'lifted');
+check('lifted marker, still unpaused', pauseOwnerOf(false, LIFTED_MARKER), 'lifted');
+// Stripe stores a deleted key as absent, but an empty string must never read
+// as one of our markers.
+check('empty marker is nobody', pauseOwnerOf(true, ''), 'theirs');
+check('unknown marker is somebody else', pauseOwnerOf(true, 'someone-else'), 'theirs');
 
 if (failures.length > 0) {
   console.error(`\nLicense grace failed ${failures.length} check(s):\n`);

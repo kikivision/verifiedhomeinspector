@@ -102,7 +102,7 @@ check('a county with room returns its position', (await assertCountyHasRoom(stub
 // Nulls never count as a taken position: a paid listing that lost the race
 // carries one, and it must not consume a spot nobody can see. This holds for
 // any implementation, because the loop compares against numbers — it is here
-// to pin the behaviour, not to catch a likely bug.
+// to pin the behavior, not to catch a likely bug.
 check('null positions do not consume a spot',
   (await nextPosition(stubDb([1, null, 2]), 'pinellas')) === 3,
   'A null featured_position is a listing with no county placement, not a holder of one.');

@@ -22,7 +22,7 @@
 import type { Config } from '@netlify/functions';
 import {
   admin, stripe, notifyOps, releaseFeaturedSpot, rebuild,
-  GRACE_DAYS, GRACE_WARN_DAYS, PAUSE_MARKER, WARN_MARKER, graceAction, type GraceInput, type PauseOwner,
+  GRACE_DAYS, GRACE_WARN_DAYS, PAUSE_MARKER, LIFTED_MARKER, WARN_MARKER, graceAction, pauseOwnerOf, type GraceInput, type PauseOwner,
 } from '../lib/featured.mts';
 
 const FROM = 'Karen at Verified Home Inspector <hello@mail.verifiedhomeinspector.com>';
@@ -130,8 +130,8 @@ export default async (): Promise<Response> => {
     .not('stripe_subscription_id', 'is', null)
     // Lapsed rows first, oldest lapse first. Without an ORDER BY, PostgREST
     // returns heap order, which is stable for rows this job never writes — so
-    // the budget below would examine the same six every day and a seventh
-    // subscriber would never be looked at at all.
+    // a budget would examine the same few every day and a later subscriber
+    // would never be looked at at all.
     .order('delisted_at', { ascending: true, nullsFirst: false });
   if (error) {
     console.error('license-grace: listing read failed', error);
@@ -140,46 +140,65 @@ export default async (): Promise<Response> => {
 
   const rows = (data ?? []) as (GraceInput & { id: string; tier: string })[];
   const done: string[] = [];
+  const failed: string[] = [];
   const s = stripe();
-  // A scheduled function gets 30 seconds, and a row that needs work can cost
-  // two Stripe calls, a user lookup and a mail. The budget counts WORK, not
-  // rows read: a row that resolves to 'none' is one cheap retrieve, and
-  // counting those was what starved everything past the sixth.
-  const BUDGET = 6;
-  let worked = 0;
+  // A wall clock, not a row count. Netlify gives a scheduled function 30
+  // seconds; a row needing work costs two Stripe calls, a user lookup and a
+  // mail, while a row needing nothing costs one retrieve. Counting work meant
+  // a long tail of no-op rows could still run past the ceiling and kill the
+  // run before the summary was sent — silently, mid-loop, after the Stripe
+  // side had already happened.
+  const DEADLINE = Date.now() + 20_000;
   let released = false;
-  let deferred = 0;
+  let notReached = 0;
 
   for (const l of rows) {
-    if (worked >= BUDGET) { deferred += 1; continue; }
+    if (Date.now() > DEADLINE) { notReached += 1; continue; }
 
     let pause: PauseOwner = 'none';
     let warned = false;
     try {
       const sub = await s.subscriptions.retrieve(l.stripe_subscription_id!);
-      // 'unpaid' is on reconcile's ended list too; the two must agree or a row
-      // reconcile would release gets paused and warned here instead.
       if (sub.status === 'canceled' || sub.status === 'incomplete_expired' || sub.status === 'unpaid') {
-        // The row says featured and Stripe says the subscription is over. That
-        // is what a missed customer.subscription.deleted leaves behind: a county
-        // position held by nobody, which nothing else would ever notice.
+        // The row says featured and Stripe says the subscription is over. A
+        // canceled one is simply gone — this is what a missed
+        // customer.subscription.deleted leaves behind, a county position held
+        // by nobody. 'unpaid' is different and worth the extra call: Stripe
+        // keeps it alive and generating invoices, so releasing without
+        // canceling leaves a claimed row whose owner can still pay and think
+        // they are featured. Recovery should be a fresh purchase through the
+        // county gate, not a silent resurrection.
+        if (sub.status === 'unpaid') {
+          try {
+            await s.subscriptions.cancel(l.stripe_subscription_id!);
+          } catch (err) {
+            console.error(`license-grace: could not cancel unpaid ${l.license_number}`, err);
+            failed.push(`${l.license_number} (${l.county}) is unpaid and the cancel failed; cancel it in Stripe by hand`);
+            continue;
+          }
+        }
         await releaseFeaturedSpot(db, l.id);
         released = true;
-        worked += 1;
         done.push(`released ${l.license_number} (${l.county}) — subscription ${sub.status}, position freed`);
+        await tellInspector(db, l, 'cancel', false, done);
         continue;
       }
-      const ours = sub.metadata?.paused_by === PAUSE_MARKER;
-      pause = sub.pause_collection ? (ours ? 'ours' : 'theirs') : (ours ? 'lifted' : 'none');
+      // 'lifted' is stamped with its OWN marker the first time it is seen, so
+      // a later pause set by hand reads as 'theirs' rather than as ours. Two
+      // hand actions in sequence used to end in the job canceling a pause a
+      // person had deliberately set. Derivation is pure and tested.
+      pause = pauseOwnerOf(Boolean(sub.pause_collection), sub.metadata?.paused_by);
       warned = Boolean(sub.metadata?.[WARN_MARKER]);
     } catch (err) {
+      // Never silent: a row that cannot be read is a county position held by
+      // something nobody can see, and a log line expires in seven days.
       console.error(`license-grace: could not read subscription for ${l.license_number}`, err);
+      failed.push(`could not read ${l.stripe_subscription_id} for ${l.license_number} (${l.county}) — ${err instanceof Error ? err.message : String(err)}`);
       continue;
     }
 
     const action = graceAction(l, pause, warned, new Date());
     if (action === 'none') continue;
-    worked += 1;
 
     try {
       if (action === 'pause') {
@@ -190,13 +209,11 @@ export default async (): Promise<Response> => {
       } else if (action === 'resume') {
         await s.subscriptions.update(l.stripe_subscription_id!, {
           pause_collection: null,
-          // Empty string deletes the key; the ids create-checkout wrote are
-          // untouched, because a metadata update merges.
+          // Empty string deletes the key; a metadata update merges, so the ids
+          // create-checkout wrote are untouched.
           metadata: { paused_by: '', [WARN_MARKER]: '' },
         });
       } else if (action === 'clear') {
-        // Somebody un-paused this by hand while it was still lapsed. Drop our
-        // marker so a later lapse is seen as 'none' and paused normally.
         await s.subscriptions.update(l.stripe_subscription_id!, {
           metadata: { paused_by: '', [WARN_MARKER]: '' },
         });
@@ -212,58 +229,68 @@ export default async (): Promise<Response> => {
       }
     } catch (err) {
       console.error(`license-grace: ${action} failed for ${l.license_number}`, err);
-      await notifyOps(`License grace: ${action} FAILED for ${l.license_number}`,
-        `${l.license_number} (${l.county}) needed ${action} on ${l.stripe_subscription_id} and Stripe refused. ` +
-        'Do it by hand in Stripe.');
+      failed.push(`${action} failed for ${l.license_number} (${l.county}) on ${l.stripe_subscription_id} — do it by hand`);
       continue;
     }
 
-    // Housekeeping, not news. Nobody is emailed about a metadata tidy-up.
+    // A pause we saw lifted keeps a marker of its own so it is never mistaken
+    // for ours again. Written after the fact so a failed write does not claim it.
+    if (pause === 'lifted' && action !== 'clear') {
+      try {
+        await s.subscriptions.update(l.stripe_subscription_id!, { metadata: { paused_by: LIFTED_MARKER } });
+      } catch { /* cosmetic; the next run retries */ }
+    }
+
     if (action === 'clear') {
       done.push(`cleared a stale pause marker on ${l.license_number} (${l.county})`);
       continue;
     }
 
-    let mailed: string;
-    if (!l.claimed_by) {
-      mailed = 'no claimant on file, nobody to tell';
-    } else {
-      const { data: user, error: userError } = await db.auth.admin.getUserById(l.claimed_by);
-      const to = user?.user?.email;
-      if (userError) {
-        mailed = `COULD NOT LOOK UP the claimant (${userError.message}) — tell them by hand`;
-      } else if (!to) {
-        mailed = 'claimant account has no email address on it';
-      } else {
-        const { subject, text } = inspectorEmail(action, l.licensee_name.split(' ')[0] || 'there', pause === 'ours');
-        try {
-          await mail(to, subject, text);
-          mailed = `emailed ${to}`;
-        } catch (err) {
-          console.error(`license-grace: could not mail ${l.license_number}`, err);
-          mailed = `COULD NOT EMAIL ${to} — tell them by hand`;
-        }
-      }
-    }
-
-    done.push(`${action} ${l.license_number} (${l.county}) — ${mailed}`);
-    console.info(`license-grace: ${action} ${l.license_number} — ${mailed}`);
+    done.push(`${action} ${l.license_number} (${l.county})`);
+    await tellInspector(db, l, action, pause === 'ours', done);
   }
 
   // A release here did not go through the webhook, so nothing else rebuilds it.
   if (released) await rebuild();
 
-  if (done.length > 0) {
-    await notifyOps(`License grace: ${done.length} change(s)`,
-      `${done.join('\n')}\n` +
-      (deferred > 0 ? `\n${deferred} more needed work and were left for tomorrow's run.\n` : '') +
-      '\npause = dropped out of the DBPR extract, billing stopped, spot held.\n' +
+  if (done.length > 0 || failed.length > 0 || notReached > 0) {
+    const parts: string[] = [];
+    if (done.length > 0) parts.push(done.join('\n'));
+    if (failed.length > 0) parts.push(`NEEDS A PERSON:\n${failed.join('\n')}`);
+    if (notReached > 0) parts.push(`${notReached} row(s) were not reached before the time limit and are first in line tomorrow.`);
+    parts.push(
+      'pause = dropped out of the DBPR extract, billing stopped, spot held.\n' +
       `warn = ${GRACE_WARN_DAYS} days gone, ${GRACE_DAYS - GRACE_WARN_DAYS} days left before the spot is released.\n` +
       `cancel = ${GRACE_DAYS} days gone, spot now free to sell.\n` +
       'released = Stripe says the subscription is over and the row still said featured.');
+    await notifyOps(`License grace: ${done.length} change(s)${failed.length > 0 ? `, ${failed.length} needing a person` : ''}`,
+      parts.join('\n\n'));
   }
-  return new Response(`read ${rows.length}, acted on ${worked}, deferred ${deferred}`, { status: 200 });
+  return new Response(`read ${rows.length}, changed ${done.length}, failed ${failed.length}, not reached ${notReached}`, { status: 200 });
 };
+
+/** Mails the inspector and records what happened, or why it could not. */
+async function tellInspector(
+  db: ReturnType<typeof admin>,
+  l: GraceInput,
+  action: 'pause' | 'resume' | 'cancel' | 'warn',
+  wasPaused: boolean,
+  done: string[],
+): Promise<void> {
+  if (!l.claimed_by) { done.push(`  (${l.license_number}: no claimant on file, nobody to tell)`); return; }
+  const { data: user, error: userError } = await db.auth.admin.getUserById(l.claimed_by);
+  if (userError) { done.push(`  (${l.license_number}: COULD NOT LOOK UP the claimant — ${userError.message} — tell them by hand)`); return; }
+  const to = user?.user?.email;
+  if (!to) { done.push(`  (${l.license_number}: claimant account has no email address)`); return; }
+  const { subject, text } = inspectorEmail(action, l.licensee_name.split(' ')[0] || 'there', wasPaused);
+  try {
+    await mail(to, subject, text);
+    done.push(`  (${l.license_number}: emailed ${to})`);
+  } catch (err) {
+    console.error(`license-grace: could not mail ${l.license_number}`, err);
+    done.push(`  (${l.license_number}: COULD NOT EMAIL ${to} — tell them by hand)`);
+  }
+}
 
 // 15:00 UTC, deliberately after the monthly DBPR import at 13:00 on the 1st.
 // At 00:00 the job ran before the one thing that could clear delisted_at, so a
