@@ -62,7 +62,7 @@ one page, so counting distinct names in the database overcounts by one.
 
 ---
 
-## 2026-09-14 — A lapsed license pauses the billing, holds the spot 30 days, then releases it
+## 2026-09-14 — A lapsed license pauses the billing, holds the spot 35 days, then releases it
 
 **Built.** `netlify/functions/license-grace.mts`, a Netlify scheduled
 function running daily. Closes the gap the county-gate review left open.
@@ -82,7 +82,7 @@ different direction.
 |---|---|
 | lapsed, billing running | pause Stripe collection, mail the inspector and hello@ |
 | back in the extract, paused | resume collection; the position never moved |
-| lapsed `GRACE_DAYS` (30) or more | cancel the subscription |
+| lapsed `GRACE_DAYS` (35) or more | cancel the subscription |
 
 The cancel does nothing else on purpose: the existing
 `customer.subscription.deleted` webhook drops the row to claimed, frees
@@ -122,7 +122,7 @@ sees it.
 
 ### Shape
 
-`graceAction` in `netlify/lib/featured.mts` is pure and decides all four
+`graceAction` in `netlify/lib/featured.mts` is pure and decides all six
 outcomes; the function does the Stripe and email work around it. It
 decides about somebody's money, so it is tested case by case in
 `scripts/license-grace.test.mjs`, including the boundary day, a corrupt
@@ -146,6 +146,34 @@ featured is released rather than skipped. That is the state a missed
 nobody, which nothing else would ever have noticed. The write is
 `releaseFeaturedSpot`, now shared with `reconcile`, so "one path" is true
 of the code and not just of the intention.
+
+
+### The order of the checks is the whole thing
+
+A fifth review found the hands-off check sitting *below* the cancel, so a
+subscription Karen had paused by hand was still canceled on day 35 — with
+no pause email and no warning first, because both of those are gated on
+the pause being ours. The commit message and this entry both claimed
+otherwise. The check moved above the cancel and four test cases now pin
+it at the boundary and long after.
+
+Two more from that review. The warning was a one-day window, so a single
+skipped run lost it silently and canceled on day 35 having told nobody;
+it is a marker on the subscription now. And a pause *removed* by hand
+while the license was still lapsed read as "not paused", so the job
+re-paused them and re-sent the pause email every morning; `'lifted'` is
+the fourth pause state, left alone, and tidied once they are current
+again so a later lapse still pauses.
+
+### The budget counts work, not rows
+
+Rows come back from PostgREST in heap order with no ORDER BY, and the
+first version counted every row read against the six-row budget. With a
+seventh subscriber anywhere in Florida the same six would have been
+examined every day and the seventh never looked at — the exact defect
+this function exists to prevent, back silently. The query orders by
+`delisted_at` so lapsed rows come first, and only rows that produce a
+Stripe write or an email count against the budget.
 
 ### What it will do today
 

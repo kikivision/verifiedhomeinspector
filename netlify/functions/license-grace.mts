@@ -9,7 +9,7 @@
 //
 //   lapsed            -> pause Stripe collection, mail the inspector and hello@
 //   back in time      -> resume collection, mail both, position never moved
-//   still gone at 30d -> cancel the subscription; the customer.subscription
+//   still gone at 35d -> cancel the subscription; the customer.subscription
 //                        .deleted webhook drops the row to claimed, frees the
 //                        position and rebuilds, which is the one path that
 //                        already existed and is already tested
@@ -22,7 +22,7 @@
 import type { Config } from '@netlify/functions';
 import {
   admin, stripe, notifyOps, releaseFeaturedSpot, rebuild,
-  GRACE_DAYS, GRACE_WARN_DAYS, PAUSE_MARKER, graceAction, type GraceInput, type PauseOwner,
+  GRACE_DAYS, GRACE_WARN_DAYS, PAUSE_MARKER, WARN_MARKER, graceAction, type GraceInput, type PauseOwner,
 } from '../lib/featured.mts';
 
 const FROM = 'Karen at Verified Home Inspector <hello@mail.verifiedhomeinspector.com>';
@@ -44,7 +44,12 @@ async function mail(to: string, subject: string, text: string): Promise<void> {
 }
 
 /** What the inspector reads. Plain text, and it never says they did anything wrong. */
-function inspectorEmail(action: 'pause' | 'resume' | 'cancel' | 'warn', name: string): { subject: string; text: string } {
+function inspectorEmail(
+  action: 'pause' | 'resume' | 'cancel' | 'warn',
+  name: string,
+  /** False when every pause attempt failed and they were billed throughout. */
+  wasPaused: boolean,
+): { subject: string; text: string } {
   if (action === 'pause') {
     return {
       subject: 'Your featured spot is paused — license not showing as current',
@@ -55,11 +60,14 @@ function inspectorEmail(action: 'pause' | 'resume' | 'cancel' | 'warn', name: st
         'one promise this site makes, that every inspector on it is current, and I ' +
         'hold to it even when it costs me.\n\n' +
         'Two things, both in your favor:\n\n' +
-        '1. I have stopped your billing. You will not be charged again while your card is hidden.\n' +
+        '1. I have stopped your billing, so nothing new is charged while your card is hidden.\n' +
+        '   If an invoice was already open before today it may still be collected; reply and\n' +
+        '   I will refund it.\n' +
         `2. Your featured spot is held for ${GRACE_DAYS} days. Nobody else can buy it.\n\n` +
         'If this is a renewal still working its way through DBPR, it usually sorts ' +
-        'itself out. The moment your license is back in their list, your card comes ' +
-        'back exactly where it was and billing restarts. You need do nothing here.\n\n' +
+        'itself out. I check their list once a month, and when your license is back ' +
+        'in it your card returns exactly where it was and billing restarts. You need ' +
+        'do nothing here, though a reply telling me it is sorted lets me look sooner.\n\n' +
         `If it is still not back after ${GRACE_DAYS} days I will release the spot and ` +
         'cancel the subscription, and you keep your free claimed listing.\n\n' +
         'Reply to this email if something looks wrong, or if you were charged for a ' +
@@ -100,10 +108,14 @@ function inspectorEmail(action: 'pause' | 'resume' | 'cancel' | 'warn', name: st
       `Hi ${name},\n\n` +
       'Your license has not appeared in the DBPR list of current inspectors for ' +
       `${GRACE_DAYS} days, so I have released your featured spot and canceled the ` +
-      'subscription. You were not charged for any of that time.\n\n' +
-      'Your claimed listing stays, free, and comes back on the site as soon as your ' +
-      'license is current again. If you want a featured spot after that, you can buy ' +
-      'one from your dashboard whenever one is open.\n\n' +
+      'subscription.\n\n' +
+      (wasPaused
+        ? 'You were not charged for any of that time.\n\n'
+        : 'Your billing should have been paused for that period and was not, so if you ' +
+          'were charged, reply and I will refund it.\n\n') +
+      'Your claimed listing stays, free, and returns to the site after the next ' +
+      'monthly DBPR check once your license is current again. If you want a featured ' +
+      'spot after that, you can buy one from your dashboard whenever one is open.\n\n' +
       'Reply to this email if this is wrong and I will fix it the same day.\n\n' +
       `Karen at Verified Home Inspector\n\n${FOOTER}`,
   };
@@ -115,7 +127,12 @@ export default async (): Promise<Response> => {
     .from('listings')
     .select('id, license_number, licensee_name, business_name, county, tier, delisted_at, claimed_by, stripe_subscription_id')
     .eq('tier', 'featured')
-    .not('stripe_subscription_id', 'is', null);
+    .not('stripe_subscription_id', 'is', null)
+    // Lapsed rows first, oldest lapse first. Without an ORDER BY, PostgREST
+    // returns heap order, which is stable for rows this job never writes — so
+    // the budget below would examine the same six every day and a seventh
+    // subscriber would never be looked at at all.
+    .order('delisted_at', { ascending: true, nullsFirst: false });
   if (error) {
     console.error('license-grace: listing read failed', error);
     return new Response('read failed', { status: 500 });
@@ -124,45 +141,45 @@ export default async (): Promise<Response> => {
   const rows = (data ?? []) as (GraceInput & { id: string; tier: string })[];
   const done: string[] = [];
   const s = stripe();
-  // A scheduled function gets 30 seconds, and each row can cost two Stripe
-  // calls, a user lookup and a mail. Six lapsing at once would run past it
-  // mid-loop, after the Stripe side had happened and before anyone was told.
-  // Whatever is left over is picked up by tomorrow's run; the summary says so.
+  // A scheduled function gets 30 seconds, and a row that needs work can cost
+  // two Stripe calls, a user lookup and a mail. The budget counts WORK, not
+  // rows read: a row that resolves to 'none' is one cheap retrieve, and
+  // counting those was what starved everything past the sixth.
   const BUDGET = 6;
+  let worked = 0;
   let released = false;
-  let examined = 0;
+  let deferred = 0;
 
   for (const l of rows) {
-    if (examined >= BUDGET) {
-      done.push(`stopped after ${BUDGET} rows; ${rows.length - examined} left for tomorrow`);
-      break;
-    }
-    examined += 1;
+    if (worked >= BUDGET) { deferred += 1; continue; }
 
     let pause: PauseOwner = 'none';
+    let warned = false;
     try {
       const sub = await s.subscriptions.retrieve(l.stripe_subscription_id!);
-      if (sub.status === 'canceled' || sub.status === 'incomplete_expired') {
-        // The row says featured and Stripe says the subscription is gone. That
+      // 'unpaid' is on reconcile's ended list too; the two must agree or a row
+      // reconcile would release gets paused and warned here instead.
+      if (sub.status === 'canceled' || sub.status === 'incomplete_expired' || sub.status === 'unpaid') {
+        // The row says featured and Stripe says the subscription is over. That
         // is what a missed customer.subscription.deleted leaves behind: a county
         // position held by nobody, which nothing else would ever notice.
         await releaseFeaturedSpot(db, l.id);
         released = true;
+        worked += 1;
         done.push(`released ${l.license_number} (${l.county}) — subscription ${sub.status}, position freed`);
         continue;
       }
-      // Only ever lift a pause this job applied. A pause set by hand in the
-      // Stripe dashboard is somebody's deliberate decision about a customer.
-      pause = sub.pause_collection
-        ? (sub.metadata?.paused_by === PAUSE_MARKER ? 'ours' : 'theirs')
-        : 'none';
+      const ours = sub.metadata?.paused_by === PAUSE_MARKER;
+      pause = sub.pause_collection ? (ours ? 'ours' : 'theirs') : (ours ? 'lifted' : 'none');
+      warned = Boolean(sub.metadata?.[WARN_MARKER]);
     } catch (err) {
       console.error(`license-grace: could not read subscription for ${l.license_number}`, err);
       continue;
     }
 
-    const action = graceAction(l, pause, new Date());
+    const action = graceAction(l, pause, warned, new Date());
     if (action === 'none') continue;
+    worked += 1;
 
     try {
       if (action === 'pause') {
@@ -173,20 +190,37 @@ export default async (): Promise<Response> => {
       } else if (action === 'resume') {
         await s.subscriptions.update(l.stripe_subscription_id!, {
           pause_collection: null,
-          metadata: { paused_by: '' },
+          // Empty string deletes the key; the ids create-checkout wrote are
+          // untouched, because a metadata update merges.
+          metadata: { paused_by: '', [WARN_MARKER]: '' },
+        });
+      } else if (action === 'clear') {
+        // Somebody un-paused this by hand while it was still lapsed. Drop our
+        // marker so a later lapse is seen as 'none' and paused normally.
+        await s.subscriptions.update(l.stripe_subscription_id!, {
+          metadata: { paused_by: '', [WARN_MARKER]: '' },
+        });
+      } else if (action === 'warn') {
+        await s.subscriptions.update(l.stripe_subscription_id!, {
+          metadata: { [WARN_MARKER]: new Date().toISOString() },
         });
       } else if (action === 'cancel') {
         // The subscription.deleted webhook does the rest: tier back to claimed,
-        // position freed, cities cleared, site rebuilt. One path, and the write
-        // itself is releaseFeaturedSpot, shared with reconcile.
+        // position freed, cities cleared, site rebuilt. The write it performs is
+        // releaseFeaturedSpot, shared with this function.
         await s.subscriptions.cancel(l.stripe_subscription_id!);
       }
-      // 'warn' touches Stripe not at all; it is only an email.
     } catch (err) {
       console.error(`license-grace: ${action} failed for ${l.license_number}`, err);
       await notifyOps(`License grace: ${action} FAILED for ${l.license_number}`,
         `${l.license_number} (${l.county}) needed ${action} on ${l.stripe_subscription_id} and Stripe refused. ` +
         'Do it by hand in Stripe.');
+      continue;
+    }
+
+    // Housekeeping, not news. Nobody is emailed about a metadata tidy-up.
+    if (action === 'clear') {
+      done.push(`cleared a stale pause marker on ${l.license_number} (${l.county})`);
       continue;
     }
 
@@ -201,7 +235,7 @@ export default async (): Promise<Response> => {
       } else if (!to) {
         mailed = 'claimant account has no email address on it';
       } else {
-        const { subject, text } = inspectorEmail(action, l.licensee_name.split(' ')[0] || 'there');
+        const { subject, text } = inspectorEmail(action, l.licensee_name.split(' ')[0] || 'there', pause === 'ours');
         try {
           await mail(to, subject, text);
           mailed = `emailed ${to}`;
@@ -221,13 +255,14 @@ export default async (): Promise<Response> => {
 
   if (done.length > 0) {
     await notifyOps(`License grace: ${done.length} change(s)`,
-      `${done.join('\n')}\n\n` +
-      'pause = dropped out of the DBPR extract, billing stopped, spot held.\n' +
+      `${done.join('\n')}\n` +
+      (deferred > 0 ? `\n${deferred} more needed work and were left for tomorrow's run.\n` : '') +
+      '\npause = dropped out of the DBPR extract, billing stopped, spot held.\n' +
       `warn = ${GRACE_WARN_DAYS} days gone, ${GRACE_DAYS - GRACE_WARN_DAYS} days left before the spot is released.\n` +
       `cancel = ${GRACE_DAYS} days gone, spot now free to sell.\n` +
-      'released = Stripe says the subscription was already gone and the row still said featured.');
+      'released = Stripe says the subscription is over and the row still said featured.');
   }
-  return new Response(`checked ${examined} of ${rows.length}, changed ${done.length}`, { status: 200 });
+  return new Response(`read ${rows.length}, acted on ${worked}, deferred ${deferred}`, { status: 200 });
 };
 
 // 15:00 UTC, deliberately after the monthly DBPR import at 13:00 on the 1st.

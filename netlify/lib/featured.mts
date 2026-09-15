@@ -271,11 +271,21 @@ export async function notifyOps(subject: string, text: string): Promise<void> {
 export const GRACE_DAYS = 35;
 export const GRACE_WARN_DAYS = 30;
 
-/** Who, if anyone, paused a subscription's collection. */
-export type PauseOwner = 'none' | 'ours' | 'theirs';
+/**
+ * Who, if anyone, paused a subscription's collection.
+ *
+ * 'lifted' is the fourth state and the reason this is not a boolean: the marker
+ * is on the subscription but the pause is gone, which means a person removed a
+ * pause this job set. Treating that as 'none' re-paused them the next morning
+ * and mailed the pause email again, every day.
+ */
+export type PauseOwner = 'none' | 'ours' | 'theirs' | 'lifted';
 
 /** Stamped on a pause so the daily job only ever lifts its own. */
 export const PAUSE_MARKER = 'license-grace';
+
+/** Stamped when the warning has been sent, so a skipped run cannot lose it. */
+export const WARN_MARKER = 'license_grace_warned_at';
 
 export interface GraceInput {
   license_number: string;
@@ -291,25 +301,34 @@ export interface GraceInput {
  * decides about somebody's money, so it is separated from Stripe and tested
  * case by case in scripts/license-grace.test.mjs.
  *
- * `pause` is read live from Stripe rather than stored, which is what makes
- * every branch idempotent — a second run the same day sees the state it just
- * set and returns 'none'. It distinguishes a pause this job applied from one
- * set by hand in the Stripe dashboard: lifting somebody else's pause, and
- * mailing the inspector that billing has resumed, is not this job's business.
+ * `pause` and `warned` are read live from Stripe rather than stored here, which
+ * is what makes every branch idempotent and needs no migration.
+ *
+ * ORDER MATTERS, and getting it wrong is how this shipped broken once: the
+ * 'theirs'/'lifted' check has to come BEFORE the cancel, or a subscription a
+ * person deliberately paused or un-paused by hand is still canceled on day 35,
+ * with no pause and no warning email first because both are gated on 'ours'.
  */
 export function graceAction(
   l: GraceInput,
   pause: PauseOwner,
+  warned: boolean,
   now: Date,
-): 'pause' | 'resume' | 'cancel' | 'warn' | 'none' {
+): 'pause' | 'resume' | 'cancel' | 'warn' | 'clear' | 'none' {
   // Never touch a subscription that is not attached to a live claimed listing.
   if (!l.stripe_subscription_id) return 'none';
 
   if (l.delisted_at === null) {
     // Back in the extract. import-dbpr clears delisted_at by itself, so this is
-    // the only signal needed. Only ever lift our own pause.
-    return pause === 'ours' ? 'resume' : 'none';
+    // the only signal needed. Only ever lift our own pause; a stale marker on a
+    // subscription nobody paused is tidied so a later lapse is seen correctly.
+    if (pause === 'ours') return 'resume';
+    return pause === 'lifted' ? 'clear' : 'none';
   }
+
+  // A person's decision about a customer's billing, in either direction. Hands
+  // off, and no countdown to a cancellation on it either.
+  if (pause === 'theirs' || pause === 'lifted') return 'none';
 
   const since = Date.parse(l.delisted_at);
   // Defensive, not currently load-bearing: NaN >= GRACE_DAYS is already false,
@@ -327,12 +346,12 @@ export function graceAction(
   // Stopping the billing comes before anything else: their card is already
   // hidden, so every day unpaused is a day charged for nothing.
   if (pause === 'none') return 'pause';
-  // Somebody paused this by hand. Leave it, and do not count down to a cancel
-  // on a subscription this job did not stop.
-  if (pause === 'theirs') return 'none';
 
-  // A one-day window, and the job runs daily, so this fires exactly once.
-  if (days >= GRACE_WARN_DAYS && days < GRACE_WARN_DAYS + 1) return 'warn';
+  // Warn once, tracked by a marker on the subscription rather than by a
+  // one-day window. A window meant a single skipped run — a Netlify incident,
+  // a deploy freeze — lost the warning silently and canceled on day 35 having
+  // never told anybody.
+  if (days >= GRACE_WARN_DAYS && !warned) return 'warn';
   return 'none';
 }
 

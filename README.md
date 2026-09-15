@@ -188,7 +188,7 @@ type-checks the functions along with the site.
 
 `scripts/import-dbpr.mjs` pulls the official DBPR public-records extract
 for the Home Inspector board and writes it to `listings`. It is not a
-scrape of the licence-lookup UI.
+scrape of the license-lookup UI.
 
 ```
 node --env-file=.env scripts/import-dbpr.mjs --county orange --dry-run
@@ -197,7 +197,7 @@ node --env-file=.env scripts/import-dbpr.mjs --county orange
 
 Claimed data is never overwritten: only `city`, `licensee_name` and
 `delisted_at` are written back to an existing row, so an import cannot
-revert a paying customer. Licences that stop appearing in the extract
+revert a paying customer. Licenses that stop appearing in the extract
 are marked `delisted_at` and never deleted.
 
 Every county carries an **anchor city** that the importer checks before

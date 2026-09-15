@@ -12,6 +12,10 @@
  */
 import { graceAction, GRACE_DAYS, GRACE_WARN_DAYS } from '../netlify/lib/featured.mts';
 
+// graceAction(listing, pause, warned, now). `warned` is a marker on the Stripe
+// subscription, so a skipped run cannot lose the warning.
+const act = (l, pause, now = NOW, warned = false) => graceAction(l, pause, warned, now);
+
 const NOW = new Date('2026-09-14T12:00:00Z');
 const daysAgo = (n) => new Date(NOW.getTime() - n * 86_400_000).toISOString();
 
@@ -31,37 +35,54 @@ const check = (name, got, want) => {
 };
 
 // The ordinary state: current license, billing running. Touch nothing.
-check('current license, not paused', graceAction(row({}), 'none', NOW), 'none');
+check('current license, not paused', act(row({}), 'none'), 'none');
 
 // Just lapsed. Their card is already hidden from every page, so stop billing.
-check('lapsed today', graceAction(row({ delisted_at: daysAgo(0) }), 'none', NOW), 'pause');
-check('lapsed a week ago', graceAction(row({ delisted_at: daysAgo(7) }), 'none', NOW), 'pause');
+check('lapsed today', act(row({ delisted_at: daysAgo(0) }), 'none'), 'pause');
+check('lapsed a week ago', act(row({ delisted_at: daysAgo(7) }), 'none'), 'pause');
 
 // Already paused by us. Running the job twice in a day must not pause twice.
-check('lapsed and already paused by us', graceAction(row({ delisted_at: daysAgo(7) }), 'ours', NOW), 'none');
+check('lapsed and already paused by us', act(row({ delisted_at: daysAgo(7) }), 'ours'), 'none');
 
 // Renewed inside the window: import-dbpr clears delisted_at, so this is the
 // only signal. Resume, and the position never moved.
-check('back in the extract, we paused it', graceAction(row({ delisted_at: null }), 'ours', NOW), 'resume');
-check('back in the extract, never paused', graceAction(row({ delisted_at: null }), 'none', NOW), 'none');
+check('back in the extract, we paused it', act(row({ delisted_at: null }), 'ours'), 'resume');
+check('back in the extract, never paused', act(row({ delisted_at: null }), 'none'), 'none');
+check('back in the extract, somebody else paused it', act(row({ delisted_at: null }), 'theirs'), 'none');
 
 // Somebody paused this by hand in the Stripe dashboard — a comped month, a
-// dispute. Lifting it, and mailing the inspector that billing has restarted,
-// is not this job's business, and nor is counting down to a cancel on it.
-check('back in the extract, somebody else paused it', graceAction(row({ delisted_at: null }), 'theirs', NOW), 'none');
-check('lapsed, somebody else paused it', graceAction(row({ delisted_at: daysAgo(7) }), 'theirs', NOW), 'none');
-check('long lapsed but paused by hand, still no warn', graceAction(row({ delisted_at: daysAgo(GRACE_WARN_DAYS) }), 'theirs', NOW), 'none');
+// dispute. Lifting it is not this job's business, and NEITHER IS CANCELING IT.
+// The cancel check used to run first, so a hand-paused subscription was
+// canceled on day 35 with no pause and no warning email, because both of those
+// are gated on the pause being ours. That is the bug these four pin.
+check('lapsed, somebody else paused it', act(row({ delisted_at: daysAgo(7) }), 'theirs'), 'none');
+check('paused by hand, no warn at the warning mark', act(row({ delisted_at: daysAgo(GRACE_WARN_DAYS) }), 'theirs'), 'none');
+check('paused by hand, NOT canceled at the grace boundary', act(row({ delisted_at: daysAgo(GRACE_DAYS) }), 'theirs'), 'none');
+check('paused by hand, NOT canceled long after', act(row({ delisted_at: daysAgo(400) }), 'theirs'), 'none');
 
-// The warning: one day wide, and the job runs daily, so it fires exactly once.
-check('a day before the warning', graceAction(row({ delisted_at: daysAgo(GRACE_WARN_DAYS - 1) }), 'ours', NOW), 'none');
-check('the warning day', graceAction(row({ delisted_at: daysAgo(GRACE_WARN_DAYS) }), 'ours', NOW), 'warn');
-check('the day after the warning', graceAction(row({ delisted_at: daysAgo(GRACE_WARN_DAYS + 1) }), 'ours', NOW), 'none');
+// Somebody removed a pause this job set, while the license is still lapsed.
+// That is a decision to keep billing them; re-pausing every morning and
+// re-sending the pause email every morning is not a response to it.
+check('our pause lifted by hand, still lapsed', act(row({ delisted_at: daysAgo(7) }), 'lifted'), 'none');
+check('our pause lifted by hand, not canceled at the boundary', act(row({ delisted_at: daysAgo(GRACE_DAYS) }), 'lifted'), 'none');
+// Once they are current again the stale marker is tidied, or a later lapse
+// would read as 'lifted' forever and never pause.
+check('stale marker on a current listing is cleared', act(row({ delisted_at: null }), 'lifted'), 'clear');
+
+// The warning is tracked by a marker, not a one-day window: a single skipped
+// run used to lose it silently and cancel on day 35 having warned nobody.
+check('a day before the warning', act(row({ delisted_at: daysAgo(GRACE_WARN_DAYS - 1) }), 'ours'), 'none');
+check('the warning day', act(row({ delisted_at: daysAgo(GRACE_WARN_DAYS) }), 'ours'), 'warn');
+check('still warns after a missed run', act(row({ delisted_at: daysAgo(GRACE_WARN_DAYS + 3) }), 'ours'), 'warn');
+check('does not warn twice', act(row({ delisted_at: daysAgo(GRACE_WARN_DAYS + 3) }), 'ours', NOW, true), 'none');
 
 // The boundary. GRACE_DAYS exactly is up: the spot goes.
-check('one day short of the grace period', graceAction(row({ delisted_at: daysAgo(GRACE_DAYS - 1) }), 'ours', NOW), 'none');
-check('grace period reached exactly', graceAction(row({ delisted_at: daysAgo(GRACE_DAYS) }), 'ours', NOW), 'cancel');
-check('long past the grace period', graceAction(row({ delisted_at: daysAgo(120) }), 'ours', NOW), 'cancel');
-check('past grace and never paused', graceAction(row({ delisted_at: daysAgo(GRACE_DAYS + 1) }), 'none', NOW), 'cancel');
+// warned=true on the boundary cases so they isolate the cancel, not the warn:
+// past GRACE_WARN_DAYS an unwarned row correctly returns 'warn' first.
+check('one day short of the grace period', act(row({ delisted_at: daysAgo(GRACE_DAYS - 1) }), 'ours', NOW, true), 'none');
+check('grace period reached exactly', act(row({ delisted_at: daysAgo(GRACE_DAYS) }), 'ours'), 'cancel');
+check('long past the grace period', act(row({ delisted_at: daysAgo(120) }), 'ours'), 'cancel');
+check('past grace and never paused', act(row({ delisted_at: daysAgo(GRACE_DAYS + 1) }), 'none'), 'cancel');
 
 // The bug this threshold exists for. delisted_at is set and cleared ONLY by the
 // monthly import, and consecutive imports are up to 31 days apart, so a
@@ -70,18 +91,23 @@ check('past grace and never paused', graceAction(row({ delisted_at: daysAgo(GRAC
 check('grace period clears the longest gap between imports', GRACE_DAYS > 31, true);
 check('the warning leaves time to act', GRACE_DAYS - GRACE_WARN_DAYS >= 3, true);
 check('a 31-day month does not cancel early',
-  graceAction(row({ delisted_at: '2026-08-01T13:05:00Z' }), 'ours', new Date('2026-09-01T15:00:00Z')), 'none');
+  act(row({ delisted_at: '2026-08-01T13:05:00Z' }), 'ours', new Date('2026-09-01T15:00:00Z'), true), 'none');
+// The same instant with the old 00:00 schedule and a 30-day threshold is the
+// shipped-and-caught bug: it canceled 13 hours before the import that would
+// have restored them. Pinned as arithmetic so the constants cannot drift back.
+check('the old 00:00 run would have canceled before the rescuing import',
+  (new Date('2026-09-01T00:00:00Z') - new Date('2026-08-01T13:05:00Z')) / 86400000 >= 30, true);
 
 // A listing with no subscription is not ours to act on, whatever else is true.
-check('no subscription, lapsed', graceAction(row({ delisted_at: daysAgo(90), stripe_subscription_id: null }), 'none', NOW), 'none');
-check('no subscription, current', graceAction(row({ stripe_subscription_id: null }), 'ours', NOW), 'none');
+check('no subscription, lapsed', act(row({ delisted_at: daysAgo(90), stripe_subscription_id: null }), 'none'), 'none');
+check('no subscription, current', act(row({ stripe_subscription_id: null }), 'ours'), 'none');
 
 // A corrupt timestamp must never read as "long ago" and cancel somebody.
-check('unparseable delisted_at does not cancel', graceAction(row({ delisted_at: 'not a date' }), 'none', NOW), 'pause');
-check('unparseable delisted_at, already paused', graceAction(row({ delisted_at: 'not a date' }), 'ours', NOW), 'none');
+check('unparseable delisted_at does not cancel', act(row({ delisted_at: 'not a date' }), 'none'), 'pause');
+check('unparseable delisted_at, already paused', act(row({ delisted_at: 'not a date' }), 'ours'), 'none');
 
 // A future timestamp is clock skew, not a license that lapsed in the future.
-check('future delisted_at does not cancel', graceAction(row({ delisted_at: daysAgo(-5) }), 'none', NOW), 'pause');
+check('future delisted_at does not cancel', act(row({ delisted_at: daysAgo(-5) }), 'none'), 'pause');
 
 if (failures.length > 0) {
   console.error(`\nLicense grace failed ${failures.length} check(s):\n`);
