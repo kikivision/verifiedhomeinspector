@@ -19,6 +19,11 @@
 import type { Context } from '@netlify/functions';
 import { timingSafeEqual } from 'node:crypto';
 import { admin, json, siteUrl } from '../lib/featured.mts';
+import {
+  MUSTARD_DEEP, NAVY, P, SLATE, button, dataTable, esc, link, sendOwnerAlert, shell, statusPill, whenEastern,
+} from '../lib/email.mts';
+import { getCounty } from '../../src/lib/counties.ts';
+import { inspectorPath } from '../../src/lib/slug.ts';
 
 // Resend sends from the verified mail. subdomain; replies go to the real
 // hello@ mailbox on Microsoft 365, whose MX and SPF this does not touch.
@@ -34,6 +39,7 @@ interface WelcomeListing {
   licensee_name: string;
   business_name: string | null;
   city: string;
+  county: string;
   tier: string;
   claimed_by: string | null;
   welcome_sent_at: string | null;
@@ -122,6 +128,83 @@ export function renderWelcome(l: WelcomeListing): { subject: string; text: strin
   };
 }
 
+/** "Cities you serve — check every…" → "Cities you serve". The alert lists
+ *  what is empty; the welcome is where the explanation belongs. */
+function missingLabels(l: WelcomeListing): string[] {
+  return missingItems(l).map((item) => item.split(' — ')[0]);
+}
+
+function notSet(): string {
+  return `<span style="color: ${SLATE};">not set</span>`;
+}
+
+function withScheme(url: string): string {
+  return /^https?:\/\//i.test(url) ? url : `https://${url}`;
+}
+
+/**
+ * The notice to Karen: who claimed, how to reach them, what they left empty,
+ * one button to their page. Reply-to is the claimant, so answering the
+ * notice answers the inspector. Branded (netlify/lib/email.mts) where the
+ * welcome is plain text on purpose; this one is read by us.
+ */
+export function renderClaimAlert(
+  l: WelcomeListing,
+  claimantEmail: string,
+  welcomeOk: boolean,
+): { subject: string; html: string; text: string } {
+  const county = getCounty(l.county)?.name ?? l.county;
+  const page = `${siteUrl()}${inspectorPath(l.county, l.city, l.license_number, l.licensee_name)}`;
+  const missing = missingLabels(l);
+  const when = whenEastern();
+  const who = l.business_name ? `${l.licensee_name}, ${l.business_name}` : l.licensee_name;
+
+  const html = shell(`
+          ${welcomeOk ? statusPill('New claim', NAVY) : statusPill('Welcome email failed', MUSTARD_DEEP)}
+          <p style="${P}"><strong>${esc(who)}</strong> just claimed their listing in ${esc(l.city)}.</p>
+          ${dataTable([
+            ['Inspector', esc(l.licensee_name)],
+            ['Business', l.business_name ? esc(l.business_name) : notSet()],
+            ['License', esc(l.license_number)],
+            ['City', `${esc(l.city)}, ${esc(county)}`],
+            ['Email', link(`mailto:${claimantEmail}`, claimantEmail)],
+            ['Phone', l.phone ? esc(l.phone) : notSet()],
+            ['Website', l.website ? link(withScheme(l.website), l.website) : notSet()],
+            ['Still empty', missing.length ? esc(missing.join(', ')) : 'nothing, the page is complete'],
+            ['Claimed', esc(when)],
+          ])}
+          ${button(page, 'View their page')}
+          <p style="${P}">${
+            welcomeOk
+              ? 'The welcome email listing what is still empty went to them automatically. Nothing to do; reply to this email to reach them.'
+              : 'The welcome email did NOT send. Send it by hand, or run the function again once Resend is back. Reply to this email to reach them.'
+          }</p>`);
+
+  const text =
+    `${who} just claimed their listing in ${l.city}.\n\n` +
+    `Inspector: ${l.licensee_name}\n` +
+    `Business: ${l.business_name ?? 'not set'}\n` +
+    `License: ${l.license_number}\n` +
+    `City: ${l.city}, ${county}\n` +
+    `Email: ${claimantEmail}\n` +
+    `Phone: ${l.phone ?? 'not set'}\n` +
+    `Website: ${l.website ?? 'not set'}\n` +
+    `Still empty: ${missing.length ? missing.join(', ') : 'nothing, the page is complete'}\n` +
+    `Claimed: ${when}\n\n` +
+    `${page}\n\n` +
+    (welcomeOk
+      ? 'The welcome email went to them automatically. Nothing to do; reply to reach them.'
+      : 'The welcome email did NOT send. Send it by hand.');
+
+  return {
+    subject: welcomeOk
+      ? `New claim: ${l.licensee_name} (${l.city})`
+      : `New claim, welcome FAILED: ${l.licensee_name} (${l.city})`,
+    html,
+    text,
+  };
+}
+
 async function sendEmail(to: string, subject: string, text: string): Promise<void> {
   const key = process.env.RESEND_API_KEY;
   if (!key) throw new Error('Server is missing RESEND_API_KEY.');
@@ -148,7 +231,7 @@ export default async (req: Request, _context: Context) => {
   const { data: listing, error } = await db
     .from('listings')
     .select(
-      'id, license_number, licensee_name, business_name, city, tier, claimed_by, welcome_sent_at, ' +
+      'id, license_number, licensee_name, business_name, city, county, tier, claimed_by, welcome_sent_at, ' +
         'phone, website, specialties, years_experience, about, service_cities, logo_path',
     )
     .eq('id', body.listing_id)
@@ -171,14 +254,22 @@ export default async (req: Request, _context: Context) => {
   }
 
   const { subject, text } = renderWelcome(l);
+  let welcomeOk = true;
   try {
     await sendEmail(to, subject, text);
   } catch (err) {
-    // A 500 here is logged in Netlify; pg_net does not retry, so this is the
-    // signal to send by hand. The claim itself is untouched either way.
+    // A 500 below is logged in Netlify; pg_net does not retry, so the alert
+    // to Karen is the signal to send by hand. The claim itself is untouched.
     console.error(`claim-welcome: send failed for ${l.license_number}`, err);
-    return json({ error: 'Send failed.' }, 500);
+    welcomeOk = false;
   }
+
+  // Karen hears about every claim, whether or not the welcome went. Never
+  // throws; a lost alert must not turn into a lost welcome or a 500.
+  const alert = renderClaimAlert(l, to, welcomeOk);
+  await sendOwnerAlert({ ...alert, replyTo: to });
+
+  if (!welcomeOk) return json({ error: 'Send failed.' }, 500);
 
   const { error: stampError } = await db
     .from('listings')

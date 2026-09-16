@@ -14,7 +14,10 @@
 // Refusing the whole purchase after Stripe has taken a card is worse.
 import type { Context } from '@netlify/functions';
 import type Stripe from 'stripe';
-import { admin, stripe, json, cityAvailability, nextPosition, notifyOps, rebuild, releaseFeaturedSpot } from '../lib/featured.mts';
+import { admin, stripe, json, cityAvailability, nextPosition, notifyOps, rebuild, releaseFeaturedSpot, siteUrl, TRIAL_DAYS } from '../lib/featured.mts';
+import { GREEN, P, SLATE, button, dataTable, esc, link, sendOwnerAlert, shell, statusPill, whenEastern } from '../lib/email.mts';
+import { getCounty } from '../../src/lib/counties.ts';
+import { inspectorPath } from '../../src/lib/slug.ts';
 
 export default async (req: Request, _context: Context) => {
   if (req.method !== 'POST') return json({ error: 'POST only.' }, 405);
@@ -76,7 +79,7 @@ async function fulfill(session: Stripe.Checkout.Session): Promise<void> {
   const db = admin();
   const { data: listing, error } = await db
     .from('listings')
-    .select('id, county, city, license_number, tier, featured_position, featured_cities, stripe_subscription_id')
+    .select('id, county, city, license_number, licensee_name, business_name, tier, featured_position, featured_cities, stripe_subscription_id')
     .eq('id', listingId)
     .maybeSingle();
   if (error) throw error;
@@ -252,6 +255,101 @@ async function fulfill(session: Stripe.Checkout.Session): Promise<void> {
   if (writeError) throw writeError;
   for (const a of alerts) await notifyOps(a.subject, a.text);
   await rebuild();
+
+  // Karen hears about the sale. After the write and the rebuild, so a Stripe
+  // redelivery (stopped at the top by the subscription-id check) cannot repeat
+  // it, and never thrown: the card is delivered whether or not the notice is.
+  await sendOwnerAlert(
+    renderFeaturedAlert(listing, {
+      granted,
+      position,
+      subscriptionId,
+      customerEmail: session.customer_details?.email ?? session.customer_email ?? null,
+      problems: alerts.map((a) => a.subject),
+    }),
+  );
+}
+
+/**
+ * The notice to Karen when a Featured spot is bought. Branded
+ * (netlify/lib/email.mts), one screen on a phone: who, which pages, when the
+ * first charge lands, a button to the card and a link to the subscription.
+ * Any fulfillment problem that also went to hello@ is named here so this is
+ * never a "good news" email hiding a "fix this" one.
+ */
+export function renderFeaturedAlert(
+  listing: {
+    county: string;
+    city: string;
+    license_number: string;
+    licensee_name: string;
+    business_name: string | null;
+  },
+  sale: {
+    granted: string[];
+    position: number | null;
+    subscriptionId: string;
+    customerEmail: string | null;
+    problems: string[];
+  },
+): { subject: string; html: string; text: string; replyTo?: string } {
+  const county = getCounty(listing.county)?.name ?? listing.county;
+  const page = `${siteUrl()}${inspectorPath(listing.county, listing.city, listing.license_number, listing.licensee_name)}`;
+  const who = listing.business_name ? `${listing.licensee_name}, ${listing.business_name}` : listing.licensee_name;
+  const when = whenEastern();
+  const firstCharge = new Date(Date.now() + TRIAL_DAYS * 86_400_000).toLocaleDateString('en-US', {
+    timeZone: 'America/New_York',
+    dateStyle: 'medium',
+  });
+  const cities = sale.granted.length ? sale.granted.join(', ') : 'county page only';
+  const position = sale.position === null ? 'none, the county was full (see the alert sent with this)' : `#${sale.position} on the ${county} page`;
+  const live = (process.env.STRIPE_SECRET_KEY ?? '').startsWith('sk_live_');
+  const stripeUrl = `https://dashboard.stripe.com/${live ? '' : 'test/'}subscriptions/${sale.subscriptionId}`;
+  const ok = sale.problems.length === 0;
+
+  const html = shell(`
+          ${ok ? statusPill('New Featured customer', GREEN) : statusPill('Featured sold, needs a look', '#C6871E')}
+          <p style="${P}"><strong>${esc(who)}</strong> bought a Featured spot in ${esc(county)}.</p>
+          ${dataTable([
+            ['Inspector', esc(listing.licensee_name)],
+            ['Business', listing.business_name ? esc(listing.business_name) : `<span style="color: ${SLATE};">not set</span>`],
+            ['License', esc(listing.license_number)],
+            ['City pages', esc(cities)],
+            ['County position', esc(position)],
+            ['Plan', `$50/month, ${TRIAL_DAYS}-day free trial, first charge ${esc(firstCharge)}`],
+            ['Email', sale.customerEmail ? link(`mailto:${sale.customerEmail}`, sale.customerEmail) : `<span style="color: ${SLATE};">not on the checkout</span>`],
+            ['Stripe', link(stripeUrl, sale.subscriptionId)],
+            ['Bought', esc(when)],
+          ])}
+          ${button(page, 'View their card')}
+          <p style="${P}">${
+            ok
+              ? 'Their card goes up on the next rebuild, which just started. Nothing to do; reply to this email to reach them.'
+              : `Also sent to hello@: ${esc(sale.problems.join('; '))}. Read that one before the trial ends.`
+          }</p>`);
+
+  const text =
+    `${who} bought a Featured spot in ${county}.\n\n` +
+    `Inspector: ${listing.licensee_name}\n` +
+    `Business: ${listing.business_name ?? 'not set'}\n` +
+    `License: ${listing.license_number}\n` +
+    `City pages: ${cities}\n` +
+    `County position: ${position}\n` +
+    `Plan: $50/month, ${TRIAL_DAYS}-day free trial, first charge ${firstCharge}\n` +
+    `Email: ${sale.customerEmail ?? 'not on the checkout'}\n` +
+    `Stripe: ${stripeUrl}\n` +
+    `Bought: ${when}\n\n` +
+    `${page}\n\n` +
+    (ok ? 'Their card goes up on the next rebuild. Nothing to do.' : `Also sent to hello@: ${sale.problems.join('; ')}.`);
+
+  return {
+    subject: ok
+      ? `New Featured customer: ${listing.licensee_name} (${county})`
+      : `Featured sold, needs a look: ${listing.licensee_name} (${county})`,
+    html,
+    text,
+    ...(sale.customerEmail ? { replyTo: sale.customerEmail } : {}),
+  };
 }
 
 /**

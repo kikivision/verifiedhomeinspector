@@ -53,7 +53,15 @@ database function (`claim_listing`, `update_my_listing`,
 policy on `listings`, on purpose.
 
 A claim goes live at once and emails the inbox through the
-`claim-listing` Netlify form. To revoke one:
+`claim-listing` Netlify form. Since 2026-09-16 it also sends a branded
+notice to Karen (`OWNER_ALERT_TO`, default kikidailey@gmail.com) from
+`claim-welcome.mts`, with the claimant's details, what they left empty and
+a button to their page; a Featured purchase sends the same kind of notice
+from `stripe-webhook.mts` after fulfillment. The chrome is
+`netlify/lib/email.mts`, the same shape as the SuperReports operator alerts.
+The Netlify form notification for `claim-listing` can be switched off in
+the Netlify UI once the branded one is confirmed arriving. To revoke a
+claim:
 
 ```
 node --env-file=.env scripts/set-tier.mjs HI7816 unclaimed --deploy

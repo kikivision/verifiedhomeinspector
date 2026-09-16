@@ -5,6 +5,39 @@ until you know why. Newest first.
 
 ---
 
+## 2026-09-16 — Claims and Featured sales reach Karen as branded notices
+
+**Built.** `netlify/lib/email.mts` is the email chrome for mail whose only
+reader is us: mustard rule, live-text wordmark, a status pill, a key/value
+table, one button. `claim-welcome.mts` sends "New claim" to
+`OWNER_ALERT_TO` (default kikidailey@gmail.com) right after the welcome,
+with the claimant's contact details, what they left empty, and a button to
+their page; reply-to is the claimant. `stripe-webhook.mts` sends "New
+Featured customer" after the fulfillment write and rebuild, with city
+pages, county position, first-charge date and a link to the subscription
+in Stripe. Neither can throw or hang: a lost notice must not become a
+lost welcome, a 500, or a Stripe redelivery that bills twice.
+
+### Why
+
+Until now a claim reached Karen as Netlify's generic form notification and
+a Featured sale reached her only through Stripe's own receipts, if at
+all; neither said who, where, or what was still empty, and neither looked
+like it came from this product. SuperReports already had the shape
+(`supabase/functions/_shared/email.ts`), and the two products' notices
+land in the same inbox, so this copies it with the site's palette rather
+than inventing a second one.
+
+### What it is not
+
+Not a change to any inspector-facing email. The outreach sequence and the
+claim welcome stay plain text from a person, on purpose: polish reads as a
+campaign to the person receiving it. The Netlify form notification for
+`claim-listing` still fires; switch it off in the Netlify UI once the
+branded one is seen arriving, not before.
+
+---
+
 ## 2026-09-16 — A claimed license can sign in again
 
 **Built.** `/claim/` no longer refuses a license that is already claimed

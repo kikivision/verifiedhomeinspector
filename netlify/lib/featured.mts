@@ -13,7 +13,11 @@
 //   PUBLIC_SUPABASE_URL        already set for the build
 //   SUPABASE_SERVICE_ROLE_KEY  never PUBLIC_, never in the repo
 //   RESEND_API_KEY             so notifyOps can mail hello@ when a paid card
-//                              cannot be delivered as sold
+//                              cannot be delivered as sold, and so the branded
+//                              claim / Featured notices (lib/email.mts) reach
+//                              Karen
+//   OWNER_ALERT_TO             optional; where those notices go. Defaults to
+//                              kikidailey@gmail.com in lib/email.mts
 //   NETLIFY_BUILD_HOOK         so a purchase rebuilds the site
 //   URL                        set by Netlify itself: the site's canonical URL
 import Stripe from 'stripe';
