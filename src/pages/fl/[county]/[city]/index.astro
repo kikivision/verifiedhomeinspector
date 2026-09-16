@@ -70,8 +70,8 @@ const city = page.city;
 const featuredIds = new Set(featured.map((l) => l.id));
 const rows = page.listings.filter((l) => !featuredIds.has(l.id));
 // Drawn from the target, not the cap, and a small city shows two rather
-// than four: see cityFeaturedTarget.
-const openSpots = Math.max(0, cityFeaturedTarget(page.listings.length) - featured.length);
+// than four; a few named cities are pinned lower: see cityFeaturedTarget.
+const openSpots = Math.max(0, cityFeaturedTarget(page.listings.length, county.slug, city) - featured.length);
 const tableContext = `city_${county.slug}_${page.slug}_table`;
 
 const title = `Home Inspectors in ${city}, FL | Verified Home Inspector`;

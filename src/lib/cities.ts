@@ -49,8 +49,27 @@ export const CITY_FEATURED_TARGET_SMALL = 2;
  */
 export const SMALL_CITY_LISTINGS = 10;
 
-/** Featured positions to show on a city page with this many listings. */
-export function cityFeaturedTarget(listingCount: number): number {
+/**
+ * Cities that draw fewer open boxes than their size would give them, keyed
+ * "<county slug>/<city>" so a Palmetto in one county never sets another's.
+ * Palmetto (Manatee): two, not four, from 2026-09-16, ahead of a Nextdoor
+ * post — the page is being sent to homeowners and four dashed boxes over an
+ * all-unclaimed list read as advertising first. The cap is untouched; this
+ * is only how many empty boxes are drawn. Values must be even (see above).
+ */
+export const CITY_FEATURED_TARGET_OVERRIDES: Record<string, number> = {
+  'manatee/Palmetto': 2,
+};
+
+/**
+ * Featured positions to show on a city page with this many listings. Pass
+ * the county slug and city to honour CITY_FEATURED_TARGET_OVERRIDES.
+ */
+export function cityFeaturedTarget(listingCount: number, countySlug?: string, city?: string): number {
+  if (countySlug && city) {
+    const override = CITY_FEATURED_TARGET_OVERRIDES[`${countySlug}/${city}`];
+    if (override !== undefined) return override;
+  }
   return listingCount < SMALL_CITY_LISTINGS ? CITY_FEATURED_TARGET_SMALL : CITY_FEATURED_TARGET;
 }
 
