@@ -154,6 +154,9 @@ select, .search-bar input { font-family: 'IBM Plex Sans', sans-serif; padding: 1
 /* .list-row sets display:grid, which beats the user-agent [hidden] rule, so
    filtered-out rows need this to actually disappear. */
 .list-row[hidden] { display: none; }
+/* Same for .claim-form: /claim/ keeps the code form hidden until a code has
+   been sent, and without this both forms showed at once, side by side. */
+.claim-form[hidden] { display: none; }
 /* Empty until someone types, but the margin applied anyway, so a 0px-tall
    element was still pushing the first inspector down the page. */
 .search-count { color: var(--slate); font-size: 0.88rem; margin: 8px 4px 0; }
