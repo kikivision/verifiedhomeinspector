@@ -268,6 +268,10 @@ footer p { font-size: 0.8rem; color: var(--slate); margin: 4px 0; max-width: 70c
   /* The listing table runs to ~20,000px, so an unsticky header means the only
      inspector-facing nav link is gone after the first screen. */
   header { position: sticky; top: 0; z-index: 20; }
+  /* The header is ~140px tall with the county bar. Without this, the
+     "Find an inspector" jump put the section's top edge at y=0, under the
+     header, and the search boxes 128px below that were hidden behind it. */
+  #all-inspectors { scroll-margin-top: 150px; }
 }
 
 @media (max-width: 900px) {
