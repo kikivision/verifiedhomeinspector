@@ -47,7 +47,7 @@ export const CITY_FEATURED_TARGET = 2;
  * so the two can diverge again without re-deriving the threshold.
  */
 export const SMALL_CITY_LISTINGS = 10;
-export const CITY_FEATURED_TARGET_SMALL = CITY_FEATURED_TARGET;
+export const CITY_FEATURED_TARGET_SMALL = 2;
 
 /** Featured positions to show on a city page with this many listings. */
 export function cityFeaturedTarget(listingCount: number): number {
