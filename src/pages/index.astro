@@ -56,6 +56,33 @@ const topCities = new Map(
           from state DBPR records. Pick your county to see who works in your area, what they
           specialize in, and how to reach them.
         </p>
+
+        <!-- Statewide lookup. The list of 7,200 rows is fetched the first time
+             the box is focused, not on page load, and matching happens here in
+             the browser, so a keystroke never waits on the network. "Find an
+             inspector" in the header points at #find and the script focuses
+             the box. -->
+        <div class="find" id="find">
+          <label class="find-label" for="findInput">Already have a name or a license number?</label>
+          <div class="search-bar find-bar">
+            <input
+              id="findInput"
+              type="search"
+              autocomplete="off"
+              autocapitalize="off"
+              spellcheck="false"
+              enterkeyhint="search"
+              placeholder="Name, business, or license number"
+              aria-describedby="findCount"
+              aria-controls="findResults"
+              aria-expanded="false"
+              aria-autocomplete="list"
+              role="combobox"
+            />
+          </div>
+          <div class="search-count" id="findCount" aria-live="polite"></div>
+          <ul class="find-results" id="findResults" role="listbox" aria-label="Matching inspectors" hidden></ul>
+        </div>
       </div>
     </div>
   </section>
@@ -138,4 +165,200 @@ const topCities = new Map(
       </div>
     </div>
   </section>
+  <script>
+    import { inspectorPath } from '../lib/slug';
+    import { trackEvent } from '../lib/gtag';
+
+    type Row = [string, string, string, string, string, number];
+    interface Entry { row: Row; hay: string; license: string; name: string; path: string }
+
+    const input = document.querySelector<HTMLInputElement>('#findInput');
+    const countEl = document.querySelector<HTMLElement>('#findCount');
+    const list = document.querySelector<HTMLUListElement>('#findResults');
+    const MAX = 12;
+
+    // Letters and digits only, one space between words, accents dropped, so
+    // "O'Brien", "obrien" and "O Brien" are the same search, and "HI-11454",
+    // "hi 11454" and "11454" all reach the same license.
+    function norm(text: string): string {
+      return text
+        .normalize('NFKD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/&/g, ' and ')
+        .replace(/[^a-z0-9]+/g, ' ')
+        .trim();
+    }
+
+    let entries: Entry[] | null = null;
+    let loading: Promise<void> | null = null;
+    let countyNames: Record<string, string> = {};
+    let failed = false;
+
+    function load(): Promise<void> {
+      if (loading) return loading;
+      loading = fetch('/search-index.json')
+        .then((r) => {
+          if (!r.ok) throw new Error(String(r.status));
+          return r.json();
+        })
+        .then((data: { counties: Record<string, string>; rows: Row[] }) => {
+          countyNames = data.counties;
+          entries = data.rows.map((row) => {
+            const [license, name, business, city, county] = row;
+            const digits = license.replace(/\D/g, '');
+            return {
+              row,
+              license,
+              name,
+              path: inspectorPath(county, city, license, name),
+              hay: ` ${norm(`${name} ${business} ${city} ${countyNames[county] ?? county} ${license} ${digits}`)} `,
+            };
+          });
+        })
+        .catch(() => {
+          failed = true;
+          loading = null;
+        });
+      return loading;
+    }
+
+    function setCount(text: string) {
+      if (countEl) countEl.textContent = text;
+    }
+
+    function clearResults() {
+      if (!list || !input) return;
+      list.innerHTML = '';
+      list.hidden = true;
+      input.setAttribute('aria-expanded', 'false');
+      input.removeAttribute('aria-activedescendant');
+    }
+
+    function optionAt(i: number): HTMLElement | undefined {
+      return list?.children[i] as HTMLElement | undefined;
+    }
+
+    let active = -1;
+    function setActive(i: number) {
+      if (!list || !input) return;
+      const n = list.children.length;
+      active = n === 0 ? -1 : ((i % n) + n) % n;
+      Array.from(list.children).forEach((li, idx) => {
+        li.classList.toggle('is-active', idx === active);
+        li.setAttribute('aria-selected', String(idx === active));
+      });
+      const el = optionAt(active);
+      if (el) {
+        input.setAttribute('aria-activedescendant', el.id);
+        el.scrollIntoView({ block: 'nearest' });
+      }
+    }
+
+    function render(matches: Entry[], total: number, term: string) {
+      if (!list || !input) return;
+      list.innerHTML = '';
+      matches.forEach((e, i) => {
+        const [license, name, business, city, county, flags] = e.row;
+        const li = document.createElement('li');
+        li.id = `findOption${i}`;
+        li.setAttribute('role', 'option');
+        li.setAttribute('aria-selected', 'false');
+        const a = document.createElement('a');
+        a.href = e.path;
+        const title = document.createElement('span');
+        title.className = 'find-name';
+        title.textContent = business && business.toLowerCase() !== name.toLowerCase() ? `${business} · ${name}` : name;
+        const meta = document.createElement('span');
+        meta.className = 'find-meta';
+        const status = flags & 1 ? 'Claimed listing' : flags & 2 ? 'Phone on page' : 'Not yet claimed';
+        meta.textContent = `${city}, ${countyNames[county] ?? county} · ${license} · ${status}`;
+        a.append(title, meta);
+        a.addEventListener('click', () => {
+          trackEvent('home_search_open', { license, term_length: term.length, position: i + 1 });
+        });
+        li.appendChild(a);
+        list.appendChild(li);
+      });
+      list.hidden = matches.length === 0;
+      input.setAttribute('aria-expanded', String(matches.length > 0));
+      active = -1;
+      input.removeAttribute('aria-activedescendant');
+      if (matches.length === 0) {
+        setCount('No listed inspector matches that. Every name here comes from the state license roll, so try just the last name, or the license number on their report. Or pick a county below.');
+        trackEvent('home_search_empty', { term_length: term.length });
+      } else if (total > matches.length) {
+        setCount(`Showing the first ${matches.length} of ${total} matches. Keep typing to narrow it down.`);
+      } else {
+        setCount(matches.length === 1 ? '1 match. Press Enter to open it.' : `${matches.length} matches.`);
+      }
+    }
+
+    function search() {
+      if (!input) return;
+      const term = norm(input.value);
+      if (term.length < 2) {
+        clearResults();
+        setCount(term.length === 1 ? 'Keep typing.' : '');
+        return;
+      }
+      if (failed) {
+        clearResults();
+        setCount('The search list did not load. Pick your county below; every inspector is on those pages.');
+        return;
+      }
+      if (!entries) {
+        setCount('Loading the list…');
+        load().then(search);
+        return;
+      }
+      const tokens = term.split(' ');
+      const digits = term.replace(/\D/g, '');
+      const scored: { e: Entry; score: number }[] = [];
+      for (const e of entries) {
+        if (!tokens.every((t) => e.hay.includes(t))) continue;
+        let score = 0;
+        const licDigits = e.license.replace(/\D/g, '');
+        if (digits && licDigits === digits) score += 100;
+        else if (digits && licDigits.startsWith(digits)) score += 40;
+        const n = norm(e.name);
+        if (n === term) score += 80;
+        else if (n.startsWith(term)) score += 50;
+        else if (tokens.every((t) => (` ${n} `).includes(` ${t}`))) score += 30;
+        // On a tie, a claimed page outranks one with a public number, which
+        // outranks a bare state record: the one with the most to read comes first.
+        if (e.row[5] & 1) score += 8;
+        else if (e.row[5] & 2) score += 5;
+        scored.push({ e, score });
+      }
+      scored.sort((a, b) => b.score - a.score || a.e.name.localeCompare(b.e.name));
+      render(scored.slice(0, MAX).map((x) => x.e), scored.length, term);
+    }
+
+    input?.addEventListener('focus', () => { load(); });
+    input?.addEventListener('pointerenter', () => { load(); }, { once: true });
+    input?.addEventListener('input', search);
+    input?.addEventListener('keydown', (event) => {
+      if (!list || list.hidden) return;
+      if (event.key === 'ArrowDown') { event.preventDefault(); setActive(active + 1); }
+      else if (event.key === 'ArrowUp') { event.preventDefault(); setActive(active - 1); }
+      else if (event.key === 'Enter') {
+        const el = optionAt(active >= 0 ? active : 0)?.querySelector('a');
+        if (el) { event.preventDefault(); el.click(); }
+      } else if (event.key === 'Escape') { clearResults(); setCount(''); }
+    });
+    // A phone keyboard's "search" key is Enter; the browser's own clear (x)
+    // on a search input fires "input" with an empty value, handled above.
+
+    // "Find an inspector" in the header points here. Land with the box ready
+    // to type in, on the first load and on a click while already on the page.
+    function focusIfAsked() {
+      if (location.hash === '#find' && input) {
+        input.focus({ preventScroll: true });
+        input.scrollIntoView({ block: 'center' });
+      }
+    }
+    window.addEventListener('hashchange', focusIfAsked);
+    focusIfAsked();
+  </script>
 </Layout>

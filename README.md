@@ -117,6 +117,16 @@ caps a query at 1,000 rows and one query for the table would silently
 build no page for the tail. The smoke test fails if fewer than 1,000
 inspector pages come out.
 
+## Statewide search
+
+The home page has a name-or-license box. It fetches `/search-index.json`
+(built by `src/pages/search-index.json.ts`, one array per live listing,
+about 110KB compressed) the first time the box is focused and matches in
+the browser, so nothing is queried at runtime. Page paths are rebuilt with
+`inspectorPath` from `src/lib/slug.ts`, the same function the pages use.
+"Find an inspector" in the header points at `/#find` on the home page and
+at the page's own list everywhere else.
+
 ## City pages
 
 `/fl/<county>/<city>/` is built for every city with three or more

@@ -162,6 +162,24 @@ select, .search-bar input { font-family: 'IBM Plex Sans', sans-serif; padding: 1
 .search-count { color: var(--slate); font-size: 0.88rem; margin: 8px 4px 0; }
 .search-count:empty { display: none; }
 
+/* Home page lookup. Results render in the flow under the box, not as a
+   floating menu: on a phone a floating list ends up under the keyboard or
+   clipped by the hero, and a list that pushes the page down is always
+   readable and always tappable. */
+.find { margin-top: 26px; max-width: 640px; }
+.find-label { display: block; font-weight: 500; color: var(--navy); font-size: 1rem; }
+.find-bar { margin-top: 10px; }
+.find-bar input { font-size: 1.05rem; padding: 12px 14px; }
+.find-bar input::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; height: 16px; width: 16px; margin-left: 6px; cursor: pointer;
+  background: center / contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='8' fill='%23B8BDC4'/%3E%3Cpath d='M5 5l6 6M11 5l-6 6' stroke='%23fff' stroke-width='1.8'/%3E%3C/svg%3E"); }
+.find-results { list-style: none; margin: 10px 0 0; padding: 0; background: var(--paper-raised); border: 1px solid var(--line); border-radius: 5px; max-height: 60vh; overflow-y: auto; }
+.find-results li + li { border-top: 1px solid var(--line); }
+.find-results a { display: flex; flex-direction: column; gap: 3px; padding: 12px 14px; color: var(--ink); text-decoration: none; }
+.find-results a:hover, .find-results li.is-active a { background: var(--paper); }
+.find-results li.is-active a { box-shadow: inset 3px 0 0 var(--mustard-deep); }
+.find-name { font-weight: 500; color: var(--navy); }
+.find-meta { color: var(--slate); font-size: 0.86rem; }
+
 .faq-lead { color: var(--slate); font-size: 1rem; max-width: 68ch; margin: 0 0 18px; }
 
 /* Until an inspector claims their listing there is no phone number to show —
@@ -272,6 +290,7 @@ footer p { font-size: 0.8rem; color: var(--slate); margin: 4px 0; max-width: 70c
      "Find an inspector" jump put the section's top edge at y=0, under the
      header, and the search boxes 128px below that were hidden behind it. */
   #all-inspectors { scroll-margin-top: 150px; }
+  #find { scroll-margin-top: 110px; }
 }
 
 @media (max-width: 900px) {

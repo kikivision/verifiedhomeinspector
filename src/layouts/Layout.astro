@@ -31,7 +31,7 @@ const { title, description, currentCountySlug, noindex = false, cities, currentC
 // Where "Find an inspector" lands: the search box on the page you are on.
 // A city page and an inspector page in a city that has one go to that city's
 // list; a county page (or a city too small for a page) goes to the county's;
-// the home page has no search box and goes to the county grid. Written as a
+// the home page goes to its statewide name-or-license box. Written as a
 // full path with a hash so the same link is an in-page jump on the list page
 // itself and a navigation from a profile. It used to send every city page to
 // the county list, so Palmetto's link opened Bradenton.
@@ -39,7 +39,7 @@ const inspectors = currentCountySlug && currentCity
   ? `${cityPath(currentCountySlug, currentCity)}#all-inspectors`
   : currentCountySlug
     ? `/fl/${currentCountySlug}/#all-inspectors`
-    : '/#browse';
+    : '/#find';
 // One page explains the offer and its price for every county, so the nav goes
 // there rather than to a county's claim panel. The panel still exists on each
 // county page for an inspector who is already looking at their own row.
