@@ -28,48 +28,29 @@ export const MIN_CITY_LISTINGS = 3;
  */
 export const CITY_FEATURED_CAP = 6;
 /**
- * How many featured positions a city page shows while spots are open — the
- * open-slot cards are this many less whatever is already sold. Below the cap
- * on purpose, same as the county page: the copy states the ceiling, the page
- * does not draw six dashed boxes to prove it. Both values are EVEN because
- * .featured-grid is two columns; an odd one leaves a visible hole.
- *
- * A small city shows two, not four. Gulfport lists three inspectors, so four
- * dashed boxes above them made the advertisement bigger than the page it sat
- * on. The cap is unchanged there: a small city can still fill to six if six
- * inspectors pay for it. This only governs how many empty boxes we draw
- * before anyone has.
+ * How many open featured boxes a city page draws while nobody has bought
+ * one: two, on every city page, from 2026-09-16. Four was decided against
+ * (Karen: "4 is a lot to scroll through"; the page is being sent to
+ * homeowners and the boxes sat above an all-unclaimed list). The sold cards
+ * always show, and open boxes fill up to this number, so a city with one
+ * sold spot shows one open box and a city with two or more shows none. The
+ * cap is untouched and the copy still says "6 spots per city, never more"
+ * on every page that sells one. Keep this EVEN: .featured-grid is two
+ * columns and an odd count leaves a visible hole.
  */
-export const CITY_FEATURED_TARGET = 4;
-export const CITY_FEATURED_TARGET_SMALL = 2;
+export const CITY_FEATURED_TARGET = 2;
 /**
  * Under this many listings a city page is "small". Ten splits Pinellas where
  * the data already splits it: Dunedin has 19 and Pinellas Park has 9, with
  * nothing between. About half the state's 315 city pages fall below it.
+ * Small and large cities draw the same two boxes today; the split is kept
+ * so the two can diverge again without re-deriving the threshold.
  */
 export const SMALL_CITY_LISTINGS = 10;
+export const CITY_FEATURED_TARGET_SMALL = CITY_FEATURED_TARGET;
 
-/**
- * Cities that draw fewer open boxes than their size would give them, keyed
- * "<county slug>/<city>" so a Palmetto in one county never sets another's.
- * Palmetto (Manatee): two, not four, from 2026-09-16, ahead of a Nextdoor
- * post — the page is being sent to homeowners and four dashed boxes over an
- * all-unclaimed list read as advertising first. The cap is untouched; this
- * is only how many empty boxes are drawn. Values must be even (see above).
- */
-export const CITY_FEATURED_TARGET_OVERRIDES: Record<string, number> = {
-  'manatee/Palmetto': 2,
-};
-
-/**
- * Featured positions to show on a city page with this many listings. Pass
- * the county slug and city to honour CITY_FEATURED_TARGET_OVERRIDES.
- */
-export function cityFeaturedTarget(listingCount: number, countySlug?: string, city?: string): number {
-  if (countySlug && city) {
-    const override = CITY_FEATURED_TARGET_OVERRIDES[`${countySlug}/${city}`];
-    if (override !== undefined) return override;
-  }
+/** Featured positions to show on a city page with this many listings. */
+export function cityFeaturedTarget(listingCount: number): number {
   return listingCount < SMALL_CITY_LISTINGS ? CITY_FEATURED_TARGET_SMALL : CITY_FEATURED_TARGET;
 }
 

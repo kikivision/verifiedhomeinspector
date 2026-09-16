@@ -5,6 +5,30 @@ until you know why. Newest first.
 
 ---
 
+## 2026-09-16 — City pages draw two open featured boxes, not four
+
+**Built.** `CITY_FEATURED_TARGET` in `src/lib/cities.ts` is two for every
+city page. The cap stays six and every page that sells a spot still says
+"6 spots per city, never more". Sold cards always show; open boxes fill up
+to two, so a city with one sale shows one open box and a city with two or
+more shows none. The county page still draws four.
+
+### Why
+
+The pages are being handed to homeowners directly (Nextdoor, first in
+Palmetto), and four dashed boxes over a list where nobody has claimed yet
+read as advertising before directory. Karen: "4 is a lot to scroll
+through." The 2026-09-12 note in the file that called two "a misreading of
+the cap/target split" was about the cap; the target was always free to be
+smaller. A Palmetto-only override built earlier the same day was replaced
+by this rule before anyone saw it.
+
+### What it is not
+
+Not a change to what is for sale, or to the promise. Six is still six.
+
+---
+
 ## 2026-09-16 — Claims and Featured sales reach Karen as branded notices
 
 **Built.** `netlify/lib/email.mts` is the email chrome for mail whose only
