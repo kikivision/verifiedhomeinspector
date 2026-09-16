@@ -43,7 +43,11 @@ An inspector claims their own listing without anyone at Sunstate in the
 loop. `/for-inspectors/` states the offer and the prices; `/claim/` emails
 a 6-digit code through Supabase Auth and signs them in on the spot;
 `/dashboard/` is where they enter their license number and fill in what
-the listing shows. Every write goes through a
+the listing shows. `/claim/` is also the sign-in for an inspector who has
+already claimed (new phone, signed out, expired session): a claimed
+license still gets a code, and the trigger below refuses any email that is
+not the account the license was claimed with. The footer of every page
+links to it as "Inspector sign in". Every write goes through a
 database function (`claim_listing`, `update_my_listing`,
 `release_my_listing` in `supabase/migrations/`); there is no UPDATE
 policy on `listings`, on purpose.

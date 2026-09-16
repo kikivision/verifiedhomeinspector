@@ -5,6 +5,37 @@ until you know why. Newest first.
 
 ---
 
+## 2026-09-16 — A claimed license can sign in again
+
+**Built.** `/claim/` no longer refuses a license that is already claimed
+before sending the code. The pre-check still catches an unknown or
+delisted license with a readable message; a claimed one gets the code,
+and the `require_claimable_license` trigger decides: the account the
+license was claimed with signs in, any other email is refused and told
+"already claimed, and not with this email." The footer of every page now
+carries "Inspector sign in" pointing at `/claim/`.
+
+### Why
+
+The claim page was the only sign-in, and it treated "already claimed" as
+a reason not to send a code. That was right for a stranger and wrong for
+the owner: every claimed inspector was locked out of every browser but
+the one they claimed on, with a message telling them to email us. The
+Supabase session on the original browser hid it — Jason and Damir have
+not hit it yet, because neither has tried from a second device.
+
+The trigger was always the real gate. It runs only when an account is
+being created, so sending the code for a claimed license admits nobody
+new; it just stops refusing the person who is already in.
+
+### What it is not
+
+Not a separate sign-in page. One form, one flow, one place to link to.
+The pending-license key in localStorage is not set for a claimed license,
+so the dashboard does not offer a claim to someone who already has one.
+
+---
+
 ## 2026-09-14 — The duplicate-subscription branch decides from Stripe, not from ids
 
 **Built.** A third review found the fix for the double-subscription case

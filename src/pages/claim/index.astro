@@ -12,6 +12,15 @@
 // create an account for a license that is not an unclaimed listing here. The
 // check on this page gives a readable message; the trigger is the rule.
 //
+// This page is also the sign-in for an inspector who already claimed: on a
+// new phone, after signing out, or when the session has expired. A claimed
+// license therefore still gets a code. The trigger only runs when an account
+// is being created, so the only email that can finish signing in to a claimed
+// license is the one it was claimed with; a stranger's email is refused by
+// the trigger and told so here. Until 2026-09-16 this page refused any
+// claimed license before sending the code, which locked every claimed
+// inspector out of every browser but the one they claimed on.
+//
 // The number is also kept in localStorage so the dashboard can offer the
 // claim with it filled in.
 import Layout from '../../layouts/Layout.astro';
@@ -30,6 +39,9 @@ import Layout from '../../layouts/Layout.astro';
           <p>
             Your Florida license number and the email you want to sign in with. We email you a
             6-digit code; no password, nothing to install. Claiming is free.
+          </p>
+          <p>
+            Already claimed your listing? Sign in the same way, with the email you claimed it with.
           </p>
           <p>
             Not sure what a claimed listing shows? <a href="/for-inspectors/">See what you get.</a>
@@ -94,6 +106,9 @@ import Layout from '../../layouts/Layout.astro';
     const codeMsg = $('#codeMsg');
 
     let email = '';
+    // Whether the license typed is already claimed, so a refused code can be
+    // explained as "wrong email" rather than "not claimable".
+    let claimedLicense = false;
 
     // Carried from the row the inspector clicked on the county page.
     const fromUrl = new URLSearchParams(location.search).get('license');
@@ -113,27 +128,34 @@ import Layout from '../../layouts/Layout.astro';
      * Mirrors the trigger's rule so the inspector reads why in their own words
      * rather than "Database error saving new user". Same public read the
      * county page is built from.
+     *
+     * A claimed license is not a refusal: it is what a returning inspector
+     * types. The code goes out, and the trigger decides — an existing account
+     * signs in, a new email for a claimed license is refused.
      */
-    async function whyNotClaimable(license: string): Promise<string | null> {
+    async function checkLicense(license: string): Promise<{ reason: string | null; claimed: boolean }> {
       const { data, error } = await supabase
         .from('listings')
         .select('license_number, licensee_name, tier, claimed_by, delisted_at')
         .eq('license_number', license)
         .maybeSingle();
-      if (error) return `Could not check that license right now: ${error.message}`;
+      if (error) return { reason: `Could not check that license right now: ${error.message}`, claimed: false };
       if (!data) {
-        return `No listing with license ${license} yet. We list counties one at a time; if yours is not on the site, email hello@verifiedhomeinspector.com and we will add it.`;
+        return {
+          reason: `No listing with license ${license} yet. We list counties one at a time; if yours is not on the site, email hello@verifiedhomeinspector.com and we will add it.`,
+          claimed: false,
+        };
       }
       if (data.delisted_at) {
-        return `License ${license} no longer appears in the DBPR extract, so it cannot be claimed. If the state shows it as current, email hello@verifiedhomeinspector.com.`;
+        return {
+          reason: `License ${license} no longer appears in the DBPR extract, so it cannot be claimed. If the state shows it as current, email hello@verifiedhomeinspector.com.`,
+          claimed: false,
+        };
       }
-      if (data.claimed_by) {
-        return `License ${license} has already been claimed. If that was not you, email hello@verifiedhomeinspector.com and we will sort it out.`;
-      }
-      return null;
+      return { reason: null, claimed: !!data.claimed_by };
     }
 
-    async function sendCode(license: string): Promise<boolean> {
+    async function sendCode(license: string, claimed: boolean): Promise<boolean> {
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
@@ -144,13 +166,13 @@ import Layout from '../../layouts/Layout.astro';
       });
       if (error) {
         const refused = /database error/i.test(error.message);
-        say(
-          msg,
-          refused
-            ? `License ${license} is not an unclaimed listing on this site, so no account was created.`
-            : `Could not send the code: ${error.message}`,
-          true,
-        );
+        let text = `Could not send the code: ${error.message}`;
+        if (refused && claimed) {
+          text = `License ${license} is already claimed, and not with this email. If it is yours, sign in with the email you claimed it with; otherwise email hello@verifiedhomeinspector.com and we will sort it out.`;
+        } else if (refused) {
+          text = `License ${license} is not an unclaimed listing on this site, so no account was created.`;
+        }
+        say(msg, text, true);
         return false;
       }
       return true;
@@ -172,20 +194,25 @@ import Layout from '../../layouts/Layout.astro';
 
       signinBtn.disabled = true;
       say(msg, 'Checking the license…');
-      const reason = await whyNotClaimable(license);
+      const { reason, claimed } = await checkLicense(license);
       if (reason) {
         signinBtn.disabled = false;
         say(msg, reason, true);
         return;
       }
-      try {
-        localStorage.setItem('vhi.pendingLicense', license);
-      } catch {
-        // Private mode or storage disabled: the dashboard asks for it again.
+      claimedLicense = claimed;
+      if (!claimed) {
+        // A returning inspector has nothing to claim; the dashboard shows
+        // their listing without this.
+        try {
+          localStorage.setItem('vhi.pendingLicense', license);
+        } catch {
+          // Private mode or storage disabled: the dashboard asks for it again.
+        }
       }
 
       say(msg, 'Sending…');
-      const sent = await sendCode(license);
+      const sent = await sendCode(license, claimed);
       signinBtn.disabled = false;
       if (!sent) return;
       trackEvent('claim_code_sent');
@@ -219,7 +246,7 @@ import Layout from '../../layouts/Layout.astro';
       event.preventDefault();
       const license = licenseInput.value.trim().toUpperCase().replace(/\s/g, '');
       say(codeMsg, 'Sending a new code…');
-      const sent = await sendCode(license);
+      const sent = await sendCode(license, claimedLicense);
       say(codeMsg, sent ? `A new code is on its way to ${email}.` : msg.textContent ?? '', !sent);
     });
   </script>
