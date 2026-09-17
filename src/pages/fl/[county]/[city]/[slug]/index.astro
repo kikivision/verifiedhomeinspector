@@ -193,6 +193,17 @@ const schema = claimed
           </>
         )}
 
+        {/* One line, not a section: the fact that matters here is which
+            cities, not a heading of its own. Sits between Services and
+            About on a claimed page; on an unclaimed one, right where About
+            would have been, ahead of the "hasn't claimed" card. */}
+        <div class="fact profile-serves">
+          <span class="k">Serves</span>
+          <span class="v">
+            {serves.join(', ')}{l.service_cities.length === 0 && ' (from the license record)'}
+          </span>
+        </div>
+
         {claimed && l.about && (
           <>
             <h2>About</h2>
@@ -221,14 +232,6 @@ const schema = claimed
               )}
             </div>
           </div>
-        )}
-
-        <h2>Serves</h2>
-        <div class="tags">
-          {serves.map((c) => <span class="tag">{c}</span>)}
-        </div>
-        {l.service_cities.length === 0 && (
-          <p class="dash-muted">From the license record — not yet confirmed by the inspector.</p>
         )}
 
         <h2>Insurance inspections in {searchName(county)}</h2>

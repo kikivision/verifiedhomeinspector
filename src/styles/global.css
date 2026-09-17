@@ -551,6 +551,7 @@ footer p { font-size: 0.8rem; color: var(--slate); margin: 4px 0; max-width: 70c
 .profile-lic a, .profile-about a { color: var(--mustard-deep); text-decoration: underline; text-underline-offset: 2px; }
 .profile-facts { display: grid; grid-template-columns: repeat(var(--fact-cols, 3), minmax(0, 1fr)); gap: 18px; margin-top: 28px; padding: 20px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .fact { display: flex; flex-direction: column; gap: 2px; }
+.profile-serves { margin: 18px 0; }
 .fact .k { font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--slate); font-weight: 500; }
 .fact .v { font-size: 0.95rem; color: var(--navy); font-weight: 500; }
 .fact .v.muted { color: var(--slate); font-weight: 400; }
