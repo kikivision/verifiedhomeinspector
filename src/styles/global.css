@@ -555,6 +555,11 @@ footer p { font-size: 0.8rem; color: var(--slate); margin: 4px 0; max-width: 70c
 .fact .k { font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--slate); font-weight: 500; }
 .fact .v { font-size: 0.95rem; color: var(--navy); font-weight: 500; }
 .fact .v.muted { color: var(--slate); font-weight: 400; }
+/* Same specificity as .fact .v/.k above (two classes each), so both of
+   these have to come after them in the file to win — the cascade breaks
+   the tie by source order, not by which line looks more specific. */
+.profile-serves .v { font-weight: 400; color: var(--slate); }
+.profile-serves .k { color: var(--navy); }
 .profile-main .tags { margin-top: 10px; }
 .profile-about { color: var(--slate); font-size: 0.98rem; max-width: 64ch; margin: 8px 0 0; white-space: pre-line; }
 .profile-unclaimed { margin-top: 28px; padding: 22px 24px; border-style: dashed; display: flex; gap: 18px; align-items: flex-start; }
