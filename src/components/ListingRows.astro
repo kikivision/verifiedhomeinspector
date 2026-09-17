@@ -84,7 +84,11 @@ const { listings, county, pageContext } = Astro.props;
       </div>
     ) : hasPublicContact(l) ? (
       <div class="row-contact" data-contact="public">
-        <span class="unclaimed-mark">Not yet claimed</span>
+        {/* A phone number is the thing a homeowner is scanning the row for;
+            "Not yet claimed" answers a question about the business, not the
+            person calling. It stays only when there is no number, so the
+            website-only row still says why nobody picks up a claimed badge. */}
+        {!l.phone && <span class="unclaimed-mark">Not yet claimed</span>}
         {l.phone && (
           <a
             class="row-phone phone-link"
