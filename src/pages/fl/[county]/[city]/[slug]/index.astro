@@ -167,7 +167,7 @@ const schema = claimed
             listing, or a claimed one with nothing chosen yet, where "Not yet
             listed" is the prompt to go and choose. --fact-cols keeps the row
             filled rather than leaving a gap where the fact was. */}
-        <div class="profile-facts" style={`--fact-cols:${servicesFact ? 3 : 2}`}>
+        <div class="profile-facts" style={`--fact-cols:${servicesFact ? 2 : 1}`}>
           {servicesFact && (
             <div class="fact">
               <span class="k">Services</span>
@@ -176,12 +176,6 @@ const schema = claimed
               </span>
             </div>
           )}
-          <div class="fact">
-            <span class="k">Serves</span>
-            <span class:list={['v', { muted: l.service_cities.length === 0 }]}>
-              {l.service_cities.length > 0 ? l.service_cities.join(', ') : `${l.city} (from the license record)`}
-            </span>
-          </div>
           <div class="fact">
             <span class="k">Years in business</span>
             <span class:list={['v', { muted: !l.years_experience }]}>
@@ -227,6 +221,14 @@ const schema = claimed
               )}
             </div>
           </div>
+        )}
+
+        <h2>Serves</h2>
+        <div class="tags">
+          {serves.map((c) => <span class="tag">{c}</span>)}
+        </div>
+        {l.service_cities.length === 0 && (
+          <p class="dash-muted">From the license record — not yet confirmed by the inspector.</p>
         )}
 
         <h2>Insurance inspections in {searchName(county)}</h2>
