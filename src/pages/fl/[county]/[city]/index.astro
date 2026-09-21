@@ -16,7 +16,6 @@ import ListingEvents from '../../../../components/ListingEvents.astro';
 import { counties, getCounty, searchName } from '../../../../lib/counties';
 import { getAllListings, isClaimed, type Listing } from '../../../../lib/supabase';
 import { cityPagesFor, cityPath, featuredCities, cityFeaturedTarget, CITY_FEATURED_CAP, type CityPage } from '../../../../lib/cities';
-import { inspectorPath } from '../../../../lib/slug';
 
 export async function getStaticPaths() {
   const live = counties.filter((c) => c.status === 'live').map((c) => c.slug);
@@ -73,6 +72,7 @@ const rows = page.listings.filter((l) => !featuredIds.has(l.id));
 // fewer as they sell. See cityFeaturedTarget.
 const openSpots = Math.max(0, cityFeaturedTarget(page.listings.length) - featured.length);
 const tableContext = `city_${county.slug}_${page.slug}_table`;
+const nearbyContext = `city_${county.slug}_${page.slug}_nearby`;
 
 const title = `Home Inspectors in ${city}, FL | Verified Home Inspector`;
 let description =
@@ -121,11 +121,16 @@ if (description.length > 160) description = `${description.slice(0, 157).trimEnd
         ))}
         {Array.from({ length: openSpots }).map(() => (
           <div class="card ad-slot">
-            <h3 style="font-size:1rem;">
-              {openSpots === 1
-                ? `1 featured spot open in ${city}`
-                : `${openSpots} featured spots open in ${city}`}
-            </h3>
+            {/* No count. openSpots is how many dashed boxes to DRAW --
+                cityFeaturedTarget, 2 or 4 -- not how many are for sale, which
+                is CITY_FEATURED_CAP (6) minus sold. Largo has one sold and
+                said "1 featured spot open" while five were available. The
+                number was also the same total inside every box, so two open
+                boxes each claimed "2 featured spots open". The county page's
+                card has never carried a count for the same reason; the cap
+                lives in the unconditional note beside the heading, which is
+                where the promise belongs. */}
+            <h3 style="font-size:1rem;">Featured listing — this spot could be yours</h3>
             <p style="color:var(--slate);font-size:0.88rem;margin:0;">
               {page.listings.length} licensed inspectors are listed for {city}. Featured puts a
               card with your logo at the top of this page, up to two more city pages you choose,
@@ -147,45 +152,6 @@ if (description.length > 160) description = `${description.slice(0, 157).trimEnd
 
   <FeaturedDialog county={county} city={city} listingCount={page.listings.length} />
 
-  {alsoServes.length > 0 && (
-    <section class="section" id="also-serves" style="padding-top:0;">
-      <div class="wrap">
-        <div class="section-head">
-          <h2>Based nearby, serves {city}</h2>
-          <div class="note">Claimed inspectors who chose {city} as a city they work in</div>
-        </div>
-        <div class="neighbor-grid">
-          {alsoServes.map((n) => (
-            <a class="card neighbor" href={inspectorPath(n.county, n.city, n.license_number, n.licensee_name)}>
-              <div class="name">{n.business_name || n.licensee_name}</div>
-              {/* The licensee, as the state records them, the way the table
-                  rows and the profile page carry it. Skipped when the card is
-                  already showing that name as its heading. */}
-              {n.business_name && <div class="dash-muted">{n.licensee_name} · Licensed home inspector</div>}
-              <div class="dash-muted">Based in {n.city} · {n.license_number}</div>
-              <div class="neighbor-status">
-                {/* Says where they ARE featured, never implying they are
-                    featured here — this section is the unpaid one, and the
-                    four paid spots above it are what someone buys for this
-                    city. A featured listing with no county position is
-                    featured only on its own city pages, so it says so
-                    without naming a county it is not at the top of. */}
-                {n.tier === 'featured' ? (
-                  <span class="featured-mark">
-                    {n.featured_position ? `Featured in ${searchName(county)}` : 'Featured'}
-                  </span>
-                ) : (
-                  <span class="claimed-mark">Claimed</span>
-                )}
-                {n.phone && <span class="row-phone">{n.phone}</span>}
-              </div>
-            </a>
-          ))}
-        </div>
-      </div>
-    </section>
-  )}
-
   <section class="section" id="all-inspectors" style="padding-top:0;">
     <div class="wrap">
       <div class="section-head">
@@ -194,12 +160,32 @@ if (description.length > 160) description = `${description.slice(0, 157).trimEnd
       </div>
       <div class="search-bar">
         <label class="visually-hidden" for="listingSearch">Search listings</label>
-        <input id="listingSearch" type="search" autocomplete="off" placeholder="Name or license" />
+        <input id="listingSearch" type="search" autocomplete="off" placeholder="Name or license" data-city={city} />
       </div>
       <div class="search-count" id="searchCount" aria-live="polite"></div>
       <ListingRows listings={rows} county={county} pageContext={tableContext} />
     </div>
   </section>
+
+  {/* The same rows as the table above, for claimed inspectors based in another
+      city in this county who chose this one on their dashboard. It used to be
+      a grid of cards ABOVE the table, which put a free listing in something
+      close to a featured card's footprint, and above the claimed inspectors
+      actually based in this city -- better placement for an out-of-town
+      listing than an in-town one. Rows, and below them, so the order of the
+      page matches what is bought: featured cards, then this city, then
+      nearby. */}
+  {alsoServes.length > 0 && (
+    <section class="section" id="also-serves" style="padding-top:0;">
+      <div class="wrap">
+        <div class="section-head">
+          <h2>Based nearby, serves {city}</h2>
+          <div class="note">Claimed inspectors who chose {city} as a city they work in</div>
+        </div>
+        <ListingRows listings={alsoServes} county={county} pageContext={nearbyContext} featuredMark />
+      </div>
+    </section>
+  )}
 
   <section class="section" id="cities" style="padding-top:0;">
       <div class="wrap">
@@ -258,26 +244,67 @@ if (description.length > 160) description = `${description.slice(0, 157).trimEnd
   <script>
     // Client-side filtering, the county page's minus the city select: every
     // row here is already one city, so the box narrows to one person.
+    //
+    // This page carries TWO lists of inspectors, and the box used to filter
+    // only the table. "Based nearby, serves X" holds claimed inspectors based
+    // in another city who chose this one, so searching such an inspector's own
+    // licence answered "No inspectors match that search" while their card sat
+    // directly above the box -- and the message went on to suggest trying a
+    // licence number, which is what had just been typed. Both lists are
+    // filtered here, and a hit in either one counts as a hit.
     const search = document.querySelector<HTMLInputElement>('#listingSearch');
     const countEl = document.querySelector<HTMLElement>('#searchCount');
-    const rows = Array.from(document.querySelectorAll<HTMLElement>('.list-row:not(.head)'));
+    // Scoped per section: both groups are .list-row now, so an unscoped
+    // selector would sweep the nearby rows into the main table's count.
+    const rows = Array.from(document.querySelectorAll<HTMLElement>('#all-inspectors .list-row:not(.head)'));
+    const nearby = Array.from(document.querySelectorAll<HTMLElement>('#also-serves .list-row:not(.head)'));
+    const nearbySection = document.querySelector<HTMLElement>('#also-serves');
+    // The script is bundled and has no component scope, so the city name rides
+    // in on the input rather than being interpolated (which would force the
+    // whole script inline and drop the TypeScript above).
+    const city = search?.dataset.city ?? 'this city';
+
+    function match(el: HTMLElement, term: string): boolean {
+      return !term || (el.dataset.search ?? '').includes(term);
+    }
 
     function applyFilter() {
       if (!search || !countEl) return;
       const term = search.value.trim().toLowerCase();
       let shown = 0;
       rows.forEach((row) => {
-        const visible = !term || (row.dataset.search ?? '').includes(term);
+        const visible = match(row, term);
         row.hidden = !visible;
         if (visible) shown += 1;
       });
+      let shownNearby = 0;
+      nearby.forEach((card) => {
+        const visible = match(card, term);
+        card.hidden = !visible;
+        if (visible) shownNearby += 1;
+      });
+      // "Based nearby, serves X" over an empty grid is a heading with nothing
+      // under it, so the section goes when none of its cards match.
+      if (nearbySection) nearbySection.hidden = !!term && shownNearby === 0;
+
       if (!term) {
         countEl.textContent = '';
-      } else if (shown === 0) {
+      } else if (shown === 0 && shownNearby === 0) {
         countEl.textContent =
           'No inspectors match that search. Every licensed inspector on this page comes from the DBPR record, so try a license number or a surname.';
+      } else if (shown === 0) {
+        // The match is in the nearby group, which is rows like any other
+        // result, so this states what matched and does not tell anyone which
+        // way to scroll.
+        countEl.textContent =
+          shownNearby === 1
+            ? `No inspectors based in ${city} match that search. One based nearby serves ${city}.`
+            : `No inspectors based in ${city} match that search. ${shownNearby} based nearby serve ${city}.`;
       } else {
-        countEl.textContent = `Showing ${shown} of ${rows.length} listings.`;
+        countEl.textContent =
+          shownNearby === 0
+            ? `Showing ${shown} of ${rows.length} listings.`
+            : `Showing ${shown} of ${rows.length} listings, plus ${shownNearby} based nearby.`;
       }
     }
 

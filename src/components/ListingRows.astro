@@ -3,15 +3,18 @@
 // Shared by the county page and the city pages, so a claimed row shows the
 // same contact and an unclaimed row offers the same claim on both.
 //
-// Comments inside the loop are JSX comments, and they cannot sit between a
-// tag's attributes at all — one there is a parse error, not a comment. The one
-// HTML comment below sits outside the loop on purpose: inside it, Astro emitted
-// it once per listing — 123KB on a 253KB page.
+// Comments here are Astro comments, and they cannot sit between a tag's
+// attributes at all — one there is a parse error, not a comment. The block
+// below was an HTML comment kept outside the loop, because inside it Astro
+// emitted it once per loop iteration — 123KB on a 253KB page. City pages now
+// render this component TWICE (the city's own rows, then "Based nearby"), so
+// even one HTML comment came out twice and tripped the smoke test's
+// repeated-comment check. It emits nothing at all now.
 //
 // Each row carries data-tier. The smoke test fails the build if a featured
 // listing shows up in this table: it means the listing holds no county
 // position, so somebody is paying for a card they are not getting.
-import type { County } from '../lib/counties';
+import { searchName, type County } from '../lib/counties';
 import { isClaimed, hasPublicContact, websiteLabel, type Listing } from '../lib/supabase';
 import { inspectorPath } from '../lib/slug';
 
@@ -20,24 +23,44 @@ interface Props {
   county: County;
   /** 'county_pinellas_table', 'city_pinellas_largo_table'. */
   pageContext: string;
+  /**
+   * Label a featured listing as featured instead of merely "Claimed".
+   *
+   * Off everywhere but the city page's "Based nearby" group, which is the one
+   * place a featured listing belongs in these rows: it holds a paid position
+   * in this county but did not buy THIS city, so it reads as a normal result
+   * here while still showing the status it pays for. In the main table a
+   * featured row is an anomaly the county smoke check warns about, and
+   * relabelling it there would dress up the very thing that check is for.
+   */
+  featuredMark?: boolean;
 }
 
-const { listings, county, pageContext } = Astro.props;
+const { listings, county, pageContext, featuredMark = false } = Astro.props;
+
+// Three, where the featured card shows six -- not an inconsistency, a
+// different container. The card has a wide area and fits six in two lines;
+// this column is 150px and every service name runs 105-140px, so tags never
+// share a line and each one costs a line of row height. Measured on the Largo
+// page against a 95px claimed row: three tags plus the "+X more" link is
+// 164px, and the uncapped eleven was 267px. The rest are one tap away on the
+// profile.
+const SHOWN_SPECIALTIES = 3;
 ---
 
 <div class="list-row head">
-  <div>Inspector</div><div>City</div><div>License</div><div>Specialties</div><div>Contact</div><div>Hire</div>
+  <div>Inspector</div><div>City</div><div>License</div><div>Specialties</div><div>Contact</div><div>Listing</div>
 </div>
-<!-- An unclaimed row with data-contact="public" carries a phone and website
-     pre-filled from the inspector's own site or a public listing by
-     scripts/import-contacts.mjs, so a homeowner has someone to call; it is
-     marked so nobody mistakes it for a claim, and the smoke test uses the
-     marker to tell it from a contact path that should not be there.
+{/* An unclaimed row with data-contact="public" carries a phone and website
+    pre-filled from the inspector's own site or a public listing by
+    scripts/import-contacts.mjs, so a homeowner has someone to call; it is
+    marked so nobody mistakes it for a claim, and the smoke test uses the
+    marker to tell it from a contact path that should not be there.
 
-     <!-- Each unclaimed row links straight to sign-in with its license number in
-     the URL. An inspector arrives looking for their own name and finds it
-     here, so the claim is offered on the row itself and the number they just
-     recognized is carried along for them. -->
+    Each unclaimed row links straight to sign-in with its license number in
+    the URL. An inspector arrives looking for their own name and finds it
+    here, so the claim is offered on the row itself and the number they just
+    recognized is carried along for them. */}
 {listings.map((l) => (
   <div
     class:list={['list-row', { 'is-claimed': isClaimed(l) }]}
@@ -59,12 +82,21 @@ const { listings, county, pageContext } = Astro.props;
         carried what looked like a broken button. The div stays even when it
         has nothing in it: it is a grid cell, and dropping it would slide the
         remaining columns left. */}
+    {/* Capped at the same six the featured card shows, and for the same
+        reason: an inspector who ticked all eleven turned a row into a
+        300px-tall stack. It never showed while claimed rows had no services
+        on file, and appeared the moment the "Based nearby" group became rows
+        instead of cards. The rest are one tap away on the profile. */}
     <div class="tags">
-      {l.specialties.map((s) => <span class="tag">{s}</span>)}
+      {l.specialties.slice(0, SHOWN_SPECIALTIES).map((s) => <span class="tag">{s}</span>)}
+      {l.specialties.length > SHOWN_SPECIALTIES && (
+        <a class="tag tag-more" href={inspectorPath(l.county, l.city, l.license_number, l.licensee_name)}>
+          +{l.specialties.length - SHOWN_SPECIALTIES} more
+        </a>
+      )}
     </div>
     {isClaimed(l) ? (
       <div class="row-contact">
-        <span class="claimed-mark">Claimed</span>
         {l.phone && (
           <a
             class="row-phone phone-link"
@@ -112,12 +144,31 @@ const { listings, county, pageContext } = Astro.props;
         <span class="claimed-note">No contact on file. Free to claim.</span>
       </div>
     )}
-    {/* An unclaimed listing has no contact path, and that is the point:
+    {/* The last column is the listing's standing: the badge a claim earns, or
+        the claim itself on a row that has none. The claimed badge used to sit
+        in the Contact cell beside the phone number, where it competed with
+        the one thing a homeowner is scanning for; the number is the only mark
+        in that cell now.
+
+        An unclaimed listing has no contact path, and that is the point:
         nothing is on file. The only action on an unclaimed row is the claim,
         which goes straight to sign-in with the license carried along. A
-        claimed row has no button at all: the phone number is the action. */}
+        claimed row still gets no button: the phone number is the action. */}
     <div>
-      {!isClaimed(l) && (
+      {isClaimed(l) ? (
+        <div class="claimed-status">
+          {featuredMark && l.tier === 'featured' ? (
+            <span class="featured-mark">
+              {l.featured_position ? `Featured in ${searchName(county)}` : 'Featured'}
+            </span>
+          ) : (
+            <span class="claimed-mark">Claimed</span>
+          )}
+          {/* The counterpart to "From a public listing" on an unclaimed row:
+              that contact is ours, this one is the inspector's own. */}
+          <span class="claimed-note">Owner managed</span>
+        </div>
+      ) : (
         <a
           href={`/claim/?license=${l.license_number}`}
           class="claim-btn-row claim-link"
