@@ -381,12 +381,20 @@ footer p { font-size: 0.8rem; color: var(--slate); margin: 4px 0; max-width: 70c
   .county-grid { grid-template-columns: 1fr; }
 }
 
-/* Logo plate on a featured card. White rather than the card's warm ground
-   because the logos we get are flattened PNGs with baked-in white; an explicit
-   plate makes that deliberate instead of looking like a failed cut-out.
-   max-width is the source file's own width so the mark is never upscaled. */
-.logo-plate { background: #FFFFFF; border: 1px solid var(--line); border-radius: 4px; padding: 14px; margin-bottom: 14px; display: flex; align-items: center; justify-content: center; }
-.logo-plate img { max-width: 210px; max-height: 80px; width: auto; height: auto; object-fit: contain; }
+/* The logo plate. White rather than the card's warm ground because the logos
+   we get are flattened PNGs with baked-in white; an explicit plate makes that
+   deliberate instead of looking like a failed cut-out. `width: auto` on the
+   image is what keeps a small source from being upscaled — the max-* pair
+   only ever scales a large one down.
+
+   A square tile, not a wide band (2026-09-21). The band was sized for a
+   horizontal wordmark and capped height at 80px, so a taller mark could never
+   use more than a fraction of its ~296px width: A&A's 4:3 logo filled 36% and
+   read as small. A square lets a mark of any proportion use the full height
+   AND nearly all the width — the same reasoning as the featured card's fixed
+   tile below. */
+.logo-plate { background: #FFFFFF; border: 1px solid var(--line); border-radius: 4px; padding: 14px; margin-bottom: 14px; width: 160px; height: 160px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; }
+.logo-plate img { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; }
 
 /* On a featured card the plate is a small tile in the top-right corner
    (2026-09-14). With six cards on the county page a full-width plate made the
