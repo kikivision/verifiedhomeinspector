@@ -5,6 +5,159 @@ until you know why. Newest first.
 
 ---
 
+## 2026-09-21 — "Based nearby" is rows below the city's own, not cards above them
+
+**Built.** On a city page the claimed inspectors based elsewhere in the
+county who chose this city render through `ListingRows` like every other
+result, in a labelled section **below** the city's own table. They were a
+grid of `.card.neighbor` cards above it. Four things moved with them:
+
+- The search box filters both groups. It filtered only the table, so
+  searching a nearby inspector's own licence answered "No inspectors match
+  that search" while their card sat on screen above the box — and the
+  message went on to suggest trying a licence number, which is what had
+  just been typed. Found by Karen searching HI15206 on the Tampa page.
+- A listing's status left the Contact cell for the last column, which is
+  headed **Listing** and was headed "Hire". Green `CLAIMED` with "Owner
+  managed" under it; an unclaimed row still offers the claim in the same
+  cell. The badge beside the phone number competed with the one thing a
+  homeowner scans a row for, and "Hire" never labelled anything to do with
+  hiring — the column holds a listing's standing or the claim that changes
+  it.
+- Row specialties cap at three plus a "+X more" link to the profile. Not
+  the featured card's six: that column is 150px and service names run
+  105–140px, so tags never share a line and each costs a line of height.
+  Uncapped, Inspected PLLC's eleven services made a 267px row against a
+  95px claimed one; three is 164px. It never showed while claimed rows had
+  no services on file.
+- The component's one HTML comment is an Astro comment now. A city page
+  renders `ListingRows` twice, so even a comment kept outside the loop came
+  out twice and tripped the smoke test's repeated-comment check. The smoke
+  test caught it; it emits nothing at all now, so every city page is
+  slightly lighter.
+
+### Why
+
+Fixing the search exposed the placement. The cards put a **free** listing
+in something close to a featured card's footprint, directly under the
+"this spot could be yours" pitch, and above the claimed inspectors
+actually based in the city. On Largo that was Inspected PLLC, based in St.
+Petersburg, over ThoroSpect and Suncoast — both claimed, both in Largo.
+Karen: "that's almost like a featured listing, but it's free," then "so
+someone in a 'nearby' location gets better placement than a claimed
+inspector within that city??" Rows below the table put the order of the
+page in the order things are bought: featured cards, then this city, then
+nearby.
+
+Inspected PLLC keeps its Featured mark, through a new opt-in `featuredMark`
+prop on `ListingRows`. It holds paid county position 1 and Largo is in
+Pinellas, so the mark is true on a page its purchase covers. The prop is
+off in the main table, where a featured row is the anomaly the county smoke
+check warns about and relabelling it would dress up the very thing that
+check exists to find.
+
+### What was rejected
+
+**One merged list**, headed "N inspectors serving <city>", sorted claimed
+first with the City column carrying each row's real base city. It is the
+only arrangement that gets a claimed nearby inspector above the unclaimed
+in-city rows, and Karen made the argument for it herself — a homeowner
+"shouldn't care where the inspector is driving from or where he parks his
+car when he gets to work." Built as a prototype and rejected on sight: "I
+don't like it. dont like st. pete mixed in with largo."
+
+**Splitting the in-city table** to wedge the nearby block between its
+claimed and unclaimed rows. Offered as the one shape that is neither mixed
+nor buried; declined. One heading over two chunks of the same city with
+another section in between, and a search box above all three.
+
+So a nearby inspector sits below the unclaimed in-city rows, knowingly.
+The route out of that is buying the city, which the open-slot card now
+asks for honestly.
+
+---
+
+## 2026-09-21 — The open-slot card on a city page stops counting spots
+
+**Built.** The card reads "Featured listing — this spot could be yours",
+which is what the county page's card has always said. It read "1 featured
+spot open in <city>".
+
+### Why
+
+The number was false. `openSpots` is how many dashed boxes to **draw** —
+`cityFeaturedTarget`, two or four — not how many are for sale, which is
+`CITY_FEATURED_CAP` (6) minus sold. Largo had one sold and advertised "1
+featured spot open" with five available. The same total also printed inside
+every box, so two open boxes would each have claimed "2 featured spots
+open". The county card carries no count for exactly this reason, and the
+cap lives in the unconditional note beside the heading, where the
+2026-09-16 entry put it so the promise does not vanish as the row fills.
+
+### What it is not
+
+Not a change to the cap, the target, or how many boxes draw. Only the
+heading inside the box.
+
+---
+
+## 2026-09-21 — A logo is for any claimed page, and its plate is a square
+
+**Built.** The dashboard checklist line reads "Logo — email us the file and
+we add it to your page", not "to your card". The profile plate is a 160px
+square rather than a full-width band capped at 80px tall.
+
+### Why
+
+Anton Labuschagne (HI15206, Riverview) claimed on 2026-09-21 and emailed
+his logo the same afternoon, which is exactly what his dashboard told him
+to do — the checklist offers the logo to every claimed listing with no tier
+check, and the profile plate is gated on `claimed`, not on tier. Only the
+logo **tile** on a featured card is Featured-only, and that is because only
+featured listings get a card at all. "To your card" read as a Featured perk
+to a claimed inspector who has no card.
+
+The band was sized for a horizontal wordmark. A 4:3 mark in it could only
+ever reach 80px of roughly 296px of width — his filled 36% and read as
+small. A square lets a mark of any proportion use the full height and
+nearly all the width, which is the reasoning the featured card's fixed tile
+already follows.
+
+### What it is not
+
+Not a change to how a logo arrives: still emailed in and applied by hand
+with `set-tier.mjs --logo`, still committed to `public/logos/` and served
+from our own domain. Note that writing `logo_path` fires
+`rebuild_site_on_listing_change`, and that rebuild reads GitHub `main` — so
+the file has to be on `main` or the page publishes a broken image. His was
+404 for about a minute.
+
+---
+
+## 2026-09-21 — Netlify's plain-text claim-listing notification turned off
+
+**Built.** The Netlify form notification for `claim-listing` is removed
+from the Netlify UI. A claim reaching Karen now arrives only as the
+branded "New claim" email from `claim-welcome.mts` (2026-09-16 below).
+
+### Why
+
+A real sign-up on 2026-09-20 landed both notices — the branded one and
+Netlify's generic plain-text one — confirming the branded email was
+working and arriving reliably. That was the condition the 2026-09-16
+entry set for switching the old one off ("once the branded one is seen
+arriving, not before").
+
+### What it is not
+
+Not a change to `featured-inquiry`, which still has no branded
+counterpart and fires only Netlify's plain-text notification — that form
+is an inspector asking about a paid spot, not a claim or a Featured sale.
+A completed Featured sale already has its own branded email from
+`stripe-webhook.mts`.
+
+---
+
 ## 2026-09-16 — City pages draw two open featured boxes, not four
 
 **Built.** `CITY_FEATURED_TARGET` in `src/lib/cities.ts` is two for every
