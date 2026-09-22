@@ -129,14 +129,6 @@ export const purchaseFaqItems: FaqItem[] = [
   {
     question: 'Can the same inspector do my full inspection and my insurance inspections?',
     answer:
-      'Often, yes — many Florida home inspectors are licensed to perform all three, and doing them in one visit can save a trip. They are still separate reports for separate purposes: the full inspection is for you as the buyer, and a 4-point or wind mitigation is for your insurer. Ask when you book which ones you need.',
-  },
-  {
-    question: 'How do I know a home inspector is actually licensed in Florida?',
-    answer:
-      'Florida home inspectors are licensed by the Department of Business and Professional Regulation and issued a license number. You can check any inspector yourself in the DBPR licensing portal, by name or by license number, before booking anything. Every listing in this directory is built from that same record.',
-    sources: [
-      { label: 'DBPR, verify a licensee', url: 'https://www.myfloridalicense.com/wl11.asp?mode=0' },
-    ],
+      'Often, yes — many Florida home inspectors are licensed to perform all three, and doing them in one visit can save a trip. They are still separate reports for separate purposes: the full inspection is for you as the buyer, and a 4-point or wind mitigation is for your insurer. Ask when you book which ones you need. See insurance inspections for how to check that any inspector is DBPR-licensed before booking.',
   },
 ];

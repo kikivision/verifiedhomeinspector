@@ -298,72 +298,133 @@ check(/href="tel:/.test(county), 'No tel: link on the Pinellas page.',
   'Claimed and featured listings render their phone number as a tel: link.');
 
 // The FAQ answers questions people type into search engines, and the schema is
-// what answer engines read. The two render from one array and must not drift.
+// what answer engines read. Each topic's accordion and its schema render from
+// one array in lib/faq.ts and must not drift from each other.
 //
-// It lives on exactly one URL. Building it per county put five copies of the
-// same eight questions in the build — four counties plus the homepage — and
-// identical FAQPage schema on five URLs makes them compete with each other for
-// the same query instead of one of them winning it.
+// A topic lives on exactly one URL. Building it per county once put five
+// copies of the same eight questions in the build — four counties plus the
+// homepage — and identical FAQPage schema on five URLs made them compete with
+// each other for the same query instead of one of them winning it. That is a
+// constraint per topic, not a site-wide cap of one: /full-home-inspection/
+// added a second, genuinely different topic (added 2026-09-22), so the check
+// below is driven by this list rather than hardcoded to a single page. Add a
+// row here, not a special case, the next time a topic gets its own page.
+const FAQ_PAGES = [
+  { path: 'insurance-inspections', arrayName: 'faqItems' },
+  { path: 'full-home-inspection', arrayName: 'purchaseFaqItems' },
+];
+
+const faqSrc = await readFile('src/lib/faq.ts', 'utf8');
+
+// Slices out one exported array's own source, by bracket depth rather than a
+// line count, so a `sources: [...]` nested inside an item can't be mistaken
+// for the end of the outer array.
+function arraySource(name) {
+  // The marker literal already ends in the array's own opening bracket, so
+  // the index of the LAST character of the match is that bracket. Searching
+  // faqSrc.indexOf('[', start) instead would find the `[]` inside the
+  // `FaqItem[]` type annotation first and return an empty slice — which is
+  // exactly what happened here the first time this was written.
+  const marker = `export const ${name}: FaqItem[] = [`;
+  const start = faqSrc.indexOf(marker);
+  if (start === -1) return null;
+  const open = start + marker.length - 1;
+  let depth = 0;
+  for (let i = open; i < faqSrc.length; i++) {
+    if (faqSrc[i] === '[') depth++;
+    else if (faqSrc[i] === ']') {
+      depth--;
+      if (depth === 0) return faqSrc.slice(open, i + 1);
+    }
+  }
+  return null;
+}
+
 const faqPages = pages.filter((p) => {
   const html = faqHtml.get(p);
   return html && html.includes('"@type":"FAQPage"');
 });
-check(faqPages.length === 1,
-  `${faqPages.length} pages carry FAQPage schema; exactly one should.`,
-  faqPages.map((p) => pagePath(p)).join(', '));
+const expectedFaqPaths = new Set(FAQ_PAGES.map((f) => `/${f.path}/`));
+const actualFaqPaths = faqPages.map((p) => pagePath(p));
+check(
+  actualFaqPaths.length === expectedFaqPaths.size &&
+    actualFaqPaths.every((p) => expectedFaqPaths.has(p)),
+  `Pages carrying FAQPage schema do not match FAQ_PAGES.`,
+  `Built: ${actualFaqPaths.join(', ') || '(none)'} — expected: ${[...expectedFaqPaths].join(', ')}`,
+);
 
-const insurance = await readFile(join(DIST, 'insurance-inspections/index.html'), 'utf8')
-  .catch(() => null);
-check(insurance !== null, 'The insurance page was not built.');
+// Two topics are allowed to both have a page; the same question is not
+// allowed to appear on both. That is the one-URL-per-topic rule actually
+// being enforced, now that "one page total" no longer is it.
+const seenQuestions = new Map();
 
-if (insurance) {
-  const schemaJson = insurance.match(
+for (const { path, arrayName } of FAQ_PAGES) {
+  const html = await readFile(join(DIST, path, 'index.html'), 'utf8').catch(() => null);
+  check(html !== null, `The ${path} page was not built.`);
+  if (!html) continue;
+
+  const schemaJson = html.match(
     /<script type="application\/ld\+json">([\s\S]*?)<\/script>/,
   )?.[1];
-  check(schemaJson !== undefined, 'No FAQPage JSON-LD on the insurance page.');
-  if (schemaJson) {
-    let schema = null;
-    try {
-      schema = JSON.parse(schemaJson);
-    } catch (err) {
-      failures.push(`FAQPage JSON-LD does not parse: ${err.message}`);
-    }
-    if (schema) {
-      const sourceCount = ((await readFile('src/lib/faq.ts', 'utf8')).match(/^\s{2}\{$/gm) ?? []).length;
-      const schemaCount = schema.mainEntity?.length ?? 0;
-      check(schemaCount === sourceCount,
-        `FAQ schema has ${schemaCount} entries but faq.ts defines ${sourceCount}.`);
-      const rendered = (insurance.match(/class="faq-item"/g) ?? []).length;
-      check(rendered === schemaCount,
-        `FAQ accordion renders ${rendered} items but the schema has ${schemaCount}.`);
+  check(schemaJson !== undefined, `No FAQPage JSON-LD on the ${path} page.`);
+  if (!schemaJson) continue;
 
-      // The schema carries answers as plain text for answer engines. A citation
-      // rendered into the answer string rather than beside it would put markup
-      // in the structured data, where it is meaningless.
-      const withMarkup = schema.mainEntity.filter((q) => /<[a-z/]/i.test(q.acceptedAnswer?.text ?? ''));
-      check(withMarkup.length === 0,
-        `${withMarkup.length} FAQ schema answer(s) contain HTML.`);
+  let schema = null;
+  try {
+    schema = JSON.parse(schemaJson);
+  } catch (err) {
+    failures.push(`${path}: FAQPage JSON-LD does not parse: ${err.message}`);
+    continue;
+  }
 
-      // Every source link must reach a statute, a regulator, or the licensing
-      // authority. The whole point of the pass that added them was to stop
-      // citing insurance blogs, and nothing enforces that but this.
-      const allowed = ['flsenate.gov', 'floir.gov', 'www.myfloridalicense.com'];
-      const faqLinks = [...insurance.matchAll(/class="faq-sources"[\s\S]*?<\/p>/g)]
-        .flatMap((m) => [...m[0].matchAll(/href="(https?:\/\/[^"]+)"/g)].map((h) => h[1]));
-      check(faqLinks.length > 0, 'No FAQ answer carries a source link.');
+  const arraySrc = arraySource(arrayName);
+  check(arraySrc !== null, `Could not find "export const ${arrayName}" in lib/faq.ts.`);
+  const sourceCount = arraySrc ? (arraySrc.match(/^\s{2}\{$/gm) ?? []).length : NaN;
+  const schemaCount = schema.mainEntity?.length ?? 0;
+  check(schemaCount === sourceCount,
+    `${path}: FAQ schema has ${schemaCount} entries but ${arrayName} defines ${sourceCount}.`);
+  const rendered = (html.match(/class="faq-item"/g) ?? []).length;
+  check(rendered === schemaCount,
+    `${path}: FAQ accordion renders ${rendered} items but the schema has ${schemaCount}.`);
 
-      // A citation that replaces the page the reader was on costs a lead to
-      // prove a point. They open in a new tab, and nothing else enforces it.
-      const citations = [...insurance.matchAll(/<a [^>]*href="https:\/\/(?:flsenate|floir|www\.myfloridalicense)[^"]*"[^>]*>/g)];
-      const sameTab = citations.filter((m) => !m[0].includes('target="_blank"'));
-      check(sameTab.length === 0,
-        `${sameTab.length} citation link(s) would navigate away from the page.`);
-      for (const url of faqLinks) {
-        const host = new URL(url).host;
-        check(allowed.includes(host),
-          `FAQ cites ${host}, which is not a statute, a regulator, or DBPR.`);
-      }
-    }
+  for (const q of schema.mainEntity ?? []) {
+    const prior = seenQuestions.get(q.name);
+    check(prior === undefined, `The question "${q.name}" appears on both ${prior} and ${path}.`,
+      'A question repeated on two topic pages is the same duplicate-schema problem a fifth county page would have been.');
+    seenQuestions.set(q.name, path);
+  }
+
+  // The schema carries answers as plain text for answer engines. A citation
+  // rendered into the answer string rather than beside it would put markup
+  // in the structured data, where it is meaningless.
+  const withMarkup = (schema.mainEntity ?? []).filter((q) => /<[a-z/]/i.test(q.acceptedAnswer?.text ?? ''));
+  check(withMarkup.length === 0,
+    `${path}: ${withMarkup.length} FAQ schema answer(s) contain HTML.`);
+
+  // Every source link must reach a statute, a regulator, or the licensing
+  // authority. The whole point of the pass that added them was to stop
+  // citing insurance blogs, and nothing enforces that but this.
+  const allowed = ['flsenate.gov', 'floir.gov', 'www.myfloridalicense.com', 'flrules.org'];
+  const faqLinks = [...html.matchAll(/class="faq-sources"[\s\S]*?<\/p>/g)]
+    .flatMap((m) => [...m[0].matchAll(/href="(https?:\/\/[^"]+)"/g)].map((h) => h[1]));
+  // Not every question needs a source — purchaseFaqItems has answers with no
+  // regulator claim behind them by design (e.g. the FAR/BAR inspection-period
+  // length, which is negotiated, not statutory) — so this only runs where at
+  // least one citation is expected: the topic has any `sources:` at all.
+  if (/sources:\s*\[/.test(arraySrc ?? '')) {
+    check(faqLinks.length > 0, `${path}: no FAQ answer carries a source link.`);
+  }
+
+  // A citation that replaces the page the reader was on costs a lead to
+  // prove a point. They open in a new tab, and nothing else enforces it.
+  const citations = [...html.matchAll(/<a [^>]*href="https:\/\/(?:flsenate|floir|www\.myfloridalicense)[^"]*"[^>]*>/g)];
+  const sameTab = citations.filter((m) => !m[0].includes('target="_blank"'));
+  check(sameTab.length === 0,
+    `${path}: ${sameTab.length} citation link(s) would navigate away from the page.`);
+  for (const url of faqLinks) {
+    const host = new URL(url).host;
+    check(allowed.includes(host),
+      `${path}: FAQ cites ${host}, which is not a statute, a regulator, or DBPR.`);
   }
 
   // An article that does not lead back to an inspector is a dead end on a
@@ -372,12 +433,12 @@ if (insurance) {
   const liveSlugs = [...(await readFile('src/lib/counties.ts', 'utf8'))
     .matchAll(/slug: '([^']+)'[^}]*status: 'live'/g)].map((m) => m[1]);
   check(liveSlugs.length > 0, 'No live counties found in counties.ts.');
-  const picker = insurance.match(/<select id="inspectorCountySelect">([\s\S]*?)<\/select>/)?.[1];
-  check(picker !== undefined, 'The insurance page has no county picker.');
+  const picker = html.match(/<select id="inspectorCountySelect">([\s\S]*?)<\/select>/)?.[1];
+  check(picker !== undefined, `The ${path} page has no county picker.`);
   if (picker) {
     for (const slug of liveSlugs) {
       check(picker.includes(`value="${slug}"`),
-        `The county picker has no option for ${slug}.`);
+        `${path}: the county picker has no option for ${slug}.`);
     }
     // A picker that navigates nowhere looks identical to one that works.
     //
@@ -386,26 +447,27 @@ if (insurance) {
     // rather than on anything in this repo. Looking in only one of the two
     // places is a test that passes or fails for reasons unrelated to the code,
     // so this reads the page and everything the page loads.
-    let behavior = insurance;
-    for (const [, src] of insurance.matchAll(/<script[^>]+src="(\/_astro\/[^"]+)"/g)) {
+    let behavior = html;
+    for (const [, src] of html.matchAll(/<script[^>]+src="(\/_astro\/[^"]+)"/g)) {
       behavior += await readFile(join(DIST, src.slice(1)), 'utf8').catch(() => '');
     }
     check(behavior.includes('inspectorCountySelect'),
-      'Nothing the insurance page loads references the county picker.');
+      `Nothing the ${path} page loads references the county picker.`);
     check(behavior.includes('#all-inspectors'),
-      'The county picker does not navigate to #all-inspectors.');
+      `${path}: the county picker does not navigate to #all-inspectors.`);
   }
 }
 
-// Every page that dropped the FAQ has to offer the page that now holds it, or
-// the only route to it is the header nav.
+// Every page that dropped the FAQ has to offer the pages that now hold it, or
+// the only route to them is the header nav.
 for (const path of pages) {
   const html = faqHtml.get(path);
   if (!html) continue;
   const page = pagePath(path);
-  if (page === '/insurance-inspections/' || !/^\/(fl\/[a-z-]+\/)?$/.test(page)) continue;
-  check(html.includes('href="/insurance-inspections/"'),
-    `${page} does not link to /insurance-inspections/.`);
+  if (expectedFaqPaths.has(page) || !/^\/(fl\/[a-z-]+\/)?$/.test(page)) continue;
+  for (const faqPath of expectedFaqPaths) {
+    check(html.includes(`href="${faqPath}"`), `${page} does not link to ${faqPath}.`);
+  }
 }
 
 // A page that calls trackEvent without gtag loaded throws into a catch and the
