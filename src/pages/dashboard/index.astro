@@ -19,7 +19,7 @@ import { MAX_FEATURED_CITIES } from '../../lib/cities';
 
 // Mirrors TRIAL_DAYS in netlify/lib/featured.mts, which cannot be imported
 // here: that file pulls in the Stripe SDK and the service-role client.
-const TRIAL_DAYS = 7;
+const TRIAL_DAYS = 90;
 ---
 
 <Layout
@@ -173,8 +173,10 @@ const TRIAL_DAYS = 7;
                   $50 a month at the founding rate, kept for as long as you stay. A card with
                   your logo at the top of the <span id="featuredCounty"></span> page and up to
                   three city pages you choose, above every listing. Six spots per city, never
-                  more. The first {TRIAL_DAYS} days are free; cancel
-                  any time from your billing page.
+                  more. We take your card now but do not charge it for {TRIAL_DAYS} days —
+                  your first payment is {TRIAL_DAYS} days from today and the confirmation
+                  email names the date. Cancel any time from your billing page; cancel inside
+                  the {TRIAL_DAYS} days and nothing is ever charged.
                 </p>
                 <fieldset class="dash-fieldset" style="margin-top:14px;">
                   <legend>City pages, up to {MAX_FEATURED_CITIES}</legend>

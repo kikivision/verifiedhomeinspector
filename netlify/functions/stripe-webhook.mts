@@ -219,8 +219,8 @@ async function fulfill(session: Stripe.Checkout.Session): Promise<void> {
       `${listing.license_number} (${listing.county}) paid for ${wanted.join(', ')} but ` +
       `${refused.join(', ')} filled before fulfillment. Featured on ` +
       `${granted.join(', ') || 'the county page only'}. Subscription ${subscriptionId}.\n\n` +
-      'Free a city spot with set-tier.mjs, or refund. The free trial is 7 days, so there is ' +
-      'that long before the first charge.';
+      `Free a city spot with set-tier.mjs, or refund. Nothing is charged for ${TRIAL_DAYS} ` +
+      'days, so there is that long before the first charge.';
     console.error(detail);
     alerts.push({ subject: `Featured city unavailable at fulfillment: ${listing.license_number}`, text: detail });
   }
@@ -235,8 +235,8 @@ async function fulfill(session: Stripe.Checkout.Session): Promise<void> {
       `${listing.license_number} (${listing.county}) paid but every county position was taken at ` +
       `fulfillment. Featured on ${granted.join(', ') || 'no city pages'} with NO county placement. ` +
       `Subscription ${subscriptionId}.\n\n` +
-      'Free a position with set-tier.mjs or refund. The free trial is 7 days, so there is that ' +
-      'long before the first charge.';
+      `Free a position with set-tier.mjs or refund. Nothing is charged for ${TRIAL_DAYS} ` +
+      'days, so there is that long before the first charge.';
     console.error(detail);
     alerts.push({ subject: `County full at fulfillment, card not delivered: ${listing.license_number}`, text: detail });
   }
@@ -316,7 +316,7 @@ export function renderFeaturedAlert(
             ['License', esc(listing.license_number)],
             ['City pages', esc(cities)],
             ['County position', esc(position)],
-            ['Plan', `$50/month, ${TRIAL_DAYS}-day free trial, first charge ${esc(firstCharge)}`],
+            ['Plan', `$50/month, not charged for ${TRIAL_DAYS} days, first charge ${esc(firstCharge)}`],
             ['Email', sale.customerEmail ? link(`mailto:${sale.customerEmail}`, sale.customerEmail) : `<span style="color: ${SLATE};">not on the checkout</span>`],
             ['Stripe', link(stripeUrl, sale.subscriptionId)],
             ['Bought', esc(when)],
@@ -335,7 +335,7 @@ export function renderFeaturedAlert(
     `License: ${listing.license_number}\n` +
     `City pages: ${cities}\n` +
     `County position: ${position}\n` +
-    `Plan: $50/month, ${TRIAL_DAYS}-day free trial, first charge ${firstCharge}\n` +
+    `Plan: $50/month, not charged for ${TRIAL_DAYS} days, first charge ${firstCharge}\n` +
     `Email: ${sale.customerEmail ?? 'not on the checkout'}\n` +
     `Stripe: ${stripeUrl}\n` +
     `Bought: ${when}\n\n` +

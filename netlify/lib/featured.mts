@@ -24,8 +24,23 @@ import Stripe from 'stripe';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { CITY_FEATURED_CAP, COUNTY_FEATURED_CAP, MAX_FEATURED_CITIES, MIN_CITY_LISTINGS } from '../../src/lib/cities.ts';
 
-/** How long a new featured card runs before the first charge. */
-export const TRIAL_DAYS = 7;
+/**
+ * How long a new featured card runs before the first charge.
+ *
+ * 90, not 7, since 2026-09-22. The site is new enough that a featured card
+ * has no traffic to show for itself yet, and charging $50 for that is a bill
+ * for nothing — the one subscription sold so far was paused by hand the day
+ * before its first charge for exactly that reason. The card is still
+ * collected at checkout, so this converts on its own rather than needing a
+ * second sale; what it buys is a quarter of real click numbers before anyone
+ * pays for them.
+ *
+ * Changing this number only affects NEW checkouts. `trial_period_days` is
+ * fixed on each subscription when it is created, so extending the free run
+ * for inspectors who have already signed up is a per-subscription edit in
+ * Stripe, not an edit here.
+ */
+export const TRIAL_DAYS = 90;
 
 /** The county page's ceiling; positions are 1..this. Defined once in
  *  lib/cities.ts, which the county page reads too. */
@@ -226,8 +241,11 @@ export async function nextPosition(db: SupabaseClient, county: string): Promise<
 /**
  * Mails hello@ when a purchase cannot be delivered as sold. The log line this
  * replaces went to Netlify function logs, which expire in 7 days and nobody
- * watches — and the free trial is 7 days, so the first charge landed before
- * anyone could have looked. Best effort: a send that fails must not 500 the
+ * watches — and the free trial was 7 days too, so the first charge landed
+ * before anyone could have looked. The trial is TRIAL_DAYS now, which leaves
+ * far more room, but the log window has not moved: a purchase that cannot be
+ * delivered still has to reach a person within the week, so this still mails.
+ * Best effort: a send that fails must not 500 the
  * webhook, because Stripe would retry it and the customer would be billed
  * twice over an email.
  */

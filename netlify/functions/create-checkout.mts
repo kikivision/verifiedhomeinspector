@@ -2,9 +2,10 @@
 // Body: { cities: string[] }   Header: Authorization: Bearer <supabase token>
 //
 // Starts a Stripe Checkout session for a featured spot: a $50/month
-// subscription with a free first week, so the card is live before anything is
-// charged — which is what "nothing is charged until it is live and you have
-// seen it" has promised since the first county page. Everything that decides
+// subscription with a free first TRIAL_DAYS, so the card is live and has had a
+// season to earn its keep before anything is charged — which is what "nothing
+// is charged until it is live and you have seen it" has promised since the
+// first county page. Everything that decides
 // whether the sale is allowed (claimed listing, a county with a free
 // position, cities with open spots, no more than three) is checked here,
 // before Stripe, so a full county or city is refused before anyone types a
@@ -61,6 +62,15 @@ export default async (req: Request, _context: Context) => {
       line_items: [{ price: priceId, quantity: 1 }],
       subscription_data: {
         trial_period_days: TRIAL_DAYS,
+        // What happens if the card is gone when the trial ends. Stripe's
+        // default is `create_invoice`, which bills an inspector whose card
+        // expired during a trial now long enough for that to be ordinary —
+        // an unpayable invoice, a dunning sequence, and a person to chase.
+        // `pause` stops collection instead and leaves the spot up; the daily
+        // license-grace job reads pauses it did not set as 'theirs' and keeps
+        // its hands off (pauseOwnerOf in lib/featured.mts), so a paused row
+        // waits for a person rather than being cancelled by a robot.
+        trial_settings: { end_behavior: { missing_payment_method: 'pause' } },
         // Copied onto the subscription so a cancellation event, which carries
         // the subscription and not the checkout session, still names the row.
         metadata: { listing_id: listing.id, license: listing.license_number, county: listing.county },
