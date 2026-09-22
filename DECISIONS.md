@@ -5,6 +5,99 @@ until you know why. Newest first.
 
 ---
 
+## 2026-09-22 — A Featured spot is not charged for 90 days
+
+**Built.** `TRIAL_DAYS` is 90, not 7. The card is still collected at
+checkout; the first charge is 90 days later.
+
+### Why not a lower price
+
+The question that started this was whether $50 is defensible when a
+Featured spot has no homeowner traffic to show for itself yet — and the
+first answer reached for was a $25 founding rate. It is the wrong
+instrument. The site has run one price experiment already: the "free until
+five counted requests, then $10/month" claim offer, retired 2026-09-12
+because nobody claimed under it. Price was never the obstacle. A $25 rate
+would have spent the founding rate, left the same inspector with the same
+nothing to show, and made the guilt arrive at month three instead of month
+one. The founding $50 is untouched.
+
+What was actually wrong was selling a thing before it works. So it is not
+sold yet — it is given 90 days first.
+
+### Why 90 and not 180
+
+180 is the honest match for how long this site plausibly needs before a
+Featured spot is worth $50, and 90 was chosen anyway, knowingly. The
+December conversion may well land before the numbers justify it. That is
+accepted on the grounds that a decision made in December with three months
+of real click data beats one made today on a guess, and that pulling a date
+in is a pleasant email while pushing it out is an apology.
+
+If December comes and the traffic is not there, the fix is per-subscription
+(below) and it is manual. That is the price of 90 over 180 and it was known
+when it was chosen.
+
+### Why a card is still collected
+
+Because this converts by itself. A free-with-no-card period needs a second
+sale at the end of it, to an inspector who has spent 90 days paying
+nothing; a card on file needs only a decision not to intervene. It also
+keeps the offer honest about what it is, which is why no page calls it
+free: a card is required, it is not charged for 90 days, and the
+confirmation email names the date the first payment lands.
+
+### `trial_period_days` is fixed when the subscription is created
+
+**Changing `TRIAL_DAYS` reaches new checkouts only.** Stripe writes the
+trial onto each subscription at creation, so an inspector who signed up
+under one number keeps it. Extending an existing subscriber is a Stripe
+dashboard edit on that subscription ("Add trial days"), never an edit here,
+and it is one subscription at a time.
+
+That is how Inspected PLLC was moved. Bought 2026-09-14 under the 7-day
+trial, which ended 09-21; collection was paused by hand that day rather
+than let the first charge go through on a site with nothing to show. Adding
+trial days put the subscription back into `trialing` to **2026-12-13** — 90
+days from his own signup — and the pause was then removed, because a trial
+does the same job better: **no invoices generate during a trial**, so
+nothing accrues behind it the way a `keep_as_draft` pause would have. He
+has never been charged. No Featured revenue has ever been collected, from
+him or anyone.
+
+### `trial_settings` pauses rather than invoices
+
+`missing_payment_method` is `'pause'`. Stripe's default is
+`create_invoice`, which over a 7-day trial is unreachable and over a 90-day
+one is ordinary: cards expire inside a quarter. The default would bill a
+card that is gone, produce an unpayable invoice and a dunning sequence, and
+need a person. `'pause'` stops collection and leaves the spot up, and
+`license-grace` reads a pause it did not set as `'theirs'` and keeps its
+hands off it.
+
+Stripe's "send a reminder 7 days before a trial ends" is on, which is what
+makes charging on day 91 fair rather than sprung. At 7 days nobody would
+have noticed it being off.
+
+### What the copy had to stop saying
+
+Three words were ours and not the reader's, and all three were fixed the
+same day:
+
+- **"card"** meant the rendered placement to us and a credit card to
+  everyone else, so "nothing is charged until your card is live and you
+  have seen it" parsed as waiting to see one's own credit card. The
+  placement is now described by what it is — "your logo at the top of the
+  county page" — and `card` is left to mean the only thing a reader was
+  ever going to assume.
+- **"the 90-day trial"** referred back to something never introduced. Both
+  the dialog and the dashboard now open it: "We're running a 90-day trial,
+  so your card isn't charged until that period is complete."
+- **"featured"** lowercase read as an adjective. It is the name of the
+  thing being sold, so it is capitalized wherever a reader sees it.
+
+---
+
 ## 2026-09-21 — "Based nearby" is rows below the city's own, not cards above them
 
 **Built.** On a city page the claimed inspectors based elsewhere in the
