@@ -99,3 +99,44 @@ export const faqItems: FaqItem[] = [
     ],
   },
 ];
+
+// Same sourcing rule as faqItems above: only a statute, a regulator, or a
+// licensing authority earns a citation here. The FAR/BAR "AS IS" contract
+// itself is a private industry form, not a statute, so nothing about its
+// inspection-period LENGTH is cited as fact below — that number is negotiated
+// between buyer and seller on each contract, not set by law. What IS cited
+// (61-30, F.A.C.) is the state rule that actually defines a licensed
+// inspector's scope of work.
+export const purchaseFaqItems: FaqItem[] = [
+  {
+    question: 'What does a full home inspection actually cover?',
+    answer:
+      "Florida's Standards of Practice for licensed home inspectors, adopted in rules 61-30.801 through 61-30.811 of the Florida Administrative Code, define what a full inspection examines: the structure, the electrical system, the HVAC system, the roof covering, the plumbing system, interior and exterior components, and site conditions that affect the structure. It is a much wider scope than an insurance-driven inspection — the point is to tell you the condition of the house you are buying, not to qualify a policy.",
+    sources: [
+      { label: '61-30, F.A.C., Home Inspectors', url: 'https://flrules.org/gateway/ChapterHome.asp?Chapter=61-30' },
+    ],
+  },
+  {
+    question: "How is a full inspection different from a 4-point or wind mitigation?",
+    answer:
+      'A 4-point looks at four systems and answers one question: will an insurer write a policy on this house. A full inspection, covered by the same state Standards of Practice, looks at the whole structure to tell a buyer what condition it is actually in. Most buyers need a full inspection; a 4-point or wind mitigation only comes into it if you are also arranging insurance on an older home. Some licensed inspectors offer both at once — ask when you book.',
+  },
+  {
+    question: 'How much time do I have to get the house inspected before I am locked in?',
+    answer:
+      "If you are buying under Florida's standard \"AS IS\" residential contract, the contract itself sets an inspection period, negotiated between you and the seller rather than fixed by state law. During that window you can have the house inspected at your own expense, and under the AS IS form you can typically cancel and get your deposit back for any reason before it ends. Once it ends, that right generally goes away, so book the inspection as soon as the contract is signed rather than waiting.",
+  },
+  {
+    question: 'Can the same inspector do my full inspection and my insurance inspections?',
+    answer:
+      'Often, yes — many Florida home inspectors are licensed to perform all three, and doing them in one visit can save a trip. They are still separate reports for separate purposes: the full inspection is for you as the buyer, and a 4-point or wind mitigation is for your insurer. Ask when you book which ones you need.',
+  },
+  {
+    question: 'How do I know a home inspector is actually licensed in Florida?',
+    answer:
+      'Florida home inspectors are licensed by the Department of Business and Professional Regulation and issued a license number. You can check any inspector yourself in the DBPR licensing portal, by name or by license number, before booking anything. Every listing in this directory is built from that same record.',
+    sources: [
+      { label: 'DBPR, verify a licensee', url: 'https://www.myfloridalicense.com/wl11.asp?mode=0' },
+    ],
+  },
+];

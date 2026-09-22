@@ -1,10 +1,28 @@
 ---
-import { faqItems } from '../lib/faq';
+// Two pages use this component now (insurance-inspections, full-home-inspection),
+// each with its own FAQ array and own FAQPage schema — sharing markup, not copy.
+// Props default to the original insurance-page values, so the existing
+// `<Faq />` call site is unchanged and needs no edits.
+import { faqItems, type FaqItem } from '../lib/faq';
+
+interface Props {
+  items?: FaqItem[];
+  sectionId?: string;
+  note?: string;
+  leadText?: string;
+}
+
+const {
+  items = faqItems,
+  sectionId = 'insurance-renewals',
+  note = 'Wind mitigation and 4-point inspections, explained',
+  leadText = 'A 4-point decides whether a carrier will write the policy. A wind mitigation records the features a premium can be credited for. Both are performed by a licensed Florida home inspector.',
+} = Astro.props as Props;
 
 const schema = {
   '@context': 'https://schema.org',
   '@type': 'FAQPage',
-  mainEntity: faqItems.map((item) => ({
+  mainEntity: items.map((item) => ({
     '@type': 'Question',
     name: item.question,
     acceptedAnswer: {
@@ -17,23 +35,21 @@ const schema = {
 
 <script type="application/ld+json" set:html={JSON.stringify(schema)} />
 
-<section class="section" id="insurance-renewals">
+<section class="section" id={sectionId}>
   <div class="wrap">
     <div class="section-head">
       <h2>Common questions</h2>
-      <div class="note">Wind mitigation and 4-point inspections, explained</div>
+      <div class="note">{note}</div>
     </div>
     <!-- This sentence used to open the hero, where it was the back half of a
          nine-line paragraph a phone had to scroll past before showing a single
          inspector. It says what the questions below answer, so it earns its
          space here and costs nothing at the top of the page. -->
     <p class="faq-lead">
-      A 4-point decides whether a carrier will write the policy. A wind mitigation records the
-      features a premium can be credited for. Both are performed by a licensed Florida home
-      inspector.
+      {leadText}
     </p>
     <div class="faq">
-      {faqItems.map((item, i) => (
+      {items.map((item, i) => (
         <details class="faq-item" open={i === 0}>
           <summary>{item.question}</summary>
           <p>{item.answer}</p>

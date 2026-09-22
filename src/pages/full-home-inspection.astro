@@ -1,0 +1,118 @@
+---
+// One statewide page, same reasoning as /insurance-inspections/: the
+// Standards of Practice that define a full inspection's scope are set by
+// state rule (61-30, F.A.C.), not by county, so there is nothing a
+// per-county version of this page could say that this one cannot. Splitting
+// it 67 ways would also mean 67 copies of the same FAQPage schema competing
+// with each other for the same query instead of one of them winning it.
+//
+// This exists to catch buyer-intent search ("full home inspection florida",
+// "home inspection before buying a house") that /insurance-inspections/ was
+// never built to answer — that page is explicitly about 4-point and wind
+// mitigation, which are insurance-renewal inspections, not what a buyer
+// needs before closing. Conflating the two was a real gap: GSC showed
+// impressions on buyer-intent terms with no page to serve them.
+import Layout from '../layouts/Layout.astro';
+import Faq from '../components/Faq.astro';
+import { counties } from '../lib/counties';
+import { purchaseFaqItems } from '../lib/faq';
+
+const live = counties.filter((c) => c.status === 'live');
+---
+
+<Layout
+  title="Full Home Inspection Before You Buy in Florida | Verified Home Inspector"
+  description="What a full home inspection covers before you close on a Florida home, how it differs from a 4-point or wind mitigation, and how to find a DBPR-licensed inspector near you."
+>
+  <section class="hero">
+    <div class="wrap">
+      <div class="county-tag">Buying a home</div>
+      <h1>Buying a house in Florida?</h1>
+      <p style="color:var(--navy-soft);font-weight:500;margin-top:10px;max-width:68ch;">
+        Before you close, a full home inspection tells you the real condition of the house —
+        not the four systems an insurer cares about, but the whole structure. It is different
+        from a 4-point or wind mitigation, and it is the one most buyers actually need.
+      </p>
+    </div>
+  </section>
+
+  <!-- Same citation discipline as insurance-inspections.astro: only the
+       state rule that defines the scope is asserted as fact. The FAR/BAR
+       inspection-period LENGTH is described generally, with no specific day
+       count claimed as law — it is a negotiated contract term, not a
+       statute, and there is no regulator source for a specific number. -->
+  <section class="section" id="which-inspection" style="padding-top:0;">
+    <div class="wrap">
+      <div class="legal" style="max-width:68ch;">
+        <h2>What a full inspection covers</h2>
+        <p>
+          Florida's Standards of Practice for licensed home inspectors — rules 61-30.801 through
+          61-30.811 of the Florida Administrative Code — define what a full inspection examines:
+          the structure, the electrical system, the HVAC system, the roof covering, the plumbing
+          system, interior and exterior components, and site conditions that affect the
+          structure. The goal is to tell you the condition of the house, not to qualify an
+          insurance policy.
+        </p>
+        <p>
+          A 4-point inspection is narrower on purpose: it checks only four of those systems, and
+          it exists to answer one question for an insurer — will this company write a policy on
+          the house. A wind mitigation is narrower still, and it is about storm-resistance
+          discounts, not condition. Most buyers need a full inspection first; a 4-point or wind
+          mitigation only comes into it if you are also lining up insurance on an older home. See{' '}
+          <a href="/insurance-inspections/">insurance inspections</a> if that is what brought you
+          here instead.
+        </p>
+
+        <h2>How much time you have to inspect before you're locked in</h2>
+        <p>
+          If you are buying under Florida's standard "AS IS" residential contract, the contract
+          sets an inspection period — negotiated between you and the seller, not fixed by state
+          law. During that window you can have the house inspected at your own expense, and
+          under the AS IS form you can typically cancel and get your deposit back for any reason
+          before the period ends. Book the inspection as soon as the contract is signed rather
+          than waiting, since that right generally goes away once the period is over.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="find-an-inspector" style="padding-top:8px;">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>Find a licensed inspector</h2>
+        <div class="note">Every listing verified against the Florida DBPR record</div>
+      </div>
+      <p style="color:var(--slate);max-width:68ch;margin-top:0;">
+        Every inspector's phone number is on their listing, so you can call and schedule
+        directly.
+      </p>
+      <div class="county-picker">
+        <label class="visually-hidden" for="inspectorCountySelect">Choose your county</label>
+        <select id="inspectorCountySelect">
+          <option value="">Choose your county…</option>
+          {live.map((c) => (
+            <option value={c.slug}>{c.name}{c.metro ? ` · ${c.metro}` : ''}</option>
+          ))}
+        </select>
+      </div>
+    </div>
+  </section>
+
+  <Faq
+    items={purchaseFaqItems}
+    sectionId="full-inspection"
+    note="Full home inspections, explained"
+    leadText="A full inspection covers the whole structure and tells a buyer what condition the house is in. It is different from the 4-point and wind mitigation inspections an insurer asks for."
+  />
+
+  <script>
+    // Its own id, matching the pattern on insurance-inspections.astro: the
+    // header carries a #countySelect of its own, and two elements sharing an
+    // id would leave one of them unwired.
+    const select = document.getElementById('inspectorCountySelect') as HTMLSelectElement | null;
+    select?.addEventListener('change', () => {
+      if (!select.value) return;
+      window.location.href = `/fl/${select.value}/#all-inspectors`;
+    });
+  </script>
+</Layout>
