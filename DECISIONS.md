@@ -1833,3 +1833,95 @@ request-and-review flow for zero requests is the wrong order.
 - Anything that lets a listing exist without a verified license number
   — the moment that is possible, the "every inspector here is licensed"
   claim on the site needs a process behind it, not a person.
+
+## 2026-09-23 — No hosted reviews. Show the inspector's Google rating instead, claimed listings only, default on, inspector can turn it off
+
+### The question
+
+Valerie Jarnberg (a Tampa Bay realtor, replying to Karen's personal
+outreach) asked why the site doesn't include reviews to show how well the
+inspectors are doing. Fair question — a homeowner picking an inspector
+wants to know that, and "licensed" doesn't answer it.
+
+### The decision
+
+**The site will never host reviews or ratings of its own.** It will show
+an inspector's **Google rating and review count**, with Google attribution,
+linking out to the reviews on Google. Rules:
+
+- **Claimed listings only.** An unclaimed listing never shows a rating.
+- **Default on** for a claimed listing once a Google profile is attached.
+- **The inspector can turn it off** from their dashboard, and add or change
+  the Google profile link at any time. Off means nothing renders — no
+  "rating hidden" label, which would read as a bad rating.
+- **The profile is attached at claim time as a confirmed suggestion, not a
+  blind match.** On claim, look up the business name + city on Google and
+  show "Is this your Google profile? 4.9 ★, 212 reviews" with the box
+  pre-checked; the inspector confirms, unchecks, or pastes a different
+  link. Most claimers get the rating without typing anything, and a human
+  has said yes before anything renders.
+
+### Why not host reviews
+
+Not mainly defamation — Section 230 generally shields a site from what
+its users write. The real reasons:
+
+1. **Disputes land on one person.** The inspector who gets a bad review
+   comes to Karen, and there is no dispute process a solo operator can run.
+   The 2024 FTC rule on fake reviews also means policing the good ones.
+2. **The inspector is the customer.** Inspected PLLC asked to cancel over
+   "will we get value for the money" with nothing negative on their listing
+   at all (2026-09-15). The first one-star review under a paid Featured
+   listing is a cancellation; the second is a reputation among the people
+   the site is trying to sign. Yelp built a business on that tension and
+   inspectors hate Yelp for it.
+3. **"Verified" and "rated" are different promises.** The site's promise is
+   that every inspector holds a current Florida license — a fact that can
+   be checked. A star rating is an opinion Google already collects better
+   than this site could. Pointing at Google keeps the two honest.
+
+Same rule already recorded for Sunstate Trades: objective signals only
+(badges, response rate), never ratings or reviews.
+
+### Why not auto-match unclaimed listings
+
+Finding a solo inspector's Google Business Profile by name and city is
+guesswork, and a wrong match puts someone else's 3.2 stars under a real
+inspector's name — the review problem back in a different coat, with no
+dashboard for the unclaimed inspector to fix it from. Claimed-only is
+also a claim incentive: unclaimed listings show nothing.
+
+### Constraints that are rules, not choices
+
+- Google's Places terms allow storing a place ID indefinitely but other
+  place data (rating, count) for at most 30 days → **monthly refresh**.
+- The rating must carry Google attribution wherever it renders.
+- The rating field sits in the Places API Enterprise SKU: roughly 1,000
+  free lookups a month, ~$20 per thousand after. A few dozen claimed
+  listings refreshed monthly is free; all ~11,000 seeded listings would be
+  ~$200/month — one more reason for claimed-only.
+
+### Low ratings
+
+If the inspector attached the profile, it's their call; the number is
+already public on Google. No threshold, no hiding below N stars.
+
+### Shape when built (~1 day)
+
+- `listings.google_place_id` (text, null) + `listings.google_rating`,
+  `google_rating_count`, `google_rating_fetched_at`, and a
+  `show_google_rating boolean default true`.
+- Claim flow: Places text search on business name + city → confirm step
+  with the box pre-checked; a paste-your-link fallback.
+- Dashboard: toggle + change-link.
+- Netlify scheduled function, monthly, refreshing rating + count for every
+  listing with a place ID (idempotent — Netlify crons are at-least-once).
+- Listing card + page: "4.9 ★ · 212 Google reviews" with the Google mark,
+  linking to `https://search.google.com/local/reviews?placeid=<id>`.
+
+### What would reverse this
+
+- An inspector asks for reviews ON the site and is willing to pay more for
+  them — and a second one says the same.
+- Google changes Places terms or pricing so the monthly refresh stops
+  being free at claimed scale.
