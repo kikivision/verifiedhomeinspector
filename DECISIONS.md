@@ -1781,3 +1781,55 @@ request forms use, rather than a new table.
 
 An inspector saying the full row put them off asking. Nobody has said
 that; nobody has been shown a full row yet.
+
+## 2026-09-23 — License verification for non-seeded inspectors should be a built-in process, some day
+
+### The question
+
+What happens when an inspector who is NOT in the DBPR seed wants a
+listing — a new licensee, someone the import missed, or an out-of-state
+inspector once the site covers another state?
+
+### Where this came from
+
+Valerie Jarnberg (a Tampa Bay realtor Karen bought her house through in
+2014) asked, in reply to a personal outreach email: "Do they have to show
+they are licensed or do they need more credentials?" Karen answered that
+every current listing came from the DBPR license roll, and that anyone
+not in that upload would have to supply their license number so she can
+verify it before being added.
+
+That answer is true of the intent. It is not true of the site. There is
+no path for a non-seeded inspector to ask, no place to supply a license
+number, and no verification step — the request form was removed on
+2026-09-12 (README "There is no request form"), and the only way onto the
+site is to already be in `listings` from `import-dbpr.mjs`. Today the
+promise is kept by hand: someone emails Karen, Karen looks them up on
+DBPR, Karen inserts the row.
+
+### The decision
+
+Keep it manual for now. Log that it should become a built-in process,
+modelled on Sunstate Trades' license verification: the inspector supplies
+the license number (and, later, a document), the founder reviews it once,
+and a reviewed stamp is what earns the listing — not the founder's
+memory of having checked. See `LICENSE_VERIFICATION_PLAN.md` in the
+sunstate-trades repo (`license_reviewed_at`, `reviewSubDocument`) for the
+shape that already works there.
+
+### Why not now
+
+Nobody has asked to be added. The seed covers every active Florida
+licensee, so the only inspectors this affects are ones licensed after the
+last import or ones who fell out of it. A re-run of the import closes the
+first gap; the second has not happened that we know of. Building a
+request-and-review flow for zero requests is the wrong order.
+
+### What would pull this forward
+
+- The first inspector who is not in the seed asks to be listed.
+- Expansion to a second state, where the seed may not carry the same
+  coverage or the license roll may not be as clean as Florida's DBPR.
+- Anything that lets a listing exist without a verified license number
+  — the moment that is possible, the "every inspector here is licensed"
+  claim on the site needs a process behind it, not a person.
