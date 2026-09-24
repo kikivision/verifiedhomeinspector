@@ -423,6 +423,13 @@ footer p { font-size: 0.8rem; color: var(--slate); margin: 4px 0; max-width: 70c
 .card.featured .logo-plate img { max-width: 100%; max-height: 100%; }
 .card.featured[data-logo] h3, .card.featured[data-logo] .city { padding-right: 96px; }
 .tag-more { color: var(--mustard-deep); font-weight: 600; text-decoration: none; }
+/* Featured card: six tags on a wide card, three on a narrow one, each with
+   its own "+N more" count. Both are in the HTML; the width picks one. */
+.card.featured .tag-more.narrow { display: none; }
+@media (max-width: 700px) {
+  .card.featured .tag-wide, .card.featured .tag-more.wide { display: none; }
+  .card.featured .tag-more.narrow { display: inline-block; }
+}
 .card.featured .lic { margin-bottom: 16px; }
 .card.featured .contact { margin-top: auto; }
 .card.featured .contact-lines { flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }

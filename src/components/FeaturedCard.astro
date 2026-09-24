@@ -27,6 +27,12 @@ const profile = inspectorPath(l.county, l.city, l.license_number, l.licensee_nam
 const SHOWN_SPECIALTIES = 6;
 const shownSpecialties = l.specialties.slice(0, SHOWN_SPECIALTIES);
 const moreSpecialties = l.specialties.length - shownSpecialties.length;
+// On a phone the card is the full screen width and two tags fill a row, so
+// six became three rows plus a fourth for "+N more". Two rows there means
+// three tags and the "more" pill. The page is static, so both counts are
+// rendered and CSS shows the one for the width (founder review, 2026-09-23).
+const SHOWN_SPECIALTIES_NARROW = 3;
+const moreSpecialtiesNarrow = l.specialties.length - Math.min(l.specialties.length, SHOWN_SPECIALTIES_NARROW);
 ---
 
 <div class="card featured" data-logo={l.logo_path ? "" : undefined}>
@@ -59,11 +65,12 @@ const moreSpecialties = l.specialties.length - shownSpecialties.length;
   <div class="city">{l.business_name ? `${l.licensee_name} · ` : ''}{l.city}, FL</div>
   <div class="tags">
     {shownSpecialties.length > 0 ? (
-      shownSpecialties.map((s) => <span class="tag">{s}</span>)
+      shownSpecialties.map((s, i) => <span class:list={['tag', { 'tag-wide': i >= SHOWN_SPECIALTIES_NARROW }]}>{s}</span>)
     ) : (
       <span class="tag">Licensed Home Inspector</span>
     )}
-    {moreSpecialties > 0 && <a class="tag tag-more" href={profile}>+{moreSpecialties} more</a>}
+    {moreSpecialties > 0 && <a class="tag tag-more wide" href={profile}>+{moreSpecialties} more</a>}
+    {moreSpecialtiesNarrow > 0 && <a class="tag tag-more narrow" href={profile}>+{moreSpecialtiesNarrow} more</a>}
   </div>
   {(l.cert_badges.length > 0 || l.years_experience) && (
     <div class="cert-row">
