@@ -1,0 +1,21 @@
+---
+// "★ 5.0 · 79 reviews on Google ↗" — the inspector's Google rating, linking
+// to Google's own review list. One component so the card and the profile
+// page cannot drift. Renders nothing for an unclaimed listing, for an
+// inspector who switched it off, or before the first fetch; see
+// googleRating() for the rules. "on Google" is the attribution Google's
+// Places terms require when place data is shown off a Google map — keep it.
+import { googleRating } from '../lib/google-rating';
+import type { Listing } from '../lib/supabase';
+
+interface Props { listing: Listing }
+const gr = googleRating(Astro.props.listing);
+---
+
+{gr && (
+  <a class="google-rating" href={gr.url} target="_blank" rel="noopener nofollow" title="Read the reviews on Google">
+    <span class="star" aria-hidden="true">★</span>
+    <span class="score">{gr.rating}</span>
+    <span class="count">· {gr.count.toLocaleString('en-US')} {gr.count === 1 ? 'review' : 'reviews'} on Google ↗</span>
+  </a>
+)}

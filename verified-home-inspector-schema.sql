@@ -47,6 +47,18 @@ create table listings (
   -- from the inspector's own site or a public listing; 'inspector' once they
   -- claim. Null on a bare DBPR row.
   contact_source text check (contact_source in ('public', 'inspector')),
+  -- The inspector's Google rating, shown on claimed listings and linking out
+  -- to the reviews on Google (DECISIONS.md 2026-09-23; the site hosts no
+  -- reviews of its own). google_place_id is set by hand or confirmed by the
+  -- inspector at claim, never by a blind name match. rating and count are a
+  -- cache of Google's numbers, refreshed monthly — Google's terms cap the
+  -- cache at 30 days. show_google_rating is the inspector's switch; off
+  -- renders nothing.
+  google_place_id text,
+  google_rating numeric(2,1) check (google_rating between 1 and 5),
+  google_rating_count int check (google_rating_count >= 0),
+  google_rating_fetched_at timestamptz,
+  show_google_rating boolean not null default true,
   -- Set when a license stops appearing in the DBPR extract. Null means current.
   -- The importer marks rows here and never deletes them, so a claimed listing
   -- survives a bad upstream file and can be restored by clearing this.

@@ -14,6 +14,7 @@ import Layout from '../../../../../layouts/Layout.astro';
 import ListingEvents from '../../../../../components/ListingEvents.astro';
 import { counties, getCounty, searchName } from '../../../../../lib/counties';
 import { getAllListings, isClaimed, hasPublicContact, websiteLabel, type Listing, type Tier } from '../../../../../lib/supabase';
+import GoogleRating from '../../../../../components/GoogleRating.astro';
 import { slugify, inspectorSlug, inspectorPath } from '../../../../../lib/slug';
 import { cityPagesFor, cityPath } from '../../../../../lib/cities';
 
@@ -284,6 +285,7 @@ const schema = claimed
               )}
               {!l.phone && !l.website && <span class="dash-muted">No contact listed yet</span>}
             </div>
+            <GoogleRating listing={l} />
             {(l.cert_badges.length > 0 || l.years_experience) && (
               <div class="cert-row">
                 {l.cert_badges.map((c) => <span class="cert">{c}</span>)}

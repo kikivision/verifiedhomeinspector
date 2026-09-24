@@ -1906,6 +1906,22 @@ also a claim incentive: unclaimed listings show nothing.
 If the inspector attached the profile, it's their call; the number is
 already public on Google. No threshold, no hiding below N stars.
 
+### Built the same evening, for the two Featured listings
+
+Shipped 2026-09-23 as the "shape when built" below, minus the dashboard
+toggle and the claim-time suggestion, which wait for the next claim.
+Inspected PLLC (5.0, 81) and RMC Inspections (5.0, 79) attached by hand
+with `scripts/google-rating.mjs set` after each was checked against the
+listing's own phone.
+
+**Found while attaching: Google's text search could not find RMC at all** —
+not by name, phone, website, or a pin — because it is a service-area
+business with no public address. The place ID came from the "Write a
+review" link on its Google panel. So the claim-time suggestion cannot be
+the only path: an inspector must also be able to paste their Google link,
+and a "no match" must read as "we couldn't find it," never "you have no
+reviews." Many solo inspectors work from home and will be exactly this shape.
+
 ### Shape when built (~1 day)
 
 - `listings.google_place_id` (text, null) + `listings.google_rating`,

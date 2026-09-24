@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { isRemoved } from './removed';
+import type { GoogleRatingFields } from './google-rating';
 
 const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
@@ -17,7 +18,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export type Tier = 'unclaimed' | 'claimed' | 'featured';
 
-export interface Listing {
+export interface Listing extends GoogleRatingFields {
   id: string;
   county: string;
   city: string;

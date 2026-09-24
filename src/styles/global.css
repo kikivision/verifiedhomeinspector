@@ -105,6 +105,17 @@ select, .search-bar input { font-family: 'IBM Plex Sans', sans-serif; padding: 1
 .tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0; }
 .tag { font-size: 0.76rem; color: var(--navy-soft); background: #EAEEE9; padding: 4px 9px; border-radius: 3px; border: 1px solid #DCE3DC; }
 .card .lic { font-size: 0.8rem; color: var(--slate); margin-top: 4px; }
+/* The inspector's Google rating, one line, linking out. Gold star to match
+   the featured border; the count in slate so the score reads first. */
+.google-rating { display: inline-flex; align-items: baseline; gap: 5px; margin-top: 8px; font-size: 0.84rem; color: var(--slate); text-decoration: none; }
+.google-rating .star { color: var(--mustard-deep); font-size: 0.95rem; }
+.google-rating .score { font-weight: 600; color: var(--navy); }
+.google-rating:hover .count { text-decoration: underline; }
+.card.featured .google-rating { margin-top: 0; margin-bottom: 14px; }
+/* The license line normally carries the gap above the contact row; when a
+   rating follows it, the two facts sit together and the rating carries it. */
+.card.featured .lic:has(+ .google-rating) { margin-bottom: 4px; }
+.profile-card .google-rating { margin-top: 14px; }
 .card .contact { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
 .card .phone { font-size: 0.92rem; font-weight: 500; color: var(--navy); }
 .card .view { font-size: 0.85rem; color: var(--mustard-deep); font-weight: 600; }

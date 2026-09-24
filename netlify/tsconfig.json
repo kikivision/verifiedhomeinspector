@@ -9,5 +9,5 @@
     "skipLibCheck": true,
     "types": ["node", "astro/client"]
   },
-  "include": ["functions/**/*.mts", "lib/**/*.mts", "../src/lib/cities.ts", "../src/lib/slug.ts"]
+  "include": ["functions/**/*.mts", "lib/**/*.mts", "../src/lib/cities.ts", "../src/lib/slug.ts", "../src/lib/google-rating.ts"]
 }

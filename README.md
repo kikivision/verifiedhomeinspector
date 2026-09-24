@@ -36,6 +36,7 @@ See [CLAUDE.md](CLAUDE.md) for why every assertion in that file exists.
 | `SUPABASE_SERVICE_ROLE_KEY` | writing — `import-dbpr.mjs` and `set-tier.mjs`. Not needed for a dry run |
 | `PUBLIC_GA_MEASUREMENT_ID` | optional; unset means the site runs without analytics rather than breaking |
 | `NETLIFY_BUILD_HOOK` | optional; lets `set-tier.mjs --deploy` publish a change. Secret — anyone holding it can trigger a build |
+| `GOOGLE_PLACES_API_KEY` | the Google rating on claimed listings — `google-rating.mjs` and the monthly `google-rating-refresh` function. Its own key, restricted to Places API (New); not the Sunstate Trades one |
 
 ## Self-serve claims
 

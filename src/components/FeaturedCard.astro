@@ -9,6 +9,7 @@
 import type { County } from '../lib/counties';
 import { websiteLabel, type Listing } from '../lib/supabase';
 import { inspectorPath } from '../lib/slug';
+import GoogleRating from './GoogleRating.astro';
 
 interface Props {
   listing: Listing;
@@ -71,6 +72,7 @@ const moreSpecialties = l.specialties.length - shownSpecialties.length;
     </div>
   )}
   <div class="lic"><span class="check">✓</span>FL Lic #{l.license_number} — DBPR verified, active</div>
+  <GoogleRating listing={l} />
   {/* Phone and website, shown since 2026-09-12. A tap on the number logs
       click_phone before dialing. See DECISIONS.md. */}
   <div class="contact">
