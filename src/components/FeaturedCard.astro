@@ -7,7 +7,7 @@
 // featured listing, and an HTML comment would be emitted once per card, which
 // the smoke test treats as a comment written inside a loop.
 import type { County } from '../lib/counties';
-import { websiteLabel, type Listing } from '../lib/supabase';
+import type { Listing } from '../lib/supabase';
 import { inspectorPath } from '../lib/slug';
 import GoogleRating from './GoogleRating.astro';
 
@@ -80,11 +80,16 @@ const moreSpecialtiesNarrow = l.specialties.length - Math.min(l.specialties.leng
   )}
   <div class="lic"><span class="check">✓</span>FL Lic #{l.license_number} — DBPR verified, active</div>
   <GoogleRating listing={l} />
-  {/* Phone and website, shown since 2026-09-12. A tap on the number logs
-      click_phone before dialing. See DECISIONS.md. */}
+  {/* Phone only, since 2026-09-23. The website was here from 2026-09-12 and
+      came off because it was an exit the site cannot count: the phone tap
+      is the one lead that is logged (click_phone) and the number an
+      inspector is shown when deciding whether to pay, and a click out to
+      their own site from the card bypasses both it and the profile page.
+      The website stays on the profile page, one click away. Same reasoning
+      as the logo not being a link. */}
   <div class="contact">
     <div class="contact-lines">
-      {(l.phone || l.website) && <span class="contact-label">Contact:</span>}
+      {l.phone && <span class="contact-label">Contact:</span>}
       {l.phone && (
         <a
           class="row-phone phone-link"
@@ -93,11 +98,6 @@ const moreSpecialtiesNarrow = l.specialties.length - Math.min(l.specialties.leng
           data-page-context={pageContext}
         >
           {l.phone}
-        </a>
-      )}
-      {l.website && (
-        <a class="row-web" href={l.website} target="_blank" rel="sponsored noopener">
-          {websiteLabel(l.website)} ↗
         </a>
       )}
     </div>
