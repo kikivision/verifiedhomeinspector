@@ -111,10 +111,13 @@ select, .search-bar input { font-family: 'IBM Plex Sans', sans-serif; padding: 1
 .google-rating .star { color: var(--mustard-deep); font-size: 0.95rem; }
 .google-rating .score { font-weight: 600; color: var(--navy); }
 .google-rating:hover .count { text-decoration: underline; }
-.card.featured .google-rating { margin-top: 0; margin-bottom: 14px; }
-/* The license line normally carries the gap above the contact row; when a
-   rating follows it, the two facts sit together and the rating carries it. */
-.card.featured .lic:has(+ .google-rating) { margin-bottom: 4px; }
+/* The rating is pinned to the bottom of the card with the contact block, so
+   it sits immediately above the rule on every card in a row regardless of
+   how much sits above it. Two auto margins would split the spare space
+   between them, so the contact's auto margin is turned off when a rating
+   precedes it. */
+.card.featured .google-rating { margin-top: auto; margin-bottom: 14px; }
+.card.featured .google-rating + .contact { margin-top: 0; }
 /* The profile card has the room the featured card lacks, so both the
    rating and the phone number are set larger here. */
 .profile-card .google-rating { margin-top: 14px; font-size: 1rem; }
