@@ -15,6 +15,7 @@ import ListingEvents from '../../../../../components/ListingEvents.astro';
 import { counties, getCounty, searchName } from '../../../../../lib/counties';
 import { getAllListings, isClaimed, hasPublicContact, websiteLabel, type Listing, type Tier } from '../../../../../lib/supabase';
 import GoogleRating from '../../../../../components/GoogleRating.astro';
+import { googleRating } from '../../../../../lib/google-rating';
 import { slugify, inspectorSlug, inspectorPath } from '../../../../../lib/slug';
 import { cityPagesFor, cityPath } from '../../../../../lib/cities';
 
@@ -267,31 +268,38 @@ const schema = claimed
                 <img src={l.logo_path} alt={`${name} logo`} />
               </div>
             )}
-            <div class="contact-lines">
-              {l.phone && (
-                <a
-                  class="row-phone phone-link profile-phone"
-                  href={`tel:${l.phone.replace(/[^\d+]/g, '')}`}
-                  data-listing-id={l.id}
-                  data-page-context={pageContext}
-                >
-                  {l.phone}
-                </a>
-              )}
-              {l.website && (
-                <a class="row-web" href={l.website} target="_blank" rel={l.tier === 'featured' ? 'sponsored noopener' : 'noopener'}>
-                  {websiteLabel(l.website)} ↗
-                </a>
-              )}
-              {!l.phone && !l.website && <span class="dash-muted">No contact listed yet</span>}
-            </div>
-            <GoogleRating listing={l} />
+            {/* Same order as the featured card: credentials, then the Google
+                rating, then a rule, then the contact — so the rating sits
+                immediately above the line on every card it appears on. */}
             {(l.cert_badges.length > 0 || l.years_experience) && (
               <div class="cert-row">
                 {l.cert_badges.map((c) => <span class="cert">{c}</span>)}
                 {l.years_experience && <span class="cert">{l.years_experience}+ years in business</span>}
               </div>
             )}
+            <GoogleRating listing={l} />
+            {/* The rule only draws when something sits above it; a card with
+                no credentials and no rating starts at the phone number. */}
+            <div class:list={['profile-contact', { ruled: l.cert_badges.length > 0 || !!l.years_experience || googleRating(l) !== null }]}>
+              <div class="contact-lines">
+                {l.phone && (
+                  <a
+                    class="row-phone phone-link profile-phone"
+                    href={`tel:${l.phone.replace(/[^\d+]/g, '')}`}
+                    data-listing-id={l.id}
+                    data-page-context={pageContext}
+                  >
+                    {l.phone}
+                  </a>
+                )}
+                {l.website && (
+                  <a class="row-web" href={l.website} target="_blank" rel={l.tier === 'featured' ? 'sponsored noopener' : 'noopener'}>
+                    {websiteLabel(l.website)} ↗
+                  </a>
+                )}
+                {!l.phone && !l.website && <span class="dash-muted">No contact listed yet</span>}
+              </div>
+            </div>
           </div>
         ) : (
           <>

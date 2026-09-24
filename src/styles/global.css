@@ -115,7 +115,12 @@ select, .search-bar input { font-family: 'IBM Plex Sans', sans-serif; padding: 1
 /* The license line normally carries the gap above the contact row; when a
    rating follows it, the two facts sit together and the rating carries it. */
 .card.featured .lic:has(+ .google-rating) { margin-bottom: 4px; }
-.profile-card .google-rating { margin-top: 14px; }
+/* The profile card has the room the featured card lacks, so both the
+   rating and the phone number are set larger here. */
+.profile-card .google-rating { margin-top: 14px; font-size: 1rem; }
+.profile-card .google-rating .star { font-size: 1.15rem; }
+.profile-card .profile-contact.ruled { margin-top: 14px; padding-top: 16px; border-top: 1px solid var(--line); }
+.profile-card .cert-row + .google-rating { margin-top: 12px; }
 .card .contact { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
 .card .phone { font-size: 0.92rem; font-weight: 500; color: var(--navy); }
 .card .view { font-size: 0.85rem; color: var(--mustard-deep); font-weight: 600; }
@@ -589,11 +594,11 @@ footer p { font-size: 0.8rem; color: var(--slate); margin: 4px 0; max-width: 70c
 .profile-card { padding: 26px; }
 .profile-card .logo-plate { margin-top: 6px; margin-bottom: 18px; }
 .profile-card .contact-lines { gap: 10px; }
-.profile-phone { font-family: 'Fraunces', serif; font-size: 1.35rem; font-weight: 500; }
+.profile-phone { font-family: 'Fraunces', serif; font-size: 1.7rem; font-weight: 500; }
 .profile-request { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 10px; }
 .profile-request .btn-primary { width: 100%; padding: 12px 22px; }
 .profile-request p { text-align: center; font-size: 0.8rem; }
-.profile-card .cert-row { margin-top: 18px; }
+.profile-card .cert-row { margin-top: 6px; }
 .profile-claim { flex-direction: column; align-items: stretch; padding: 30px; gap: 0; }
 .profile-claim h2 { font-size: 1.4rem; max-width: none; }
 .profile-claim p { max-width: none; }
